@@ -1,0 +1,16 @@
+{
+  "name": "health-checkup-report",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generate customer security health checkup HTML reports from SOAR/XDR data.",
+  "main": "health_report.js",
+  "scripts": {
+    "generate": "node health_report.js generate",
+    "check": "node --check health_report.js && node --check src/args.js && node --check src/data_client.js && node --check src/mock_data.js && node --check src/template_renderer.js && node --check tests/renderer.test.js",
+    "test": "node tests/renderer.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+
