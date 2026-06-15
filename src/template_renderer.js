@@ -16,6 +16,15 @@ const DATA_FIELD_MAP = {
   'ops.high-v': 'ops.high'
 };
 
+const SECTION_RENDERERS = {
+  'assets.summary': renderAssetsSummary,
+  'riskOverview.summary': renderRiskOverviewSummary
+};
+
+const REPEAT_RENDERERS = {
+  'riskOverview.keyRisks': renderKeyRiskRows
+};
+
 async function renderReportToFile({ templatePath, outputDir, reportData }) {
   const template = await fs.readFile(templatePath, 'utf8');
   const html = renderTemplate(template, reportData);
@@ -38,6 +47,8 @@ function renderTemplate(template, reportData) {
   let html = template;
 
   html = replaceHandlebarsTokens(html, reportData);
+  html = renderSections(html, reportData);
+  html = renderRepeats(html, reportData);
   html = patchKnownText(html, reportData);
   html = patchDataFields(html, reportData);
   html = injectReportData(html, reportData);
@@ -71,19 +82,87 @@ function patchKnownText(html, data) {
 }
 
 function patchDataFields(html, data) {
-  let output = html;
-
-  for (const [field, keyPath] of Object.entries(DATA_FIELD_MAP)) {
+  return html.replace(/(<[^>]+data-field="([^"]+)"[^>]*>)(.*?)(<\/[^>]+>)/g, (match, open, field, inner, close) => {
+    const keyPath = DATA_FIELD_MAP[field] || field;
     const value = getPath(data, keyPath);
-    if (value === undefined || value === null) {
-      continue;
+    return value === undefined || value === null ? match : `${open}${escapeHtml(String(value))}${close}`;
+  });
+}
+
+function renderSections(html, data) {
+  return html.replace(/<([a-zA-Z0-9]+)([^>]*)data-section="([^"]+)"([^>]*)><\/\1>/g, (match, tag, before, sectionName, after) => {
+    const renderer = SECTION_RENDERERS[sectionName];
+    if (!renderer) {
+      return match;
     }
 
-    const pattern = new RegExp(`(<[^>]+data-field="${escapeRegExp(field)}"[^>]*>)(.*?)(</[^>]+>)`, 'g');
-    output = output.replace(pattern, `$1${escapeHtml(String(value))}$3`);
+    return `<${tag}${before}data-section="${sectionName}"${after}>${renderer(data)}</${tag}>`;
+  });
+}
+
+function renderRepeats(html, data) {
+  return html.replace(/<tbody([^>]*)data-repeat="([^"]+)"([^>]*)><\/tbody>/g, (match, before, repeatName, after) => {
+    const renderer = REPEAT_RENDERERS[repeatName];
+    if (!renderer) {
+      return match;
+    }
+
+    const rows = getPath(data, repeatName) || [];
+    return `<tbody${before}data-repeat="${repeatName}"${after}>${renderer(rows)}</tbody>`;
+  });
+}
+
+function renderAssetsSummary(data) {
+  const assets = data.assets || {};
+  return [
+    paragraph(`【资产统计】台账资产${num(assets.total)}个，核心资产${num(assets.core)}个，7天内即将退库资产${num(assets.retiringWithin7Days)}个，待审核资产${num(assets.pendingReview)}个`),
+    paragraph(`【资产类型分布】${formatNameValueList(assets.typeDistribution)}`),
+    paragraph(`【资产防护统计】${formatNameValueList(assets.protectionDistribution)}`),
+    paragraph(`【互联网暴露资产】${formatNameValueList(assets.internetExposureDistribution)}`)
+  ].join('');
+}
+
+function renderRiskOverviewSummary(data) {
+  const overview = data.riskOverview || {};
+  const systems = Array.isArray(overview.keySystems) ? overview.keySystems.join('、') : '';
+  return paragraph(`本次安全体检中，您的核心业务系统「${escapeHtml(systems)}等」存在 <strong>${num(overview.total)}</strong> 个安全风险，其中【${escapeHtml(overview.topSystem || '')}】风险较大，系统下的资产存在 <strong>${num(overview.topSystemHighRisks)}</strong> 个高危及以上的安全风险。`);
+}
+
+function renderKeyRiskRows(rows) {
+  if (!rows.length) {
+    return '<tr><td colspan="5">暂无关键风险数据</td></tr>';
   }
 
-  return output;
+  return rows.map((row) => [
+    '<tr>',
+    `<td>${escapeHtml(row.risk || '')}</td>`,
+    `<td>${escapeHtml(row.description || '')}</td>`,
+    `<td>${escapeHtml(row.impact || '')}</td>`,
+    `<td>${formatLines(row.strategy)}</td>`,
+    `<td>${formatLines(row.status)}</td>`,
+    '</tr>'
+  ].join('')).join('');
+}
+
+function paragraph(text) {
+  return `<p class="sr-p">${text}</p>`;
+}
+
+function num(value) {
+  return escapeHtml(String(value === undefined || value === null ? 0 : value));
+}
+
+function formatNameValueList(items) {
+  if (!Array.isArray(items) || !items.length) {
+    return '暂无数据';
+  }
+
+  return items.map((item) => `${escapeHtml(String(item.name || '未命名'))}${num(item.value)}个`).join('，');
+}
+
+function formatLines(value) {
+  const lines = Array.isArray(value) ? value : [value || ''];
+  return lines.map((line, index) => `${index + 1}.${escapeHtml(String(line))}`).join('<br>');
 }
 
 function injectReportData(html, data) {
@@ -130,4 +209,3 @@ module.exports = {
   renderTemplate,
   getPath
 };
-

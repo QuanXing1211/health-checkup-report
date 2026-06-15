@@ -17,6 +17,8 @@ node health_report.js generate `
 
 ## Template Strategy
 
+模板改造标准见 [TEMPLATE_STANDARD.md](./TEMPLATE_STANDARD.md)。
+
 推荐模板里显式放占位符：
 
 ```html
@@ -34,4 +36,3 @@ node health_report.js generate `
 渲染器会按数据路径回填 `data-field` 的文本内容，并把完整 `window.SECURITY_REPORT_DATA` 注入页面，方便后续图表脚本读取结构化数据。
 
 复杂表格、列表、图表建议不要靠纯文本替换，后续应扩展成命名 section renderer，例如 `renderKeyRisksTable(reportData.risks.keyRisks)`。
-

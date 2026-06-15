@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="report-data-mode" content="mock">
-<title>首次安全体检报告 - 示例科技有限公司</title>
+<title>首次安全体检报告 - {{ report.customerName }}</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>
 :root {
@@ -316,22 +316,22 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
 <header class="sr-cover" id="report-top">
   <div class="sr-cover-badge">安全体检报告 · 设计预览稿</div>
   <h1>首次安全体检报告</h1>
-  <p class="sub">示例科技有限公司 · 2026-01-01 ~ 2026-03-31</p>
+  <p class="sub">{{ report.customerName }} · {{ report.startDate }} ~ {{ report.endDate }}</p>
   <p class="sub muted" style="margin-top:8px;font-size:12px">DATA-MODE: mock · 示例数据仅供视觉评审，生产环境由开发注入真实数据</p>
 </header>
 
 <section class="sr-section" id="sec-background">
   <h2 class="sr-h1">1. 项目背景</h2>
-  <p class="sr-p">随着信息化与 AI 技术普及，企业业务系统复杂度不断提升，各类隐藏的安全漏洞、配置隐患难以靠日常运维及时发现，极易造成业务中断、数据泄露和经济损失。深信服与「示例科技有限公司」协同构建 AI 深度赋能、运营服务辅助、SaaS 敏捷交付、低成本有实效的安全运营体系，为「示例科技有限公司」的数智化转型保驾护航。</p>
+  <p class="sr-p">随着信息化与 AI 技术普及，企业业务系统复杂度不断提升，各类隐藏的安全漏洞、配置隐患难以靠日常运维及时发现，极易造成业务中断、数据泄露和经济损失。深信服与「{{ report.customerName }}」协同构建 AI 深度赋能、运营服务辅助、SaaS 敏捷交付、低成本有实效的安全运营体系，为「{{ report.customerName }}」的数智化转型保驾护航。</p>
   <p class="sr-p">安全体检服务是针对贵公司业务系统的安全状况进行深度安全运营与风险评估，精准定位安全隐患与防护薄弱点，并配套整改方案与落地指导，帮助企业快速完成系统加固，提升整体安全防护能力。</p>
   <p class="sr-p">本次体检共含两项：<strong>威胁运营</strong>与<strong>威胁预防</strong>。威胁运营通过 XDR 平台、AI 智能数据解析、告警分析研判结合 7×24H 专家快速响应遏制，保障核心资产安全事件快速闭环；威胁预防通过内外部安全组件协同，在事前帮助客户发现互联网业务与内网资产的风险。本次体检优先关注脆弱性风险，含暴露面、软件漏洞、弱密码等。</p>
-  <p class="sr-p muted">以下是在 2026-01-01 ~ 2026-03-31 期间的安全体检报告。</p>
+  <p class="sr-p muted">以下是在 {{ report.startDate }} ~ {{ report.endDate }} 期间的安全体检报告。</p>
 </section>
 
 <section class="sr-section" id="sec-assets">
   <h2 class="sr-h1">2. 资产台账</h2>
   <div class="sr-chart-slot sr-chart--no-hint" id="slot-asset-stats" data-chart="slot-asset-stats">
-<div class="sr-kpi-row" style="grid-template-columns:repeat(4,1fr)"><div class="sr-kpi"><div class="sr-kpi-v" data-field="assets.total">520</div><div class="sr-kpi-l">台账资产</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assets.core">86</div><div class="sr-kpi-l">核心资产</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assets.retire">12</div><div class="sr-kpi-l">7天内即将退库</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assets.review">8</div><div class="sr-kpi-l">待审核资产</div></div></div>
+<div class="sr-kpi-row" style="grid-template-columns:repeat(4,1fr)"><div class="sr-kpi"><div class="sr-kpi-v" data-field="assets.total">{{ assets.total }}</div><div class="sr-kpi-l">台账资产</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assets.core">{{ assets.core }}</div><div class="sr-kpi-l">核心资产</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assets.retiringWithin7Days">{{ assets.retiringWithin7Days }}</div><div class="sr-kpi-l">7天内即将退库</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assets.pendingReview">{{ assets.pendingReview }}</div><div class="sr-kpi-l">待审核资产</div></div></div>
 <div class="sr-asset-donut-row">
   <div class="sr-asset-donut-card">
     <h4 class="sr-asset-donut-title">资产类型分布</h4>
@@ -347,11 +347,7 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
   </div>
 </div>
 </div>
-  <p class="sr-p">【资产统计】台账资产520个，核心资产86个，7天内即将退库资产12个，待审核资产8个</p>
-  <p class="sr-p">【资产类型分布】服务器312个，终端156个，其他52个</p>
-  <p class="sr-p">【资产防护统计】在线498个，离线22个，已禁用6个，已降级4个，未防护资产18个</p>
-  <p class="sr-p">【互联网暴露资产】暴露资产38个，其中服务器28个，终端6个，其他4个</p>
-  <p class="sr-p">【托管服务统计】已授权资产480个，已托管资产420个</p>
+  <div data-section="assets.summary"></div>
   <p class="sr-p muted">资产清单见 asset-inventory.xlsx，也可访问 XDR 平台首页 → 资产总览</p>
 </section>
 
@@ -362,12 +358,12 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
   <div class="ov-left">
     <div class="chw" id="overview-gauge" style="height:200px"></div>
     <div class="ov-kpi-grid">
-      <div class="ov-kpi" style="border-top:3px solid var(--brand)"><div class="ok-v">520</div><div class="ok-l">资产总数</div></div>
-      <div class="ov-kpi" style="border-top:3px solid var(--rm)"><div class="ok-v">42</div><div class="ok-l">暴露服务</div></div>
-      <div class="ov-kpi" style="border-top:3px solid var(--rh)"><div class="ok-v" style="color:var(--rh)">42<span style="font-size:10px;color:var(--tx3)">/高危</span></div><div class="ok-l">漏洞风险</div></div>
-      <div class="ov-kpi" style="border-top:3px solid var(--rm)"><div class="ok-v" style="color:var(--rm)">52<span style="font-size:10px;color:var(--tx3)">项</span></div><div class="ok-l">弱密码</div></div>
-      <div class="ov-kpi" style="border-top:3px solid var(--rs)"><div class="ok-v" style="color:var(--rs)">85<span style="font-size:10px;color:var(--tx3)">%</span></div><div class="ok-l">防护有效性</div></div>
-      <div class="ov-kpi" style="border-top:3px solid var(--ri)"><div class="ok-v" style="color:var(--ri)">15<span style="font-size:10px;color:var(--tx3)">条/天</span></div><div class="ok-l">精准事件</div></div>
+      <div class="ov-kpi" style="border-top:3px solid var(--brand)"><div class="ok-v" data-field="riskOverview.assetTotal">{{ riskOverview.assetTotal }}</div><div class="ok-l">资产总数</div></div>
+      <div class="ov-kpi" style="border-top:3px solid var(--rm)"><div class="ok-v" data-field="riskOverview.exposedServices">{{ riskOverview.exposedServices }}</div><div class="ok-l">暴露服务</div></div>
+      <div class="ov-kpi" style="border-top:3px solid var(--rh)"><div class="ok-v" style="color:var(--rh)"><span data-field="riskOverview.highVulns">{{ riskOverview.highVulns }}</span><span style="font-size:10px;color:var(--tx3)">/高危</span></div><div class="ok-l">漏洞风险</div></div>
+      <div class="ov-kpi" style="border-top:3px solid var(--rm)"><div class="ok-v" style="color:var(--rm)"><span data-field="riskOverview.weakPasswords">{{ riskOverview.weakPasswords }}</span><span style="font-size:10px;color:var(--tx3)">项</span></div><div class="ok-l">弱密码</div></div>
+      <div class="ov-kpi" style="border-top:3px solid var(--rs)"><div class="ok-v" style="color:var(--rs)"><span data-field="riskOverview.protectionEffectiveness">{{ riskOverview.protectionEffectiveness }}</span><span style="font-size:10px;color:var(--tx3)">%</span></div><div class="ok-l">防护有效性</div></div>
+      <div class="ov-kpi" style="border-top:3px solid var(--ri)"><div class="ok-v" style="color:var(--ri)"><span data-field="riskOverview.preciseEventsPerDay">{{ riskOverview.preciseEventsPerDay }}</span><span style="font-size:10px;color:var(--tx3)">条/天</span></div><div class="ok-l">精准事件</div></div>
     </div>
   </div>
   <div class="ov-right">
@@ -376,10 +372,10 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
   </div>
 </div>
 </div>
-  <p class="sr-p">安全体检总体评级：<span class="sr-grade sr-grade--中">中</span></p>
-  <p class="sr-p">本次安全体检中，您的核心业务系统「OA 系统、MES 系统、ERP 系统等」存在 <strong>47</strong> 个安全风险，其中【OA 系统】风险较大，系统下的资产存在 <strong>18</strong> 个高危及以上的安全风险。</p>
+  <p class="sr-p">安全体检总体评级：<span class="sr-grade sr-grade--{{ riskOverview.grade }}">{{ riskOverview.grade }}</span></p>
+  <div data-section="riskOverview.summary"></div>
   <h3 class="sr-h2" id="sec-key-risks">关键风险如下</h3>
-  <table class="sr-tbl"><thead><tr><th>安全风险</th><th>问题描述</th><th>风险影响</th><th>安全加固策略</th><th>落地情况</th></tr></thead><tbody><tr><td>【威胁运营】大量病毒文件、C2外联事件</td><td>贵公司存在18起病毒木马与C2外联事件（其中12起银狐事件、6起金眼狗事件），此类事件会导致主机失陷，可能持续导致员工的财务损失。</td><td>资产（如203.0.113.45）遭受银狐或者钓鱼攻击，个人员工产生财产损失，主机失陷进而存在横向攻击核心业务服务器的风险。</td><td>1.网络防护：开启防火墙云情报网关订阅<br>2.终端防护：推动资产安装aES<br>3.主机根除：完善主机定位方案</td><td>1.网络防护：已开通情报网关，情报库为最新版本<br>2.终端防护：2台主机仍未安装aES<br>3.主机根除：3台资产尚未标注</td></tr><tr><td>【威胁运营】企业频繁遭受Web漏洞&Web攻击</td><td>当前互联网业务&内网业务共遭受32起Web漏洞&攻击，其中8起攻击成功</td><td>资产（如198.51.100.22）存在的高危漏洞一旦被攻击利用，可能产生业务中断、数据泄露。</td><td>1.漏洞修复 2.安全防护 3.访问控制 4.暴露面收敛</td><td>漏洞清单已对齐修复优先级；防火墙策略防护已开启</td></tr><tr><td>【威胁预防】内外部业务存在高危及以上漏洞</td><td>当前互联网业务&内网业务共存在70个高危及以上漏洞</td><td>可能被攻击者利用形成跳板，对核心系统横向攻击。</td><td>按优先级对齐修复方案与落地计划</td><td>参考漏洞清单.xlsx，按方案落地修复</td></tr><tr><td>【威胁预防】内外部业务存在大量风险弱密码</td><td>共存在52个弱密码项，涉及29个互联网资产</td><td>黑客可利用暴力破解获取主机权限，造成严重后果。</td><td>1.修改弱密码 2.访问控制</td><td>建议优先修改VPN、OA、ERP相关主机弱密码</td></tr><tr><td>【威胁预防】外部业务存在大量风险暴露面</td><td>当前互联网业务共存在42个风险暴露面。含18个Web服务与24个非Web服务</td><td>高危服务暴露在公网（如47.93.220.34暴露SSH服务），易被扫描发现。</td><td>1.暴露面收敛 2.访问控制</td><td>参考暴露面清单.xlsx，评估下线高频被攻击服务</td></tr></tbody></table>
+  <table class="sr-tbl"><thead><tr><th>安全风险</th><th>问题描述</th><th>风险影响</th><th>安全加固策略</th><th>落地情况</th></tr></thead><tbody data-repeat="riskOverview.keyRisks"></tbody></table>
   <h3 class="sr-h2" id="sec-top5-risk">风险资产 TOP5</h3>
   <div class="sr-chart-slot sr-chart--no-hint" id="slot-top5-risk" data-chart="slot-top5-risk"><div class="sr-chart-card"><h4 class="sr-chart-title">风险资产 TOP5 · 风险类别构成</h4><div class="chw ch360" id="top5-risk-bar"></div></div></div>
   <table class="sr-tbl"><thead><tr><th>风险资产</th><th>所属业务</th><th>风险项数量</th><th>风险详情</th></tr></thead><tbody><tr><td>203.0.113.45</td><td>VPN 系统</td><td>10</td><td>病毒木马与C2外联8起；Web攻击成功3起；高危漏洞5个；弱密码2个；风险暴露面6个</td></tr><tr><td>198.51.100.22</td><td>Web 门户</td><td>9</td><td>Web攻击成功4起；高危漏洞4个；弱密码3个；暴露面5个</td></tr><tr><td>10.0.1.25</td><td>邮件系统</td><td>8</td><td>高危漏洞6个；弱密码2个；内网横向尝试2起</td></tr><tr><td>10.0.3.12</td><td>OA 系统</td><td>7</td><td>银狐事件2起；高危漏洞3个；弱密码2个</td></tr><tr><td>172.16.5.88</td><td>ERP 系统</td><td>6</td><td>高危漏洞4个；弱密码1个；RDP暴露风险</td></tr></tbody></table>
