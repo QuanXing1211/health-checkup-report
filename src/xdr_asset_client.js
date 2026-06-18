@@ -1662,11 +1662,13 @@ async function fetchThirdPartyDeviceStats(cookieInfo, xdrBaseUrl) {
 }
 
 async function collectDeviceCategoryCounts(cookieInfo, xdrBaseUrl) {
-  // 并行查询: 深信服设备列表 + 第三方设备统计
-  const [deviceListResponse, thirdPartyResponse] = await Promise.all([
-    fetchDeviceList(cookieInfo, xdrBaseUrl, 1000),
-    fetchThirdPartyDeviceStats(cookieInfo, xdrBaseUrl)
-  ]);
+  // 查询深信服设备列表
+  let deviceListResponse;
+  try {
+    deviceListResponse = await fetchDeviceList(cookieInfo, xdrBaseUrl, 1000);
+  } catch (error) {
+    throw new Error(`获取深信服设备列表失败: ${error.message}`);
+  }
 
   // 解析深信服设备
   const data = deviceListResponse && deviceListResponse.data && typeof deviceListResponse.data === 'object' ? deviceListResponse.data : {};
@@ -1682,9 +1684,15 @@ async function collectDeviceCategoryCounts(cookieInfo, xdrBaseUrl) {
     }
   }
 
-  // 解析第三方设备
-  const thirdPartyData = thirdPartyResponse && thirdPartyResponse.data && typeof thirdPartyResponse.data === 'object' ? thirdPartyResponse.data : {};
-  const totalThird = Number(thirdPartyData.deviceCount || 0);
+  // 单独查询第三方设备（容错，查不到就记为 0）
+  let totalThird = 0;
+  try {
+    const thirdPartyResponse = await fetchThirdPartyDeviceStats(cookieInfo, xdrBaseUrl);
+    const thirdPartyData = thirdPartyResponse && thirdPartyResponse.data && typeof thirdPartyResponse.data === 'object' ? thirdPartyResponse.data : {};
+    totalThird = Number(thirdPartyData.deviceCount || 0);
+  } catch (error) {
+    // 第三方设备统计接口不可用时静默跳过
+  }
 
   return {
     devices: totalSangfor + totalThird,
