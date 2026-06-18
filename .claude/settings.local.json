@@ -1,11 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e \"require(''./src/xdr_asset_client'')\")",
-      "Bash(node -e \"require(''./src/data_client'')\")",
-      "Bash(node -c health_report.js)",
-      "Bash(node -e \"require(''./src/incident_excel_stats'')\")",
-      "Bash(python -m py_compile \"c:\\Users\\User\\Desktop\\health-checkup-report\\scripts\\incident_status_stats.py\")"
+      "Bash(node -e \"\nconst { rankBusinessSystems } = require(''./src/business_system_ranking'');\nrankBusinessSystems({ logger: console.error }).then(r => {\n  console.log(''Top5:'');\n  r.top5.forEach((x,i) => console.log(''  ''+(i+1)+''.'', x.system, ''critical=''+x.critical, ''high=''+x.high, ''medium=''+x.medium, ''low=''+x.low, ''total=''+x.total));\n  console.log(''Excel:'', r.excelPath);\n}).catch(e => console.error(''ERROR:'', e));\n\")"
     ],
     "deny": [],
     "ask": []
