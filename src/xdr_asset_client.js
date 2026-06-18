@@ -42,6 +42,7 @@ const ALERT_TABLE_SERVICE_INFO = {
 const DEVICE_LIST_ENDPOINT = '/api/apex/device/v1/devices/list?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const DEVICE_TYPE_INFO_ENDPOINT = '/api/apex/device/v1/branch/dev_type_info?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const THIRD_PARTY_DEVICE_STATS_ENDPOINT = '/api/apex/thirdparty/v1/app/instance/statistics?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
+const LOG_SEARCH_COUNT_ENDPOINT = '/api/apex/logsearch/v1/log/search/count?enableCache=true&viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 
 // devType 到分类名称的映射
 const DEVICE_TYPE_CATEGORIES = {
@@ -351,9 +352,10 @@ function buildXdrPageHeaders(cookieString, csrfToken, baseUrl, overrides = {}) {
   };
 }
 
-async function requestJson(url, { headers, body }) {
+async function requestJson(url, { headers, body, timeout }) {
   const parsedUrl = new URL(url);
   const transport = parsedUrl.protocol === 'http:' ? http : https;
+  const timeoutMs = Number(timeout) || 30000;
 
   return new Promise((resolve, reject) => {
     const req = transport.request(parsedUrl, {
@@ -381,7 +383,7 @@ async function requestJson(url, { headers, body }) {
     });
 
     req.on('error', reject);
-    req.setTimeout(30000, () => {
+    req.setTimeout(timeoutMs, () => {
       req.destroy(new Error(`XDR 请求超时: ${url}`));
     });
 
@@ -1688,6 +1690,7 @@ async function collectDeviceCategoryCounts(cookieInfo, xdrBaseUrl, logger) {
     const thirdPartyResponse = await fetchThirdPartyDeviceStats(cookieInfo, xdrBaseUrl);
     const thirdPartyData = thirdPartyResponse && thirdPartyResponse.data && typeof thirdPartyResponse.data === 'object' ? thirdPartyResponse.data : {};
     totalThird = Number(thirdPartyData.deviceCount || 0);
+    log(`第三方设备数量: ${totalThird}`);
   } catch (error) {
     log(`获取第三方设备数量失败: ${error.message}，将跳过第三方设备统计`);
   }
@@ -1702,6 +1705,38 @@ async function collectDeviceCategoryCounts(cookieInfo, xdrBaseUrl, logger) {
     other_sf: categoryCounts.other,
     third: totalThird
   };
+}
+
+function buildLogSearchCountRequestBody({ begin, end }) {
+  return {
+    time: {
+      start: begin,
+      end
+    },
+    tables: ['NetworkSecurityLog', 'EndpointSecurityLog']
+  };
+}
+
+async function fetchSecurityLogCount(cookieInfo, xdrBaseUrl, options) {
+  const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl);
+  const url = 'https://' + normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL) + LOG_SEARCH_COUNT_ENDPOINT;
+  const { begin, end } = resolveIncidentTimeRange(options);
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildLogSearchCountRequestBody({ begin, end })),
+    timeout: 90000
+  });
+
+  const code = response && response.code;
+  if (code !== 'Success') {
+    throw new Error(`安全日志量查询接口返回异常: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  const count = Number(response && response.data != null ? response.data : 0);
+  if (!Number.isFinite(count)) {
+    throw new Error(`安全日志量查询接口返回 data 无效: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+  return count;
 }
 
 module.exports = {
@@ -1747,5 +1782,7 @@ module.exports = {
   fetchThirdPartyDeviceStats,
   collectDeviceCategoryCounts,
   DEVICE_TYPE_CATEGORIES,
-  classifyDeviceType
+  classifyDeviceType,
+  buildLogSearchCountRequestBody,
+  fetchSecurityLogCount
 };

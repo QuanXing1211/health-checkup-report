@@ -8,7 +8,9 @@
       "Bash(node --check \"c:\\Users\\User\\Desktop\\health-checkup-report\\src\\data_client.js\")",
       "Bash(npm test)",
       "Bash(node tests/data_client.test.js)",
-      "Bash(node tests/renderer.test.js)"
+      "Bash(node tests/renderer.test.js)",
+      "Bash(node -e \"const m = require(''./src/xdr_asset_client''); console.log(''Module loaded OK''); console.log(''Exports:'', Object.keys(m).join('', ''));\")",
+      "Bash(node -e \"\nconst { buildLogSearchCountRequestBody, parseLocalDate } = require(''./src/xdr_asset_client'');\nconst begin = parseLocalDate(''2026-06-18'', false);\nconst end = parseLocalDate(''2026-06-18'', true);\nconst body = buildLogSearchCountRequestBody({ begin, end });\nconsole.log(''Request body:'', JSON.stringify(body, null, 2));\nconsole.log(''begin:'', begin, ''end:'', end);\n\")"
     ],
     "deny": [],
     "ask": []
