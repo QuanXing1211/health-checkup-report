@@ -31,6 +31,14 @@ const INCIDENT_TABLE_SERVICE_INFO = {
   serviceType: 'table',
   handler: 'incidentTableQueryHandler'
 };
+const ALERT_QUERY_ENDPOINT = '/ngsoc/INCIDENT/api/v1/table/query/alertTableQueryHandler?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
+const ALERT_VIEW_INSTANCE_ID = '67aebe12c29c0b7b63b0c51e';
+const ALERT_TABLE_SERVICE_INFO = {
+  appName: 'incident',
+  servletContextPath: '/',
+  serviceType: 'table',
+  handler: 'alertTableQueryHandler'
+};
 const INCIDENT_EXPORT_FIELDS = [
   ['mssIncidentServiceStatus', true, 150, 'value'],
   ['severity', true, 90, 'value'],
@@ -663,6 +671,462 @@ function buildIncidentCountRequestBody({ begin, end, timeField = 'startTime' }) 
   };
 }
 
+function buildAlertTableFields() {
+  // Each entry: [field, show, selected, sort, columnWidth, fixed, dataType]
+  var fields = [
+    ['lastTime', true, true, 'desc', 130, null, 'value'],
+    ['name', true, true, 'disable', 200, null, 'value'],
+    ['operationLabels', true, true, 'disable', 330, null, 'array'],
+    ['severity', true, true, 'disable', 85, null, 'value'],
+    ['threatDefine', true, true, 'disable', 95, null, 'array'],
+    ['similarRuleId', true, true, 'disable', 100, null, 'value'],
+    ['whiteListIds', true, true, 'disable', 150, null, 'array'],
+    ['srcIp', true, true, 'disable', 125, null, 'array'],
+    ['dstIp', true, true, 'disable', 125, null, 'array'],
+    ['hostIp', true, true, 'disable', 145, null, 'value'],
+    ['attackResult', true, true, 'disable', 105, null, 'value'],
+    ['accessDirection', true, true, 'disable', 110, null, 'value'],
+    ['trafficForwardLocation', true, true, 'disable', 200, null, 'array'],
+    ['newestUsername', true, false, 'disable', 150, null, 'value'],
+    ['checkOutUsername', true, false, 'disable', 150, null, 'value'],
+    ['responsible', true, false, 'disable', 80, null, 'value'],
+    ['uuId', true, false, 'disable', 300, null, 'value'],
+    ['riskTag', true, false, 'disable', 180, null, 'value'],
+    ['similarId', true, false, 'disable', 100, null, 'value'],
+    ['requestHead', true, false, 'disable', 150, null, 'value'],
+    ['responseHead', true, false, 'disable', 150, null, 'value'],
+    ['requestBody', true, false, 'disable', 150, null, 'value'],
+    ['responseBody', true, false, 'disable', 150, null, 'value'],
+    ['confidence', true, false, 'disable', 110, null, 'value'],
+    ['stage', true, false, 'disable', 100, null, 'value'],
+    ['natTransform', true, false, 'disable', 150, null, 'value'],
+    ['srcPort', true, false, 'disable', 110, null, 'array'],
+    ['dstPort', true, false, 'disable', 110, null, 'array'],
+    ['platformHostBranchId', true, false, 'disable', 150, null, 'value'],
+    ['platformHostGroupIds', true, false, 'disable', 150, null, 'array'],
+    ['whiteStatus', true, false, 'disable', 100, null, 'value'],
+    ['engineName', true, false, 'disable', 140, null, 'array'],
+    ['virusName', true, false, 'disable', 140, null, 'array'],
+    ['xForwardedFor', true, false, 'disable', 125, null, 'array'],
+    ['threatClass', true, false, 'disable', 150, null, 'value'],
+    ['threatTypeProxy', true, false, 'disable', 150, null, 'value'],
+    ['threatSubTypeProxy', true, false, 'disable', 150, null, 'value'],
+    ['respStatus', true, false, 'disable', 110, null, 'value'],
+    ['attckTechnique', true, false, 'disable', 150, null, 'array'],
+    ['attckSubTechnique', true, false, 'disable', 150, null, 'array'],
+    ['fileMd5', true, false, 'disable', 180, null, 'array'],
+    ['url', true, false, 'disable', 200, null, 'array'],
+    ['domain', true, false, 'disable', 125, null, 'array'],
+    ['cveId', true, false, 'disable', 180, null, 'value'],
+    ['pName', true, false, 'disable', 180, null, 'array'],
+    ['firstTime', true, false, 'disable', 136, null, 'value'],
+    ['logTraceInfo', true, false, 'disable', 150, null, 'value'],
+    ['incidentRelated', true, false, 'disable', 150, null, 'value'],
+    ['devUId', true, false, 'disable', 150, null, 'array'],
+    ['devUIdProxy', true, false, 'disable', 120, null, 'array'],
+    ['devSourceNames', true, false, 'disable', 180, null, 'array'],
+    ['dealStatus', true, false, 'disable', 126, null, 'value'],
+    ['disposeTime', true, false, 'disable', 140, null, 'value'],
+    ['dealAction', true, false, 'disable', 132, null, 'value'],
+    ['mssStatus', true, false, 'disable', 150, null, 'value'],
+    ['platformId', true, false, 'disable', 110, null, 'value'],
+    ['gptResult', true, false, 'disable', 150, null, 'value'],
+    ['gptStartAt', true, false, 'disable', 150, null, 'value'],
+    ['gptEndAt', true, false, 'disable', 150, null, 'value'],
+    ['gptAnalyzeTime', true, false, 'disable', 150, null, 'value'],
+    ['gptSubResult', true, false, 'disable', 150, null, 'value'],
+    ['incidentRootIds', true, false, 'disable', 150, null, 'array'],
+    ['xUserName', true, false, 'disable', 150, null, 'value'],
+    ['xUserGroup', true, false, 'disable', 150, null, 'value'],
+    ['hostAssetAnalyzeResult', true, false, 'disable', 150, null, 'value'],
+    ['platformIdAndGroupId', true, false, 'disable', 120, null, 'value'],
+    ['gptRuleUid', true, false, 'disable', 150, null, 'value'],
+    ['aiRuleIds', true, false, 'disable', 150, null, 'array'],
+    // show: false fields
+    ['proofType', false, false, 'notSortable', null, null, 'array'],
+    ['hostBranchId', false, false, 'disable', null, null, 'value'],
+    ['hostGroupIds', false, false, 'notSortable', null, null, 'array'],
+    ['logType', false, false, 'notSortable', null, null, 'value'],
+    ['vulnName', false, false, 'notSortable', null, null, 'array'],
+    ['username', false, false, 'notSortable', null, null, 'array'],
+    ['read', false, false, 'notSortable', null, null, 'value'],
+    ['fusionAlert', false, false, 'notSortable', null, null, 'value'],
+    ['uploadTime', false, false, 'disable', null, null, 'value'],
+    ['insertTime', false, false, 'disable', null, null, 'value'],
+    ['ndrSecdetectBreachMid', false, false, 'notSortable', null, null, 'value'],
+    ['occurTime', false, false, 'disable', null, null, 'value'],
+    ['hostClassifyId', false, false, 'notSortable', null, null, 'value'],
+    ['hostClassify1Id', false, false, 'notSortable', null, null, 'value'],
+    ['srcIpInfos', false, false, 'notSortable', null, null, 'array'],
+    ['dstIpInfos', false, false, 'notSortable', null, null, 'array'],
+    ['pendingDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['disposingDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['disposedDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['ignoreDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['misReportDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['customAlertGenerateIncidentDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['gptResultStrategyDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['banIpDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['addWhiteDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['statusChangeDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['orderDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['quarantineHostDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['disposeFileDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['trustFileDisableFlag', false, false, 'notSortable', null, null, 'value'],
+    ['hostAssetId', false, false, 'notSortable', null, null, 'value'],
+    ['hostCountryName', false, false, 'notSortable', null, null, 'value'],
+    ['hostProvinceName', false, false, 'notSortable', null, null, 'value'],
+    ['ioaRuleRelated', false, false, 'notSortable', null, null, 'value'],
+    ['ruleIds', false, false, 'notSortable', null, null, 'array'],
+    ['alertRuleId', false, false, 'notSortable', null, null, 'value'],
+    ['huntingIps', false, false, 'notSortable', null, null, 'array'],
+    ['huntingDomains', false, false, 'notSortable', null, null, 'array'],
+    ['huntingMD5s', false, false, 'notSortable', null, null, 'array'],
+    ['suspectedMisReport', false, false, 'notSortable', null, null, 'value'],
+    ['devices', false, false, 'notSortable', null, null, 'array'],
+    ['combineType', false, false, 'notSortable', null, null, 'value'],
+    ['regionId', false, false, 'notSortable', null, null, 'value'],
+    ['disposalRecord', false, false, 'notSortable', null, null, 'value'],
+    ['gptRespAction', false, false, 'disable', null, null, 'value'],
+    ['gptAction', false, false, 'notSortable', null, null, 'value'],
+    ['gptEngineList', false, false, 'notSortable', null, null, 'array'],
+    ['platformRole', false, false, 'notSortable', null, null, 'value'],
+    ['platformIsDelete', false, false, 'notSortable', null, null, 'value'],
+    ['srcAssetAnalyzeResultsStatus', false, false, 'notSortable', null, null, 'value'],
+    ['srcAssetAnalyzeResults', false, false, 'notSortable', null, null, 'value'],
+    ['hostAddress', false, false, 'notSortable', null, null, 'value'],
+    ['smtpFrom', false, false, 'notSortable', null, null, 'value'],
+    ['userAgent', false, false, 'notSortable', null, null, 'value'],
+    ['reqCookie', false, false, 'notSortable', null, null, 'value'],
+    ['dnsQueries', false, false, 'notSortable', null, null, 'value'],
+    ['dnsAnswers', false, false, 'notSortable', null, null, 'value'],
+    ['redisCommandCall', false, false, 'notSortable', null, null, 'value'],
+    ['redisLogin', false, false, 'notSortable', null, null, 'value'],
+    ['redisPassword', false, false, 'notSortable', null, null, 'value'],
+    ['webmailUser', false, false, 'notSortable', null, null, 'value'],
+    ['webmailFrom', false, false, 'notSortable', null, null, 'value'],
+    ['webmailTo', false, false, 'notSortable', null, null, 'value'],
+    ['mysqlCommand', false, false, 'notSortable', null, null, 'value'],
+    ['webmailSubject', false, false, 'notSortable', null, null, 'value'],
+    ['webmailAttachmentFilename', false, false, 'notSortable', null, null, 'value'],
+    ['sqlServerRequest', false, false, 'notSortable', null, null, 'value'],
+    ['smtpTo', false, false, 'notSortable', null, null, 'value'],
+    ['smtpSubject', false, false, 'notSortable', null, null, 'value'],
+    ['ftpUser', false, false, 'notSortable', null, null, 'value'],
+    ['ftpCommand', false, false, 'notSortable', null, null, 'value'],
+    ['ftpCwd', false, false, 'notSortable', null, null, 'value'],
+    ['description', false, false, 'notSortable', null, null, 'value'],
+    ['exploitCveId', false, false, 'notSortable', null, null, 'value'],
+    ['sasUsername', false, false, 'notSortable', null, null, 'value'],
+    ['snmpVersion', false, false, 'notSortable', null, null, 'value'],
+    ['recommendation', false, false, 'notSortable', null, null, 'value'],
+    ['aiRuleId', false, false, 'notSortable', null, null, 'value'],
+    ['fileState', false, false, 'notSortable', null, null, 'value'],
+    ['fileStatus', false, false, 'notSortable', null, null, 'value']
+  ];
+
+  return fields.map(function(f) {
+    return {
+      field: f[0],
+      show: f[1],
+      selected: f[2],
+      sort: f[3],
+      columnWidth: f[4],
+      fixed: f[5],
+      dataType: f[6]
+    };
+  });
+}
+
+function buildAlertCountRequestBody({ begin, end }) {
+  return {
+    extensionParams: null,
+    spl: {
+      mappedSpl: '',
+      originalSpl: '',
+      extensionParams: {
+        frontRender: [],
+        mappedInputSpl: '',
+        originalInputSpl: ''
+      }
+    },
+    serviceInfo: ALERT_TABLE_SERVICE_INFO,
+    globalCondition: {
+      branchIds: [],
+      time: {
+        timeField: 'lastTime',
+        begin: { type: 'absolute', value: begin },
+        end: { type: 'absolute', value: end }
+      }
+    },
+    table: {
+      enable: true,
+      viewName: 'AlertView',
+      aggregationStrategies: null,
+      tableFields: buildAlertTableFields(),
+      pageNum: 1,
+      pageSize: 100,
+      serviceInfo: ALERT_TABLE_SERVICE_INFO,
+      subTable: null,
+      rightClicked: false,
+      selectAllPage: true,
+      routers: [
+        {
+          icon: null,
+          path: '/incident/event/detail',
+          type: 'drillDown',
+          params: null,
+          actionParams: {
+            quarantineHostDisableFlag: '$quarantineHostDisableFlag',
+            disposedDisableFlag: '$disposedDisableFlag',
+            ignoreDisableFlag: '$ignoreDisableFlag',
+            trustFileDisableFlag: '$trustFileDisableFlag',
+            disposeFileDisableFlag: '$disposeFileDisableFlag',
+            soarDisableFlag: '$soarDisableFlag',
+            orderDisableFlag: '$orderDisableFlag',
+            disposingDisableFlag: '$disposingDisableFlag',
+            banIpDisableFlag: '$banIpDisableFlag',
+            gptResultStrategyDisableFlag: '$gptResultStrategyDisableFlag',
+            pendingDisableFlag: '$pendingDisableFlag',
+            toBeTransferDisableFlag: '$toBeTransferDisableFlag',
+            id: '$uuId',
+            customAlertGenerateIncidentDisableFlag: '$customAlertGenerateIncidentDisableFlag',
+            misReportDisableFlag: '$misReportDisableFlag'
+          },
+          applicableCols: ['name']
+        }
+      ],
+      rightActions: [
+        {
+          name: 'addFilter',
+          type: 'filter',
+          params: null,
+          actionParams: null,
+          applicableCols: ['responseHead', 'smtpTo', 'devSourceNames', 'sendFrom', 'occurTime', 'ignoreDisableFlag', 'platformIsDelete', 'recommendation', 'threatSubType', 'ftpCwd', 'similarId', 'srcPort', 'platformHostBranchId', 'accessDirection', 'huntingDomains', 'xUserGroup', 'humanCheck', 'redisLogin', 'tenant', 'fullTextSearch', 'quarantineHostDisableFlag', 'hostIp', 'respStatus', 'devices', 'ndrSecdetectBreachMid', 'mitreid', 'dealStatus', 'threatTypeProxy', 'aiRuleId', 'aiRuleIds', 'vulnName', 'soarDisableFlag', 'ftpCommand', 'newFullTextSearch', 'redisPassword', 'incidentRelated', 'gptAction', 'redisCommandCall', 'dealTime', 'threatType', 'orderDisableFlag', 'mssStatus', 'domain', 'disposingDisableFlag', 'reqCookie', 'whiteStatus', 'engineName', 'customAlertGenerateIncidentDisableFlag', 'gptRespAction', 'natTransform', 'dataAuthorityOwner', 'ioaRuleRelated', 'responseBody', 'webmailAttachmentFilename', 'statusChangeDisableFlag', 'featureInfo', 'dstIpStr', 'incidentRootIds', 'trustFileDisableFlag', 'regionIds', 'investigationResult', 'smtpFrom', 'ftpUser', 'ruleIds', 'dstPort', 'webmailSubject', 'whiteListIds', 'pName', 'requestBody', 'srcAssetAnalyzeResultsStatus', 'pendingDisableFlag', 'addWhiteDisableFlag', 'misReportDisableFlag', 'suspectedMisReport', 'hostClassify1Id', 'disposedDisableFlag', 'combineType', 'updateTime', 'userAgent', 'fileMd5', 'dstIpInfos', 'url', 'firstTime', 'platformHostGroupIds', 'devUId', 'riskTag', 'gptJudgementEngine', 'stage', 'dealAction', 'hostCountryName', 'exploitCveId', 'gptResultStrategyDisableFlag', 'huntingMD5s', 'hostAddress', 'dstIp', 'xForwardedFor', 'dnsQueries', 'alertRuleId', 'lastTime', 'similarRuleId', 'gptRuleUid', 'mysqlCommand', 'xUserName', 'requestHead', 'sasUsername', 'checker', 'disposeFileDisableFlag', 'webmailFrom', 'hostBranchId', 'attckTechnique', 'disposalRecord', 'srcIpInfos', 'fileState', 'devUIdProxy', 'banIpDisableFlag', 'srcAssetAnalyzeResults', 'sqlServerRequest', 'smtpSubject', 'fusionAlert', 'srcIp', 'attackResult', 'read', 'gptStartAt', 'virusName', 'correctGptResult', 'snmpVersion', 'threatClass', 'huntingIps', 'proofType', 'cveId', 'webmailUser', 'isCascade', 'trafficForwardLocation', 'hostAssetAnalyzeResult', 'gptSubResult', 'insertTime', 'hostProvinceName', 'gptAnalyzeTrace', 'webmailTo', 'name', 'dataAuthorityBranchId', 'gptResult', '_id', 'gptEngineList', 'logType', 'hostIpStr', 'platformIdAndGroupId', 'gptEndAt', 'humanNote', 'description', 'platformRole', 'srcIpStr', 'fileStatus', 'humanInvestigation', 'hostGroupIds', 'gptAnalyzeTime', 'hostAssetId', 'severity', 'owner', 'hostClassifyId', 'confidence', 'attckSubTechnique', 'platformId', 'label', 'uploadTime', 'uuId', 'logTraceInfo', 'disposeTime', 'regionId', 'threatSubTypeProxy', 'operationLabels', 'dnsAnswers', 'toBeTransferDisableFlag', 'threatDefine', 'dataAuthorityCooperators', 'username']
+        },
+        {
+          name: 'removeFilter',
+          type: 'filter',
+          params: null,
+          actionParams: null,
+          applicableCols: ['responseHead', 'smtpTo', 'devSourceNames', 'sendFrom', 'occurTime', 'ignoreDisableFlag', 'platformIsDelete', 'recommendation', 'threatSubType', 'ftpCwd', 'similarId', 'srcPort', 'platformHostBranchId', 'accessDirection', 'huntingDomains', 'xUserGroup', 'humanCheck', 'redisLogin', 'tenant', 'fullTextSearch', 'quarantineHostDisableFlag', 'hostIp', 'respStatus', 'devices', 'ndrSecdetectBreachMid', 'mitreid', 'dealStatus', 'threatTypeProxy', 'aiRuleId', 'aiRuleIds', 'vulnName', 'soarDisableFlag', 'ftpCommand', 'newFullTextSearch', 'redisPassword', 'incidentRelated', 'gptAction', 'redisCommandCall', 'dealTime', 'threatType', 'orderDisableFlag', 'mssStatus', 'domain', 'disposingDisableFlag', 'reqCookie', 'whiteStatus', 'engineName', 'customAlertGenerateIncidentDisableFlag', 'gptRespAction', 'natTransform', 'dataAuthorityOwner', 'ioaRuleRelated', 'responseBody', 'webmailAttachmentFilename', 'statusChangeDisableFlag', 'featureInfo', 'dstIpStr', 'incidentRootIds', 'trustFileDisableFlag', 'regionIds', 'investigationResult', 'smtpFrom', 'ftpUser', 'ruleIds', 'dstPort', 'webmailSubject', 'whiteListIds', 'pName', 'requestBody', 'srcAssetAnalyzeResultsStatus', 'pendingDisableFlag', 'addWhiteDisableFlag', 'misReportDisableFlag', 'suspectedMisReport', 'hostClassify1Id', 'disposedDisableFlag', 'combineType', 'updateTime', 'userAgent', 'fileMd5', 'dstIpInfos', 'url', 'firstTime', 'platformHostGroupIds', 'devUId', 'riskTag', 'gptJudgementEngine', 'stage', 'dealAction', 'hostCountryName', 'exploitCveId', 'gptResultStrategyDisableFlag', 'huntingMD5s', 'hostAddress', 'dstIp', 'xForwardedFor', 'dnsQueries', 'alertRuleId', 'lastTime', 'similarRuleId', 'gptRuleUid', 'mysqlCommand', 'xUserName', 'requestHead', 'sasUsername', 'checker', 'disposeFileDisableFlag', 'webmailFrom', 'hostBranchId', 'attckTechnique', 'disposalRecord', 'srcIpInfos', 'fileState', 'devUIdProxy', 'banIpDisableFlag', 'srcAssetAnalyzeResults', 'sqlServerRequest', 'smtpSubject', 'fusionAlert', 'srcIp', 'attackResult', 'read', 'gptStartAt', 'virusName', 'correctGptResult', 'snmpVersion', 'threatClass', 'huntingIps', 'proofType', 'cveId', 'webmailUser', 'isCascade', 'trafficForwardLocation', 'hostAssetAnalyzeResult', 'gptSubResult', 'insertTime', 'hostProvinceName', 'gptAnalyzeTrace', 'webmailTo', 'name', 'dataAuthorityBranchId', 'gptResult', '_id', 'gptEngineList', 'logType', 'hostIpStr', 'platformIdAndGroupId', 'gptEndAt', 'humanNote', 'description', 'platformRole', 'srcIpStr', 'fileStatus', 'humanInvestigation', 'hostGroupIds', 'gptAnalyzeTime', 'hostAssetId', 'severity', 'owner', 'hostClassifyId', 'confidence', 'attckSubTechnique', 'platformId', 'label', 'uploadTime', 'uuId', 'logTraceInfo', 'disposeTime', 'regionId', 'threatSubTypeProxy', 'operationLabels', 'dnsAnswers', 'toBeTransferDisableFlag', 'threatDefine', 'dataAuthorityCooperators', 'username']
+        },
+        {
+          name: 'copyCellText',
+          type: 'copy',
+          params: null,
+          actionParams: null,
+          applicableCols: null
+        },
+        {
+          name: 'copyRecordData',
+          type: 'copy',
+          params: null,
+          actionParams: null,
+          applicableCols: null
+        },
+        {
+          name: 'decodeTool',
+          type: 'tool',
+          params: null,
+          actionParams: null,
+          applicableCols: null
+        },
+        {
+          name: 'hostIpAssetDetail',
+          type: 'assetJump',
+          params: null,
+          actionParams: { assetId: '$hostAssetId', ip: '$hostIp', uuId: '$uuId' },
+          applicableCols: ['hostIp']
+        },
+        {
+          name: 'srcIpAssetDetail',
+          type: 'assetJump',
+          params: null,
+          actionParams: { srcIpInfos: '$srcIpInfos', ip: '$.', uuId: '$uuId' },
+          applicableCols: ['srcIp']
+        },
+        {
+          name: 'dstIpAssetDetail',
+          type: 'assetJump',
+          params: null,
+          actionParams: { ip: '$.', uuId: '$uuId', dstIpInfos: '$dstIpInfos' },
+          applicableCols: ['dstIp']
+        },
+        {
+          name: 'incidentBanIp',
+          type: 'item',
+          params: { disable: '$banIpDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentQuarantineHost',
+          type: 'item',
+          params: { disable: '$quarantineHostDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'alertGptResultStrategy',
+          type: 'addAlertGptResultStrategy',
+          params: { disable: '$gptResultStrategyDisableFlag' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentAddWhite',
+          type: 'addWhite',
+          params: { disable: '$addWhiteDisableFlag' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'alertStatusChange',
+          type: 'statusChange',
+          params: { disable: '$statusChangeDisableFlag' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'customAlertGenerateIncident',
+          type: 'customAlertGenerateIncident',
+          params: { disable: '$customAlertGenerateIncidentDisableFlag' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentDisposeFile',
+          type: 'item',
+          params: { disable: '$disposeFileDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentTrustFile',
+          type: 'item',
+          params: { disable: '$trustFileDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'jumpAllowList',
+          type: 'jump',
+          params: { hidden: true, disable: '$isCascade', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: ['whiteStatus']
+        },
+        {
+          name: 'incidentIgnore',
+          type: 'modifyDealStatus',
+          params: { disable: '$ignoreDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentMisReport',
+          type: 'modifyDealStatus',
+          params: { disable: '$misReportDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentPending',
+          type: 'modifyDealStatus',
+          params: { disable: '$pendingDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentDisposing',
+          type: 'modifyDealStatus',
+          params: { disable: '$disposingDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentDisposed',
+          type: 'modifyDealStatus',
+          params: { disable: '$disposedDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentSuppressed',
+          type: 'modifyDealStatus',
+          params: { disable: '$disposedDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentToBeTransferred',
+          type: 'transferred',
+          params: { hidden: true, disable: '$toBeTransferDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'flowDisposalRecord',
+          type: 'item',
+          params: { disable: '$orderDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'soarDisposalRecord',
+          type: 'item',
+          params: { disable: '$soarDisableFlag', applicableLimit: '' },
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentUnRead',
+          type: 'modifyReadStatus',
+          params: null,
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        },
+        {
+          name: 'incidentRead',
+          type: 'modifyReadStatus',
+          params: null,
+          actionParams: { uuId: '$uuId' },
+          applicableCols: null
+        }
+      ],
+      extensionParams: {}
+    },
+    tag: null,
+    viewName: 'AlertView',
+    model: 'expert',
+    autoRefresh: false,
+    viewInstanceId: ALERT_VIEW_INSTANCE_ID,
+    enableHistory: true
+  };
+}
+
+async function fetchAlertTableCount(cookieInfo, xdrBaseUrl, options) {
+  const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl, {
+    referer: 'https://' + normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL) + '/'
+  });
+  const url = 'https://' + normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL) + ALERT_QUERY_ENDPOINT;
+  const timeRange = resolveIncidentTimeRange(options);
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildAlertCountRequestBody(timeRange))
+  });
+  assertXdrApiSuccess(response, 'XDR 告警数量接口');
+
+  const total = Number(response && response.data ? response.data.total : 0);
+  if (!Number.isFinite(total)) {
+    throw new Error('XDR 告警数量接口返回缺少 total: ' + JSON.stringify(response).slice(0, 500));
+  }
+  return {
+    total,
+    response
+  };
+}
+
 function mapProtectionTypeLabels(typeData) {
   const type = typeData && typeof typeData === 'object' ? typeData : {};
   const items = [
@@ -1153,6 +1617,7 @@ module.exports = {
   buildIncidentTableFields,
   buildIncidentExportRequestBody,
   buildIncidentCountRequestBody,
+  buildAlertCountRequestBody,
   mapProtectionTypeLabels,
   mapExposureTypeLabels,
   mapAssetTypeLabels,
@@ -1172,5 +1637,6 @@ module.exports = {
   triggerIncidentExport,
   pollIncidentExportResult,
   downloadIncidentFile,
-  exportXdrIncidentList
+  exportXdrIncidentList,
+  fetchAlertTableCount
 };

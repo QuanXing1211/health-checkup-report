@@ -50,6 +50,7 @@ node health_report.js `
 | `assetLedger.typeDistribution` | 资产类型分布 | XDR 资产类型接口 | 按接口返回的 `server / terminal / other` 组装为数组 |
 | `assetLedger.protectionDistribution` | 资产防护统计 | XDR 资产防护接口 | 按接口返回的 `online / offline / disabled / demoted / unprotected` 组装为数组 |
 | `assetLedger.internetExposureDistribution` | 互联网暴露资产分布 | XDR 互联网暴露接口 | 按接口返回的 `server / terminal / other` 组装为数组 |
+| `riskDetails.totalAlerts` | 告警总数 | XDR 告警查询接口 | 取告警查询接口 `data.total` |
 | `riskDetails.totalEvents` | 事件总数 | XDR 事件数量接口 + 导出的事件表 Excel | 优先取数量接口 `data.total`，并用导出表统计结果校正闭环率 |
 | `riskDetails.severeEvents` | 严重事件数 | 导出的事件表 Excel | 统计 C 列值等于 `严重` 的事件行数 |
 | `riskDetails.highEvents` | 高危事件数 | 导出的事件表 Excel | 统计 C 列值等于 `高危` 的事件行数 |

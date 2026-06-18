@@ -6,7 +6,7 @@ const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeIncidentStatus } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, fetchXdrAssetOverview } = require('./src/xdr_asset_client');
+const { exportXdrAssetList, exportXdrIncidentList, fetchXdrAssetOverview, fetchAlertTableCount, readXdrCookieInfo, resolveWorkingXdrBaseUrl } = require('./src/xdr_asset_client');
 const { renderReportToFile } = require('./src/template_renderer');
 
 async function main() {
@@ -102,6 +102,23 @@ async function main() {
     incidentStatusStats,
     logger
   });
+
+  if (options['xdr-cookie-path']) {
+    try {
+      logger('正在查询 XDR 告警总数...');
+      const cookieInfo = await readXdrCookieInfo(options['xdr-cookie-path']);
+      const resolved = await resolveWorkingXdrBaseUrl(cookieInfo, options['xdr-base-url'], logger);
+      const alertCountResult = await fetchAlertTableCount(cookieInfo, resolved.xdrBaseUrl, {
+        start: options.start,
+        end
+      });
+      reportData.riskDetails.totalAlerts = alertCountResult.total;
+      logger(`告警总数: ${alertCountResult.total}`);
+    } catch (error) {
+      logger(`获取告警总数失败: ${error.message}，将跳过告警数`);
+      reportData.riskDetails.totalAlerts = 0;
+    }
+  }
   const reportDataJsonPath = options['output-json'] || path.join(outputDir, 'report-data.json');
   await writeJsonFile(reportDataJsonPath, reportData);
   logger(`数据已写入: ${reportDataJsonPath}`);

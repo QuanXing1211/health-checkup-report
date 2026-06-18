@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require(''./src/xdr_asset_client'')\")",
+      "Bash(node -e \"require(''./src/data_client'')\")",
+      "Bash(node -c health_report.js)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
