@@ -6,7 +6,7 @@ const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeIncidentStatus } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, readXdrCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts } = require('./src/xdr_asset_client');
+const { exportXdrAssetList, exportXdrIncidentList, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, fetchAlertReductionRate, readXdrCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts } = require('./src/xdr_asset_client');
 const { renderReportToFile } = require('./src/template_renderer');
 
 async function main() {
@@ -138,6 +138,21 @@ async function main() {
       } catch (error) {
         logger(`获取安全日志量失败: ${error.message}，将跳过安全日志量`);
         reportData.riskDetails.securityLogCount = 0;
+      }
+
+      try {
+        logger('正在查询告警消减率...');
+        const reductionResult = await fetchAlertReductionRate(cookieInfo, resolved.xdrBaseUrl, {
+          start: options.start,
+          end
+        });
+        reportData.riskDetails.alertTotal = reductionResult.alertTotal;
+        reportData.riskDetails.incidentTotal = reductionResult.incidentTotal;
+        reportData.riskDetails.reductionRate = reductionResult.reductionRate;
+        logger(`告警总数: ${reductionResult.alertTotal}, 事件数: ${reductionResult.incidentTotal}, 消减率: ${(reductionResult.reductionRate * 100).toFixed(2)}%`);
+      } catch (error) {
+        logger(`获取告警消减率失败: ${error.message}，将跳过告警消减率`);
+        reportData.riskDetails.reductionRate = 0;
       }
 
       try {

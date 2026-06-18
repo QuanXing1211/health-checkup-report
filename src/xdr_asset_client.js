@@ -43,6 +43,7 @@ const DEVICE_LIST_ENDPOINT = '/api/apex/device/v1/devices/list?viewRegionId=ffff
 const DEVICE_TYPE_INFO_ENDPOINT = '/api/apex/device/v1/branch/dev_type_info?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const THIRD_PARTY_DEVICE_STATS_ENDPOINT = '/api/apex/thirdparty/v1/app/instance/statistics?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const LOG_SEARCH_COUNT_ENDPOINT = '/api/apex/logsearch/v1/log/search/count?enableCache=true&viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
+const OVERVIEW_COUNT_ENDPOINT = '/ngsoc/INCIDENT/api/v1/overview/count?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 
 // devType 到分类名称的映射
 const DEVICE_TYPE_CATEGORIES = {
@@ -1739,6 +1740,44 @@ async function fetchSecurityLogCount(cookieInfo, xdrBaseUrl, options) {
   return count;
 }
 
+function buildOverviewCountRequestBody({ begin, end }) {
+  return {
+    timeField: 'startTime',
+    begin: { type: 'absolute', value: begin },
+    end: { type: 'absolute', value: end }
+  };
+}
+
+async function fetchAlertReductionRate(cookieInfo, xdrBaseUrl, options) {
+  const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl);
+  const url = 'https://' + normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL) + OVERVIEW_COUNT_ENDPOINT;
+  const { begin, end } = resolveIncidentTimeRange(options);
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildOverviewCountRequestBody({ begin, end }))
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`告警消减率接口返回异常: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+  const alertTotal = Number(data.alertTotalCount && data.alertTotalCount.value != null ? data.alertTotalCount.value : 0);
+  const incidentTotal = Number(data.incidentCount && data.incidentCount.value != null ? data.incidentCount.value : 0);
+
+  if (!Number.isFinite(alertTotal) || !Number.isFinite(incidentTotal)) {
+    throw new Error(`告警消减率接口返回数据无效: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  const rate = alertTotal > 0 ? (alertTotal - incidentTotal) / alertTotal : 0;
+  return {
+    alertTotal,
+    incidentTotal,
+    reductionRate: Math.round(rate * 10000) / 10000
+  };
+}
+
 module.exports = {
   DEFAULT_XDR_BASE_URL,
   ASSET_STATISTICS_ENDPOINT,
@@ -1784,5 +1823,7 @@ module.exports = {
   DEVICE_TYPE_CATEGORIES,
   classifyDeviceType,
   buildLogSearchCountRequestBody,
-  fetchSecurityLogCount
+  fetchSecurityLogCount,
+  buildOverviewCountRequestBody,
+  fetchAlertReductionRate
 };
