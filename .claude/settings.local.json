@@ -3,7 +3,9 @@
     "allow": [
       "Bash(node -e \"require(''./src/xdr_asset_client'')\")",
       "Bash(node -e \"require(''./src/data_client'')\")",
-      "Bash(node -c health_report.js)"
+      "Bash(node -c health_report.js)",
+      "Bash(node -e \"require(''./src/incident_excel_stats'')\")",
+      "Bash(python -m py_compile \"c:\\Users\\User\\Desktop\\health-checkup-report\\scripts\\incident_status_stats.py\")"
     ],
     "deny": [],
     "ask": []

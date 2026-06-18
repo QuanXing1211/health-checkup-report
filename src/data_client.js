@@ -40,7 +40,8 @@ function applyIncidentStatusStats(reportData, stats) {
       highEvents: Number(stats.highEvents || 0),
       closedEvents: Number(stats.closedEvents || 0),
       processingEvents: Number(stats.processingEvents || 0),
-      closeRate: Number(stats.closeRate || 0)
+      closeRate: Number(stats.closeRate || 0),
+      uniqueAssetCount: Number(stats.uniqueAssetCount || 0)
     }
   });
 }

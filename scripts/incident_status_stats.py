@@ -20,6 +20,7 @@ def main():
     high = 0
     closed = 0
     processing = 0
+    unique_ips = set()
 
     for row in sheet.iter_rows(min_row=2, values_only=True):
         if not any(normalize(cell) for cell in row):
@@ -38,6 +39,13 @@ def main():
         elif status == "处置中":
             processing += 1
 
+        # Column G (index 6): host IP, format like "202.0.70.41(管理IP范围)"
+        raw_ip = normalize(row[6] if len(row) >= 7 else None)
+        if raw_ip:
+            ip_only = raw_ip.split("(")[0].strip()
+            if ip_only:
+                unique_ips.add(ip_only)
+
     close_rate = round((closed / total) * 100) if total else 0
     print(json.dumps({
         "totalEvents": total,
@@ -45,7 +53,8 @@ def main():
         "highEvents": high,
         "closedEvents": closed,
         "processingEvents": processing,
-        "closeRate": close_rate
+        "closeRate": close_rate,
+        "uniqueAssetCount": len(unique_ips)
     }, ensure_ascii=False))
 
 

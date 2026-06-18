@@ -236,7 +236,7 @@ async function summarizeExportedIncidentStatus(xdrExports, logger) {
     stats.totalEvents = Number(xdrExports.incident.totalEvents);
     stats.closeRate = stats.totalEvents ? Math.round((stats.closedEvents / stats.totalEvents) * 100) : 0;
   }
-  logWith(logger, `事件表统计完成: 事件数 ${stats.totalEvents} 起，严重 ${stats.severeEvents} 起，高危 ${stats.highEvents} 起，已闭环 ${stats.closedEvents} 起，处置中 ${stats.processingEvents} 起，闭环率 ${stats.closeRate}%`);
+  logWith(logger, `事件表统计完成: 事件数 ${stats.totalEvents} 起，严重 ${stats.severeEvents} 起，高危 ${stats.highEvents} 起，涉及资产 ${stats.uniqueAssetCount} 个，已闭环 ${stats.closedEvents} 起，处置中 ${stats.processingEvents} 起，闭环率 ${stats.closeRate}%`);
   return stats;
 }
 
