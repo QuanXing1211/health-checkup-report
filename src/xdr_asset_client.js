@@ -39,6 +39,26 @@ const ALERT_TABLE_SERVICE_INFO = {
   serviceType: 'table',
   handler: 'alertTableQueryHandler'
 };
+const DEVICE_LIST_ENDPOINT = '/api/apex/device/v1/devices/list?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
+const DEVICE_TYPE_INFO_ENDPOINT = '/api/apex/device/v1/branch/dev_type_info?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
+
+// devType 到分类名称的映射
+const DEVICE_TYPE_CATEGORIES = {
+  aes: [12, 37, 100038, 50038, 100012],  // EDR, CWPP, SaaS-EDR-探针版, EDR-探针版, SAAS EDR
+  sip: [9],
+  af: [3],
+  sta: [25]
+};
+
+function classifyDeviceType(devType) {
+  for (const [category, types] of Object.entries(DEVICE_TYPE_CATEGORIES)) {
+    if (types.includes(devType)) {
+      return category;
+    }
+  }
+  return 'other';
+}
+
 const INCIDENT_EXPORT_FIELDS = [
   ['mssIncidentServiceStatus', true, 150, 'value'],
   ['severity', true, 90, 'value'],
@@ -1601,6 +1621,65 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
   };
 }
 
+async function fetchDeviceTypeInfo(cookieInfo, xdrBaseUrl) {
+  const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl);
+  const url = `https://${normalizeBaseUrl(xdrBaseUrl)}${DEVICE_TYPE_INFO_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify({})
+  });
+  assertXdrApiSuccess(response, 'XDR 设备类型枚举接口');
+  return response;
+}
+
+async function fetchDeviceList(cookieInfo, xdrBaseUrl, pageSize) {
+  const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl);
+  const url = `https://${normalizeBaseUrl(xdrBaseUrl)}${DEVICE_LIST_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify({
+      keyword: '',
+      type: 0,
+      pageSize: pageSize || 1000,
+      pageNum: 1,
+      devStatus: [1, 2, 3, 4]
+    })
+  });
+  assertXdrApiSuccess(response, 'XDR 设备列表接口');
+  return response;
+}
+
+async function collectDeviceCategoryCounts(cookieInfo, xdrBaseUrl) {
+  // 第一步: 获取设备列表，了解各类设备数量
+  const deviceListResponse = await fetchDeviceList(cookieInfo, xdrBaseUrl, 1000);
+  const data = deviceListResponse && deviceListResponse.data && typeof deviceListResponse.data === 'object' ? deviceListResponse.data : {};
+  const totalSangfor = Number(data.total || 0);
+  const devices = Array.isArray(data.list) ? data.list : [];
+
+  // 按 devType 分类统计
+  const categoryCounts = { af: 0, aes: 0, sip: 0, sta: 0, other: 0 };
+  for (const device of devices) {
+    const category = classifyDeviceType(device.devType);
+    if (categoryCounts[category] !== undefined) {
+      categoryCounts[category]++;
+    }
+  }
+
+  // total 总设备数 = 深信服设备总数
+  // third-party 设备目前不计入此 API
+
+  return {
+    devices: totalSangfor,
+    sangfor: totalSangfor,
+    af: categoryCounts.af,
+    aes: categoryCounts.aes,
+    sip: categoryCounts.sip,
+    sta: categoryCounts.sta,
+    other_sf: categoryCounts.other,
+    third: 0
+  };
+}
+
 module.exports = {
   DEFAULT_XDR_BASE_URL,
   ASSET_STATISTICS_ENDPOINT,
@@ -1638,5 +1717,10 @@ module.exports = {
   pollIncidentExportResult,
   downloadIncidentFile,
   exportXdrIncidentList,
-  fetchAlertTableCount
+  fetchAlertTableCount,
+  fetchDeviceTypeInfo,
+  fetchDeviceList,
+  collectDeviceCategoryCounts,
+  DEVICE_TYPE_CATEGORIES,
+  classifyDeviceType
 };

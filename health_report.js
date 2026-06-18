@@ -6,7 +6,7 @@ const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeIncidentStatus } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, fetchXdrAssetOverview, fetchAlertTableCount, readXdrCookieInfo, resolveWorkingXdrBaseUrl } = require('./src/xdr_asset_client');
+const { exportXdrAssetList, exportXdrIncidentList, fetchXdrAssetOverview, fetchAlertTableCount, readXdrCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts } = require('./src/xdr_asset_client');
 const { renderReportToFile } = require('./src/template_renderer');
 
 async function main() {
@@ -104,19 +104,37 @@ async function main() {
   });
 
   if (options['xdr-cookie-path']) {
+    let cookieInfo, resolved;
     try {
-      logger('正在查询 XDR 告警总数...');
-      const cookieInfo = await readXdrCookieInfo(options['xdr-cookie-path']);
-      const resolved = await resolveWorkingXdrBaseUrl(cookieInfo, options['xdr-base-url'], logger);
-      const alertCountResult = await fetchAlertTableCount(cookieInfo, resolved.xdrBaseUrl, {
-        start: options.start,
-        end
-      });
-      reportData.riskDetails.totalAlerts = alertCountResult.total;
-      logger(`告警总数: ${alertCountResult.total}`);
+      cookieInfo = await readXdrCookieInfo(options['xdr-cookie-path']);
+      resolved = await resolveWorkingXdrBaseUrl(cookieInfo, options['xdr-base-url'], logger);
     } catch (error) {
-      logger(`获取告警总数失败: ${error.message}，将跳过告警数`);
+      logger(`初始化 XDR 连接失败: ${error.message}`);
       reportData.riskDetails.totalAlerts = 0;
+    }
+
+    if (cookieInfo && resolved) {
+      try {
+        logger('正在查询 XDR 告警总数...');
+        const alertCountResult = await fetchAlertTableCount(cookieInfo, resolved.xdrBaseUrl, {
+          start: options.start,
+          end
+        });
+        reportData.riskDetails.totalAlerts = alertCountResult.total;
+        logger(`告警总数: ${alertCountResult.total}`);
+      } catch (error) {
+        logger(`获取告警总数失败: ${error.message}，将跳过告警数`);
+        reportData.riskDetails.totalAlerts = 0;
+      }
+
+      try {
+        logger('正在查询设备分类数量...');
+        const deviceCounts = await collectDeviceCategoryCounts(cookieInfo, resolved.xdrBaseUrl);
+        reportData.ops = deviceCounts;
+        logger(`设备总数: ${deviceCounts.devices}, AF: ${deviceCounts.af}, AES: ${deviceCounts.aes}, SIP: ${deviceCounts.sip}, STA: ${deviceCounts.sta}`);
+      } catch (error) {
+        logger(`获取设备分类数量失败: ${error.message}，将跳过设备分类统计`);
+      }
     }
   }
   const reportDataJsonPath = options['output-json'] || path.join(outputDir, 'report-data.json');
