@@ -7,7 +7,7 @@ const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, fetchAlertReductionRate, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts } = require('./src/xdr_asset_client');
+const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, fetchAlertReductionRate, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/xdr_asset_client');
 const { renderReportToFile } = require('./src/template_renderer');
 
 async function main() {
@@ -20,11 +20,14 @@ async function main() {
     return;
   }
 
+  const reportGeneratedAt = new Date();
+
   // 统一查一次 customerId（只接受 --customer 自动查）
   let customerId = '';
+  let msswCookie = null;
   if (options['mssw-cookie-path'] && options.customer) {
     try {
-      const msswCookie = await readMsswCookieInfo(options['mssw-cookie-path']);
+      msswCookie = await readMsswCookieInfo(options['mssw-cookie-path']);
       customerId = await findMsswCustomerIdByName(msswCookie, options['mssw-base-url'], options.customer);
       logger(`已自动获取 company_id: ${customerId}`);
     } catch (err) {
@@ -108,21 +111,28 @@ async function main() {
     throw new Error(`Unsupported command: ${command}`);
   }
 
-  requireArgs(options, ['customer', 'start']);
+  requireArgs(options, ['customer']);
+
+  const effectiveTimeRange = await resolveEffectiveTimeRange({
+    options,
+    customerId,
+    msswCookie,
+    reportGeneratedAt,
+    logger
+  });
 
   const root = __dirname;
   const templatePath = options.template || path.join(root, 'security-report-preview.html');
   const outputDir = options['output-dir'] || path.join(root, 'output');
-  const end = options.end || formatLocalDate(new Date());
 
-  logger(`开始生成: ${options.customer} ${options.start} ~ ${end}`);
+  logger(`开始生成: ${options.customer} ${effectiveTimeRange.start} ~ ${effectiveTimeRange.end}`);
 
   const xdrExports = await exportConfiguredXdrTables({
     xdrCookiePath: options['xdr-cookie-path'],
     msswCookiePath: options['mssw-cookie-path'],
     downloadDir: options['download-dir'],
-    start: options.start,
-    end,
+    start: effectiveTimeRange.start,
+    end: effectiveTimeRange.end,
     xdrTables: options['xdr-tables'],
     customerId,
     timeoutMs: options['timeout-ms'] ? Number(options['timeout-ms']) : undefined,
@@ -141,8 +151,8 @@ async function main() {
   const reportData = await collectReportData({
     customer: options.customer,
     customerId,
-    start: options.start,
-    end,
+    start: effectiveTimeRange.start,
+    end: effectiveTimeRange.end,
     xdrCookiePath: options['xdr-cookie-path'],
     assetStatusStats,
     incidentStatusStats,
@@ -163,8 +173,8 @@ async function main() {
       try {
         logger('正在查询 XDR 告警总数...');
         const alertCountResult = await fetchAlertTableCount(cookieInfo, resolved.xdrBaseUrl, {
-          start: options.start,
-          end
+          start: effectiveTimeRange.start,
+          end: effectiveTimeRange.end
         });
         reportData.riskDetails.totalAlerts = alertCountResult.total;
         logger(`告警总数: ${alertCountResult.total}`);
@@ -176,8 +186,8 @@ async function main() {
       try {
         logger('正在查询安全日志量...');
         const securityLogCount = await fetchSecurityLogCount(cookieInfo, resolved.xdrBaseUrl, {
-          start: options.start,
-          end
+          start: effectiveTimeRange.start,
+          end: effectiveTimeRange.end
         });
         reportData.riskDetails.securityLogCount = securityLogCount;
         logger(`安全日志量: ${securityLogCount}`);
@@ -189,8 +199,8 @@ async function main() {
       try {
         logger('正在查询告警消减率...');
         const reductionResult = await fetchAlertReductionRate(cookieInfo, resolved.xdrBaseUrl, {
-          start: options.start,
-          end
+          start: effectiveTimeRange.start,
+          end: effectiveTimeRange.end
         });
         reportData.riskDetails.alertTotal = reductionResult.alertTotal;
         reportData.riskDetails.incidentTotal = reductionResult.incidentTotal;
@@ -217,15 +227,15 @@ async function main() {
 
   if (options['mssw-cookie-path']) {
     try {
-      const msswCookie = await readMsswCookieInfo(options['mssw-cookie-path']);
-      reportData.msswCookie = msswCookie.cookieString;
-      logger(`MSSW Cookie 已加载: ${msswCookie.resolvedPath}`);
+      const loadedMsswCookie = msswCookie || await readMsswCookieInfo(options['mssw-cookie-path']);
+      reportData.msswCookie = loadedMsswCookie.cookieString;
+      logger(`MSSW Cookie 已加载: ${loadedMsswCookie.resolvedPath}`);
 
       // 通过 MSSW 接口查询设备分类数量
       try {
         logger('正在通过 MSSW 查询设备分类数量...');
         const deviceCounts = await collectMsswDeviceCategoryCounts(
-          msswCookie,
+          loadedMsswCookie,
           options['mssw-base-url'],
           customerId,
           logger
@@ -262,12 +272,12 @@ async function main() {
 
 function printHelp() {
   console.log(`Usage:
-  node health_report.js --customer "客户名" --start YYYY-MM-DD [--end YYYY-MM-DD] [options]
+  node health_report.js --customer "客户名" [--start YYYY-MM-DD --end YYYY-MM-DD] [options]
 
 Options:
   --customer <name>              Customer name (用于自动查询 company_id)
-  --start <YYYY-MM-DD>           Report start date
-  --end <YYYY-MM-DD>             Optional end date, default is script execution date
+  --start <YYYY-MM-DD>           Optional report start date
+  --end <YYYY-MM-DD>             Optional report end date
   --xdr-cookie-path <path>       XDR cookie file path
   --mssw-cookie-path <path>      MSSW cookie file path (pre.soar.sangfor.com)
   --xdr-tables <names>           Optional XDR export tables, default asset,incident
@@ -435,6 +445,59 @@ function formatLocalDate(date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+async function resolveEffectiveTimeRange({ options, customerId, msswCookie, reportGeneratedAt, logger }) {
+  const hasStart = options.start !== undefined && options.start !== null && String(options.start).trim() !== '';
+  const hasEnd = options.end !== undefined && options.end !== null && String(options.end).trim() !== '';
+
+  if (hasStart !== hasEnd) {
+    throw new Error('时间参数必须同时传入 --start 和 --end，或两者都不传');
+  }
+
+  if (hasStart && hasEnd) {
+    validateDateRange(options.start, options.end);
+    return {
+      start: String(options.start).trim(),
+      end: String(options.end).trim(),
+      source: 'cli'
+    };
+  }
+
+  if (!options['mssw-cookie-path']) {
+    throw new Error('未传 --start/--end 时，需要提供 --mssw-cookie-path 以自动推导默认时间范围');
+  }
+
+  const resolvedCookie = msswCookie || await readMsswCookieInfo(options['mssw-cookie-path']);
+  const resolvedCustomerId = String(customerId || options['customer-id'] || '').trim();
+  if (!resolvedCustomerId) {
+    throw new Error('未传时间时需要先解析出 company_id，请检查 --customer 是否能匹配，或手动传 --customer-id');
+  }
+
+  const timeRange = await fetchDefaultProjectTimeRange(
+    resolvedCookie,
+    options['mssw-base-url'],
+    resolvedCustomerId,
+    reportGeneratedAt
+  );
+  validateDateRange(timeRange.start, timeRange.end);
+  logger(`已自动推导时间范围: ${timeRange.start} ~ ${timeRange.end}`);
+  return {
+    ...timeRange,
+    source: 'mssw-project-service'
+  };
+}
+
+function validateDateRange(start, end) {
+  const begin = parseLocalDate(start, false);
+  const finish = parseLocalDate(end, true);
+
+  if (!begin || !finish) {
+    throw new Error('时间参数无效，请使用 YYYY-MM-DD');
+  }
+  if (begin > finish) {
+    throw new Error('时间范围无效: --start 不能晚于 --end');
+  }
 }
 
 async function mergeJsonFile(filePath, patch) {

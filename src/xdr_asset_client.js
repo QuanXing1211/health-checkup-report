@@ -61,6 +61,7 @@ const LOG_SEARCH_COUNT_ENDPOINT = '/api/apex/logsearch/v1/log/search/count?enabl
 const OVERVIEW_COUNT_ENDPOINT = '/ngsoc/INCIDENT/api/v1/overview/count?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const MSSW_INCIDENT_EXPORT_ENDPOINT = '/gateway/mss-mdr/web/api/mssw/mss-mdr/v1/incidents/export/tasks';
 const MSSW_CUSTOMER_STATISTIC_ENDPOINT = '/gateway/customer-mgr-service/order/v1/user/customer_statistic';
+const MSSW_PROJECT_LIST_ENDPOINT = '/gateway/customer-mgr-service/order/v1/project/project_list/company_id';
 const MSSW_ASSET_EXPORT_FIELDS_ENDPOINT = '/apps/asset/view/asset/export_fields?_method=GET';
 const MSSW_ASSET_EXPORT_ENDPOINT = '/apps/asset/view/asset/export';
 const MSSW_ASSET_DOWNLOAD_ENDPOINT = '/apps/asset/view/asset/download_file';
@@ -2413,6 +2414,89 @@ async function fetchMsswCustomerListPage(cookieInfo, msswBaseUrl, { companyId, k
   return response;
 }
 
+async function fetchMsswProjectListByCompanyId(cookieInfo, msswBaseUrl, companyId) {
+  const resolvedCompanyId = String(companyId || '').trim();
+  if (!resolvedCompanyId) {
+    throw new Error('MSSW 项目列表查询需要 companyId');
+  }
+
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, resolvedCompanyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_PROJECT_LIST_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify({
+      company_id: resolvedCompanyId
+    })
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`MSSW 项目列表查询失败: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  return response;
+}
+
+function formatDateFromTimestampMs(timestampMs) {
+  const date = new Date(Number(timestampMs));
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`无效时间戳: ${timestampMs}`);
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function resolveDefaultProjectTimeRangeFromResponse(response, reportGeneratedAt) {
+  const generatedAt = reportGeneratedAt instanceof Date ? reportGeneratedAt : new Date(reportGeneratedAt || Date.now());
+  if (Number.isNaN(generatedAt.getTime())) {
+    throw new Error('报告生成时间无效');
+  }
+
+  const projects = Array.isArray(response && response.data) ? response.data : [];
+  const services = projects.flatMap((project) => Array.isArray(project && project.service_info) ? project.service_info : []);
+  if (!services.length) {
+    throw new Error('MSSW 项目列表中没有 service_info，无法推导默认时间范围');
+  }
+
+  const serviceStartList = services
+    .map((service) => Number(service && service.service_start))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (!serviceStartList.length) {
+    throw new Error('MSSW 项目列表缺少有效的 service_start，无法推导默认开始时间');
+  }
+
+  const nonNullServiceEnds = services
+    .map((service) => Number(service && service.service_end))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  const minServiceStart = Math.min(...serviceStartList);
+  const minServiceEnd = nonNullServiceEnds.length ? Math.min(...nonNullServiceEnds) : null;
+  const effectiveEndMs = minServiceEnd === null ? generatedAt.getTime() : Math.min(generatedAt.getTime(), minServiceEnd);
+
+  if (minServiceStart > effectiveEndMs) {
+    throw new Error('MSSW 服务时间异常: 推导出的开始时间晚于结束时间');
+  }
+
+  return {
+    start: formatDateFromTimestampMs(minServiceStart),
+    end: formatDateFromTimestampMs(effectiveEndMs),
+    meta: {
+      serviceStartMs: minServiceStart,
+      serviceEndMs: minServiceEnd,
+      reportGeneratedAtMs: generatedAt.getTime(),
+      effectiveEndMs
+    }
+  };
+}
+
+async function fetchDefaultProjectTimeRange(cookieInfo, msswBaseUrl, companyId, reportGeneratedAt) {
+  const response = await fetchMsswProjectListByCompanyId(cookieInfo, msswBaseUrl, companyId);
+  return resolveDefaultProjectTimeRangeFromResponse(response, reportGeneratedAt);
+}
+
 async function findMsswCustomerIdByName(cookieInfo, msswBaseUrl, customerName) {
   if (!customerName || !String(customerName).trim()) {
     throw new Error('findMsswCustomerIdByName 需要 customerName 参数');
@@ -3181,6 +3265,9 @@ module.exports = {
   downloadMsswIncidentFile,
   exportMsswIncidentList,
   fetchMsswCustomerListPage,
+  fetchMsswProjectListByCompanyId,
+  resolveDefaultProjectTimeRangeFromResponse,
+  fetchDefaultProjectTimeRange,
   findMsswCustomerIdByName,
   buildExportFieldsRequestBody,
   buildAssetExportRequestBody,

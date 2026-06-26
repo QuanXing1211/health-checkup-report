@@ -9,12 +9,25 @@
 ```powershell
 node health_report.js `
   --customer "示例客户" `
+  --xdr-cookie-path "M:\Users\$env:USERNAME\Downloads\xdr_cookies.txt"
+```
+
+也可以显式传时间：
+
+```powershell
+node health_report.js `
+  --customer "示例客户" `
   --start "2026-06-01" `
   --end "2026-06-16" `
   --xdr-cookie-path "M:\Users\$env:USERNAME\Downloads\xdr_cookies.txt"
 ```
 
-`--end` 可省略，默认取脚本执行当天，格式为 `YYYY-MM-DD`。
+时间规则：
+
+- `--start` 和 `--end` 要么同时传，要么都不传
+- 都不传时，脚本会通过 MSSW 项目列表接口自动推导
+- 默认开始时间取所有 `service_info[*].service_start` 的最早值
+- 默认结束时间取 `min(报告生成时刻, 所有非空 service_end 的最小值)`
 
 输出文件默认写入 `output/`。接口拿到并用于填充 HTML 的结构化数据会落盘到 `output/report-data.json`，可用 `--output-json` 指定路径。
 
@@ -42,8 +55,8 @@ node health_report.js `
 | `projectBackground.title` | 报告标题 | CLI / 默认值 | 固定为 `首次安全体检报告` |
 | `projectBackground.customerName` | 客户名称 | `--customer` | 直接取命令行参数 |
 | `projectBackground.customerId` | 客户 ID | `--customer-id` | 直接取命令行参数，未传则 `null` |
-| `projectBackground.startDate` | 报告开始日期 | `--start` | 直接取命令行参数 |
-| `projectBackground.endDate` | 报告结束日期 | `--end` | 未传则取脚本执行当天 |
+| `projectBackground.startDate` | 报告开始日期 | `--start` / MSSW 项目列表接口 | 用户传时间时直接取命令行参数；未传时取最早 `service_start` |
+| `projectBackground.endDate` | 报告结束日期 | `--end` / MSSW 项目列表接口 + 运行时 | 用户传时间时直接取命令行参数；未传时取 `min(报告生成时刻, 最早非空 service_end)` |
 | `projectBackground.generatedAt` | 数据生成时间 | 运行时 | 取脚本执行时的 ISO 时间字符串 |
 | `assetLedger.core_asset` | 核心资产数 | XDR 资产台账 count 接口 | 取 `{"magnitude":{"op":"=","val":"core"}}` 的 `total` |
 | `assetLedger.manage_asset` | 台账资产数 | 导出的资产表 Excel | 统计第三行开始的有效行数 |
