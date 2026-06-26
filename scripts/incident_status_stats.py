@@ -1,7 +1,10 @@
 import json
+import re
 import sys
 
 from openpyxl import load_workbook
+
+IP_PATTERN = re.compile(r'(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)')
 
 
 def normalize(value):
@@ -17,6 +20,14 @@ def parse_number(value):
         return float(text)
     except ValueError:
         return None
+
+
+def extract_ips(value):
+    text = normalize(value)
+    if not text:
+        return []
+
+    return IP_PATTERN.findall(text)
 
 
 def _build_col_map(ws):
@@ -35,17 +46,15 @@ def main():
     col_map = _build_col_map(sheet)
     level_col = col_map.get("等级")
     status_col = col_map.get("处置状态")
-    contain_col = col_map.get("遏制时长(秒)")
     ip_col = col_map.get("影响资产")
 
     total = 0
     severe = 0
     high = 0
     closed = 0
+    contained = 0
     processing = 0
     unique_ips = set()
-    contain_total = 0.0
-    contain_count = 0
 
     for row in sheet.iter_rows(min_row=2, values_only=True):
         if not any(normalize(cell) for cell in row):
@@ -61,35 +70,27 @@ def main():
 
         if status_col is not None and len(row) > status_col:
             status = normalize(row[status_col])
-            if status == "已闭环":
+            if status == "处置完成":
                 closed += 1
+            elif status == "已遏制":
+                contained += 1
             elif status == "处置中":
                 processing += 1
 
-        if contain_col is not None and len(row) > contain_col:
-            contain_min = parse_number(row[contain_col])
-            if contain_min is not None:
-                contain_total += contain_min
-                contain_count += 1
-
         if ip_col is not None and len(row) > ip_col:
-            raw_ip = normalize(row[ip_col])
-            if raw_ip:
-                ip_only = raw_ip.split("(")[0].strip()
-                if ip_only:
-                    unique_ips.add(ip_only)
+            for ip in extract_ips(row[ip_col]):
+                unique_ips.add(ip)
 
     close_rate = round((closed / total) * 100) if total else 0
-    average_contain_min = round(contain_total / contain_count) if contain_count else 0
     print(json.dumps({
         "totalEvents": total,
         "severeEvents": severe,
         "highEvents": high,
         "closedEvents": closed,
+        "containedEvents": contained,
         "processingEvents": processing,
         "closeRate": close_rate,
-        "uniqueAssetCount": len(unique_ips),
-        "averageContainMin": average_contain_min
+        "uniqueAssetCount": len(unique_ips)
     }, ensure_ascii=False))
 
 

@@ -331,7 +331,7 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
 <section class="sr-section" id="sec-assets">
   <h2 class="sr-h1">2. 资产台账</h2>
   <div class="sr-chart-slot sr-chart--no-hint" id="slot-asset-stats" data-chart="slot-asset-stats">
-<div class="sr-kpi-row" style="grid-template-columns:repeat(4,1fr)"><div class="sr-kpi"><div class="sr-kpi-v" data-field="assetLedger.manage_asset">{{ assetLedger.manage_asset }}</div><div class="sr-kpi-l">台账资产</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assetLedger.core_asset">{{ assetLedger.core_asset }}</div><div class="sr-kpi-l">核心资产</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assetLedger.eliminate_asset">{{ assetLedger.eliminate_asset }}</div><div class="sr-kpi-l">退库资产</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assetLedger.approve_asset">{{ assetLedger.approve_asset }}</div><div class="sr-kpi-l">待审核资产</div></div></div>
+<div class="sr-kpi-row" style="grid-template-columns:repeat(3,1fr)"><div class="sr-kpi"><div class="sr-kpi-v" data-field="assetLedger.manage_asset">{{ assetLedger.manage_asset }}</div><div class="sr-kpi-l">台账资产</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assetLedger.core_asset">{{ assetLedger.core_asset }}</div><div class="sr-kpi-l">核心资产</div></div><div class="sr-kpi"><div class="sr-kpi-v" data-field="assetLedger.ready_to_outbound">{{ assetLedger.ready_to_outbound }}</div><div class="sr-kpi-l">7天内即将退库</div></div></div>
   <div class="sr-asset-donut-row">
   <div class="sr-asset-donut-card">
     <h4 class="sr-asset-donut-title">资产类型分布</h4>
@@ -358,7 +358,6 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
   <div class="ov-left">
     <div class="chw" id="overview-gauge" style="height:200px"></div>
     <div class="ov-kpi-grid">
-      <div class="ov-kpi" style="border-top:3px solid var(--brand)"><div class="ok-v" data-field="riskOverview.assetTotal">{{ riskOverview.assetTotal }}</div><div class="ok-l">资产总数</div></div>
       <div class="ov-kpi" style="border-top:3px solid var(--rm)"><div class="ok-v" data-field="riskOverview.exposedServices">{{ riskOverview.exposedServices }}</div><div class="ok-l">暴露服务</div></div>
       <div class="ov-kpi" style="border-top:3px solid var(--rh)"><div class="ok-v" style="color:var(--rh)"><span data-field="riskOverview.highVulns">{{ riskOverview.highVulns }}</span><span style="font-size:10px;color:var(--tx3)">/高危</span></div><div class="ok-l">漏洞风险</div></div>
       <div class="ov-kpi" style="border-top:3px solid var(--rm)"><div class="ok-v" style="color:var(--rm)"><span data-field="riskOverview.weakPasswords">{{ riskOverview.weakPasswords }}</span><span style="font-size:10px;color:var(--tx3)">项</span></div><div class="ok-l">弱密码</div></div>
@@ -374,6 +373,8 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
 </div>
   <p class="sr-p">安全体检总体评级：<span class="sr-grade sr-grade--{{ riskOverview.grade }}">{{ riskOverview.grade }}</span></p>
   <div data-section="riskOverview.summary"></div>
+  <p class="sr-p muted">XDR接收安全日志数 <span data-field="riskOverview.securityLogTotal">0</span> 条；有效告警数 <span data-field="riskOverview.alertTotal">0</span> 条；有效安全事件数 <span data-field="riskOverview.totalEvents">0</span> 起；处置闭环数 <span data-field="riskOverview.closedEvents">0</span> 起；总计遏制 <span data-field="riskOverview.containedEvents">0</span> 起；告警消减率 <span data-field="riskOverview.alertReductionRate">0</span>%；事件闭环率 <span data-field="riskOverview.closeRate">0</span>%。</p>
+  <p class="sr-p muted">GPT 运营告警中，C2外联&病毒文件共 <span data-field="riskOverview.yunyingAlertStats.c2VirusTotal">0</span> 起（病毒文件 <span data-field="riskOverview.yunyingAlertStats.virusFiles.total">0</span> 起，C2外联 <span data-field="riskOverview.yunyingAlertStats.c2ExternalLink.total">0</span> 起）；Web攻击&Web漏洞共 <span data-field="riskOverview.yunyingAlertStats.webVulnTotal">0</span> 起（Web攻击 <span data-field="riskOverview.yunyingAlertStats.webAttacks.total">0</span> 起，Web漏洞 <span data-field="riskOverview.yunyingAlertStats.exploitAttacks.total">0</span> 起）。</p>
   <h3 class="sr-h2" id="sec-key-risks">关键风险如下</h3>
   <table class="sr-tbl"><thead><tr><th>安全风险</th><th>问题描述</th><th>风险影响</th><th>安全加固策略</th><th>落地情况</th></tr></thead><tbody data-repeat="riskOverview.keyRisks"></tbody></table>
   <h3 class="sr-h2" id="sec-top5-risk">风险资产 TOP5</h3>
@@ -385,7 +386,7 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
 <section class="sr-section" id="sec-risk-detail">
   <h2 class="sr-h1">4. 风险详情</h2>
   <p class="sr-p">风险汇总如下：</p>
-  <p class="sr-p">近期处理告警共计 <span data-field="riskDetails.totalAlerts">{{ riskDetails.totalAlerts }}</span> 个，其中监测到有效安全事件 <span data-field="riskDetails.totalEvents">{{ riskDetails.totalEvents }}</span> 起（严重事件 <span data-field="riskDetails.severeEvents">{{ riskDetails.severeEvents }}</span> 起、高危事件 <span data-field="riskDetails.highEvents">{{ riskDetails.highEvents }}</span> 起），涉及到资产 <span data-field="riskDetails.uniqueAssetCount">{{ riskDetails.uniqueAssetCount }}</span> 个；事件遏制 72 起，平均遏制时间 <span data-field="riskDetails.averageContainMin">{{ riskDetails.averageContainMin }}</span> 分钟；有效拦截攻击 318 次；已闭环 <span data-field="riskDetails.closedEvents">{{ riskDetails.closedEvents }}</span> 起，处置中 <span data-field="riskDetails.processingEvents">{{ riskDetails.processingEvents }}</span> 起（闭环率：<span data-field="riskDetails.closeRate">{{ riskDetails.closeRate }}</span>%）。</p>
+  <p class="sr-p">近期处理告警共计 <span data-field="riskDetails.totalAlerts">{{ riskDetails.totalAlerts }}</span> 个，其中监测到有效安全事件 <span data-field="riskDetails.totalEvents">{{ riskDetails.totalEvents }}</span> 起（严重事件 <span data-field="riskDetails.severeEvents">{{ riskDetails.severeEvents }}</span> 起、高危事件 <span data-field="riskDetails.highEvents">{{ riskDetails.highEvents }}</span> 起），涉及到的资产数 <span data-field="riskDetails.uniqueAssetCount">{{ riskDetails.uniqueAssetCount }}</span> 个；事件遏制 <span data-field="riskDetails.containedEvents">{{ riskDetails.containedEvents }}</span> 起；有效拦截攻击 318 次；已闭环 <span data-field="riskDetails.closedEvents">{{ riskDetails.closedEvents }}</span> 起，处置中 <span data-field="riskDetails.processingEvents">{{ riskDetails.processingEvents }}</span> 起（闭环率：<span data-field="riskDetails.closeRate">{{ riskDetails.closeRate }}</span>%）。</p>
   <p class="sr-p">互联网业务总计发现风险 127 个（风险暴露面：42 个；漏洞：56 个；弱密码：29 个），其中高危及以上风险：23 个。</p>
   <p class="sr-p">内网核心业务总计发现风险 89 个（漏洞：68 个；弱密码：21 个），其中高危风险：15 个。</p>
 
@@ -400,7 +401,7 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
       <h5>XDR 威胁运营 · 日志消减漏斗</h5>
     </div>
     <div class="xdr-pipeline-kpi">
-      <span class="xdr-kpi-pill">接入设备 <b data-field="ops.devices-v">28</b> 台 · 深信服 <b data-field="ops.sangfor-v">22</b></span>
+      <span class="xdr-kpi-pill">总接入组件数 <b data-field="ops.devices-v">28</b> 个 · 深信服 <b data-field="ops.sangfor-v">22</b></span>
       <span class="xdr-kpi-pill">日志消减 <b data-field="ops.log_reduce-v">74</b>% · 告警消减 <b data-field="ops.alert_reduce-v">97</b>%</span>
       <span class="xdr-kpi-pill">严重 <b data-field="ops.severe-v">8</b> · 高危 <b data-field="ops.high-v">28</b></span>
     </div>
@@ -412,12 +413,12 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
 </div>
 </div>
   <p class="sr-p">体检期间总览如下：</p>
-  <p class="sr-p">【XDR平台数据接入】总计接入安全设备 28 个，其中深信服设备 22 个（AF 6 个、aES 10 个、SIP 3 个、STA 2 个、其它 1 个），第三方设备 6 个，经深信服 AI 智能数据解析，数据全局接入 XDR 平台，总计接收安全日志量 1,250,000 条。</p>
+  <p class="sr-p">【XDR平台数据接入】总计接入安全设备 28 个，也即总接入组件数 28 个，其中深信服设备 22 个（AF 6 个、aES 10 个、SIP 3 个、STA 2 个、其它 1 个），第三方设备 6 个，经深信服 AI 智能数据解析，数据全局接入 XDR 平台，总计接收安全日志量 1,250,000 条。</p>
   <p class="sr-p">【AI辅助告警生成】经深信服云端 AI 智能分析，汇聚为有效告警 3,200 条（日志消减率：74%）。</p>
   <p class="sr-p">【安全GPT研判】经过深信服安全 GPT 研判，生成安全事件 86 起（告警消减率：97%），其中严重事件 8 起、高危事件 28 起。</p>
   <p class="sr-p">策略调优：经云端安全专家策略调优，共生成 42 条调优规则，帮助 GPT 研判额外生成 12 条事件，消减 156 条误报事件。</p>
   <p class="sr-p">【云端专家7×24小时持续守护】所有托管资产的安全事件（86 起）由云端 AI+专家进行 7×24H 实时响应。响应包含：</p>
-  <p class="sr-p">实时威胁对抗：对威胁进行实时监测和快速遏制，总计遏制 72 起安全事件，有效拦截 318 次攻击，平均遏制时间 8 分钟；</p>
+  <p class="sr-p">实时威胁对抗：对威胁进行实时监测和快速遏制，总计遏制 72 起安全事件，有效拦截 318 次攻击；</p>
   <p class="sr-p">事件快速处置：对入侵成功事件快速应急响应，监测并及时发现和处置了 68 起安全事件，避免了 68 次业务损失；事件平均响应时间 23 分钟，事件闭环率 79%。</p>
 
   <h3 class="sr-h2" id="sec-event-distribution">4.1.2 安全事件分布</h3>
@@ -435,14 +436,14 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
   <p class="sr-p">高危安全事件是指攻击者获取系统控制权后安装恶意软件并长期潜伏，导致关键业务系统被控制破坏。典型类型包括恶意文件、黑客工具、漏洞利用、内网爆破、WEB 攻击等。以下为典型安全事件，详情见安全事件清单.xlsx。</p>
   <h4 class="sr-h3">漏洞利用</h4>
   <p class="sr-p">本次体检共发现漏洞利用事件 1 起，存在该风险的主机列表举例如下：</p>
-  <table class="sr-tbl"><thead><tr><th>类型</th><th>事件名称</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td>漏洞利用</td><td>利用漏洞获取Linux用户信息</td><td>192.168.1.221</td><td>2025-06-26 16:42:10</td><td>可能导致数据泄露、系统崩溃和业务中断</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr></tbody></table>
+  <table class="sr-tbl"><thead><tr><th>类型</th><th>事件名称</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td>漏洞利用</td><td>利用漏洞获取Linux用户信息</td><td>192.168.1.221</td><td>2025-06-26 16:42:10</td><td>可能导致数据泄露、系统崩溃和业务中断</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr></tbody></table>
   <h4 class="sr-h3">高危 Web 攻击</h4>
   <p class="sr-p">本次体检共发现高危 Web 攻击事件 4 起，举例如下：</p>
-  <table class="sr-tbl"><thead><tr><th>类型</th><th>事件名称</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td><span class="sr-tag sr-tag--light sr-tag--high">远程代码执行</span></td><td>利用漏洞获取Linux用户信息</td><td>192.168.1.221</td><td>2025-05-29 20:43:16</td><td>可完全控制系统、造成数据泄露</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--medium">代码注入</span></td><td>主机存在通用SQL注入攻击</td><td>192.168.1.210</td><td>2025-06-13 02:37:53</td><td>可窃取、修改或删除数据</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--medium">代码注入</span></td><td>主机存在通用SQL注入攻击</td><td>192.168.1.220</td><td>2025-06-07 10:31:44</td><td>可破坏系统功能</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr></tbody></table>
+  <table class="sr-tbl"><thead><tr><th>类型</th><th>事件名称</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td><span class="sr-tag sr-tag--light sr-tag--high">远程代码执行</span></td><td>利用漏洞获取Linux用户信息</td><td>192.168.1.221</td><td>2025-05-29 20:43:16</td><td>可完全控制系统、造成数据泄露</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--medium">代码注入</span></td><td>主机存在通用SQL注入攻击</td><td>192.168.1.210</td><td>2025-06-13 02:37:53</td><td>可窃取、修改或删除数据</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--medium">代码注入</span></td><td>主机存在通用SQL注入攻击</td><td>192.168.1.220</td><td>2025-06-07 10:31:44</td><td>可破坏系统功能</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr></tbody></table>
   <h4 class="sr-h3">高危病毒</h4>
-  <table class="sr-tbl"><thead><tr><th>类型</th><th>病毒Hash</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td><span class="sr-tag sr-tag--light sr-tag--high">银狐木马</span></td><td>a3f2…8c1d</td><td>192.168.1.221</td><td>2025-06-19 00:36:52</td><td>可能成为远控肉鸡，危害程度可能恶化</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--medium">钓鱼软件</span></td><td>b7e1…4f9a</td><td>192.168.1.221</td><td>2025-06-19 17:53:06</td><td>可能导致凭据泄露</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr></tbody></table>
+  <table class="sr-tbl"><thead><tr><th>类型</th><th>病毒Hash</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td><span class="sr-tag sr-tag--light sr-tag--high">银狐木马</span></td><td>a3f2…8c1d</td><td>192.168.1.221</td><td>2025-06-19 00:36:52</td><td>可能成为远控肉鸡，危害程度可能恶化</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--medium">钓鱼软件</span></td><td>b7e1…4f9a</td><td>192.168.1.221</td><td>2025-06-19 17:53:06</td><td>可能导致凭据泄露</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr></tbody></table>
   <h4 class="sr-h3">主机失陷外联</h4>
-  <table class="sr-tbl"><thead><tr><th>类型</th><th>外联IoC</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td><span class="sr-tag sr-tag--light sr-tag--high">银狐</span></td><td>malicious.example.com</td><td>192.168.1.221</td><td>2025-06-19 00:36:52</td><td>存在持续控制风险</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--high">CobaltStrike</span></td><td>beacon.example.net</td><td>192.168.1.221</td><td>2025-06-19 17:53:06</td><td>可能被用作横向移动跳板</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr></tbody></table>
+  <table class="sr-tbl"><thead><tr><th>类型</th><th>外联IoC</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td><span class="sr-tag sr-tag--light sr-tag--high">银狐</span></td><td>malicious.example.com</td><td>192.168.1.221</td><td>2025-06-19 00:36:52</td><td>存在持续控制风险</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--high">CobaltStrike</span></td><td>beacon.example.net</td><td>192.168.1.221</td><td>2025-06-19 17:53:06</td><td>可能被用作横向移动跳板</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr></tbody></table>
 
   <h3 class="sr-h2" id="sec-case-study">4.1.4 典型案例</h3>
   <div class="sr-chart-slot sr-chart--no-hint" id="slot-attack-chain" data-chart="slot-attack-chain">
@@ -452,7 +453,7 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
   <div class="evt-overview">
     <div class="evt-overview-hd">
       <h3>PHP-CGI 远程代码执行入侵事件</h3>
-      <span class="evt-status">● 已闭环根除</span>
+      <span class="evt-status">● 处置完成根除</span>
     </div>
     <div class="evt-meta-grid">
       <div class="evt-meta-item"><div class="lbl">受影响 IP</div><div class="val">192.168.32.40</div></div>
@@ -462,7 +463,7 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
       <div class="evt-meta-item"><div class="lbl">MITRE 命中</div><div class="val">执行 · 防御规避</div></div>
       <div class="evt-meta-item"><div class="lbl">响应耗时</div><div class="val" style="color:var(--brand)">18 分钟</div></div>
     </div>
-    <div class="evt-conclusion"><strong>结论：</strong>攻击者利用 PHP-CGI 漏洞完成 RCE 并尝试建立 C2，我方在 <strong>8 分钟内完成遏制</strong>、<strong>18 分钟内完成根除闭环</strong>，未造成横向扩散与数据外泄。</div>
+    <div class="evt-conclusion"><strong>结论：</strong>攻击者利用 PHP-CGI 漏洞完成 RCE 并尝试建立 C2，我方在 <strong>8 分钟内完成遏制</strong>、<strong>18 分钟内完成处置闭环</strong>，未造成横向扩散与数据外泄。</div>
   </div>
   <div class="evt-mod sr-chart-card">
     <div class="evt-mod-hd">攻防双线时间轴对比 <span class="evt-tag">核心图表 · MITRE 命中 2 阶段</span></div>
@@ -1043,11 +1044,12 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
       logs: 1250000, alerts: 3200, log_reduce: 74,
       events: 86, alert_reduce: 97, severe: 8, high: 28,
       rules: 42, extra_events: 12, false_reduce: 156,
-      managed_events: 86, contained: 72, blocked: 318, contain_min: 8,
+      managed_events: 86, contained: 72, blocked: 318,
       handled: 68, avoided_loss: 68, response_min: 23, close_rate: 79
     };
 
     window.XDR_PIPELINE_DATA = Object.assign({}, DEFAULT_DATA, window.SECURITY_REPORT_DATA && window.SECURITY_REPORT_DATA.riskDetails || {}, window.XDR_PIPELINE_DATA || {});
+    if (window.XDR_PIPELINE_DATA.containedEvents != null) window.XDR_PIPELINE_DATA.contained = window.XDR_PIPELINE_DATA.containedEvents;
 
     var FIELD_MAP = {
       'ops.devices': 'devices', 'ops.sangfor': 'sangfor', 'ops.log_reduce': 'log_reduce',
@@ -1066,7 +1068,7 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
       ['logs', '日志总量'], ['alerts', '有效告警'], ['log_reduce', '日志消减率%'],
       ['events', '安全事件'], ['alert_reduce', '告警消减率%'], ['severe', '严重事件'], ['high', '高危事件'],
       ['rules', '调优规则'], ['extra_events', '额外事件'], ['false_reduce', '误报消减'],
-      ['contained', '遏制闭环'], ['contain_min', '平均遏制(分)'], ['close_rate', '闭环率%'],
+      ['contained', '遏制闭环'], ['close_rate', '闭环率%'],
       ['avoided_loss', '避免业务损失']
     ];
 
@@ -1293,9 +1295,6 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
         ctx.fillStyle = '#262626'; ctx.font = '700 20px PingFang SC, sans-serif';
         ctx.fillText(Math.round(D.close_rate * alpha) + '%', gx, gy - 16);
         ctx.fillStyle = '#595959'; ctx.font = '500 9px PingFang SC, sans-serif'; ctx.fillText('事件闭环率', gx, gy - 2);
-        ctx.fillStyle = '#1890FF'; ctx.font = '700 14px PingFang SC, sans-serif';
-        ctx.fillText(Math.round(D.contain_min * alpha) + ' 分钟', gx, gy + 18);
-        ctx.fillStyle = '#595959'; ctx.font = '500 9px PingFang SC, sans-serif'; ctx.fillText('平均遏制时间', gx, gy + 32);
         ctx.fillStyle = '#52C41A'; ctx.font = '700 13px PingFang SC, sans-serif';
         ctx.fillText('避免 ' + Math.round(D.avoided_loss * alpha) + ' 次', gx, gy + 52);
         ctx.fillStyle = '#595959'; ctx.font = '500 9px PingFang SC, sans-serif';         ctx.fillText('业务损失', gx, gy + 66);
@@ -1454,12 +1453,9 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
         ctx.fillStyle = '#595959';
         ctx.font = '500 9px PingFang SC, sans-serif';
         ctx.fillText('事件闭环率', cx, gy + 6);
-        ctx.fillStyle = '#1890FF';
+        ctx.fillStyle = '#52C41A';
         ctx.font = '700 14px PingFang SC, sans-serif';
-        ctx.fillText(Math.round(D.contain_min * alpha) + ' 分钟', cx, gy + 24);
-        ctx.fillStyle = '#595959';
-        ctx.font = '500 9px PingFang SC, sans-serif';
-        ctx.fillText('平均遏制 · 避免 ' + Math.round(D.avoided_loss * alpha) + ' 次损失', cx, gy + 38);
+        ctx.fillText('避免 ' + Math.round(D.avoided_loss * alpha) + ' 次损失', cx, gy + 30);
       }
     }
 
@@ -1558,12 +1554,10 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
     if (!el || typeof echarts === 'undefined') return;
     var c1 = null;
     var ringData = [
-      { value: 135, name: '漏洞利用攻击', itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#CF171D'},{offset:1,color:'#82010E'}]) } },
-      { value: 108, name: '暴力破解尝试', itemStyle: { color: '#FA721B' } },
-      { value: 90, name: '恶意软件感染', itemStyle: { color: '#F6B615' } },
-      { value: 63, name: '钓鱼/社会工程', itemStyle: { color: '#0BA7B5' } },
-      { value: 36, name: 'C2通信行为', itemStyle: { color: '#12A679' } },
-      { value: 18, name: '数据外泄风险', itemStyle: { color: '#C9CDD4' } }
+      { value: 44, name: '漏洞利用攻击', itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#CF171D'},{offset:1,color:'#82010E'}]) } },
+      { value: 28, name: '暴力破解尝试', itemStyle: { color: '#FA721B' } },
+      { value: 18, name: '恶意软件感染', itemStyle: { color: '#F6B615' } },
+      { value: 10, name: '钓鱼/社会工程', itemStyle: { color: '#0BA7B5' } }
     ];
     var ringTotal = ringData.reduce(function(s, d) { return s + d.value; }, 0);
     function renderM2Ring2() {

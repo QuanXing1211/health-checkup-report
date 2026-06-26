@@ -28,7 +28,7 @@
 }
 ```
 
-字段命名使用英文 camelCase。HTML 属性里的路径也使用同样名字，例如 `data-field="assetLedger.approve_asset"`。
+字段命名使用英文 camelCase。HTML 属性里的路径也使用同样名字，例如 `data-field="assetLedger.manage_asset"`。
 
 ## 3. 四种模板标记
 
@@ -52,7 +52,7 @@
 用于页面结构固定、只替换节点文本的 KPI 或短文本。
 
 ```html
-<div class="sr-kpi-v" data-field="assetLedger.approve_asset">{{ assetLedger.approve_asset }}</div>
+<div class="sr-kpi-v" data-field="assetLedger.manage_asset">{{ assetLedger.manage_asset }}</div>
 <b data-field="threatOps.highEvents">{{ threatOps.highEvents }}</b>
 ```
 
@@ -133,19 +133,20 @@ var assetTypes = reportData.assetLedger.typeDistribution || [];
 
 动态字段：
 
-- `assetLedger.approve_asset`
-- `assetLedger.core_asset`
-- `assetLedger.eliminate_asset`
 - `assetLedger.manage_asset`
+- `assetLedger.core_asset`
+- `assetLedger.ready_to_outbound`
 - `assetLedger.typeDistribution`
 - `assetLedger.protectionDistribution`
 - `assetLedger.internetExposureDistribution`
-- `assetLedger.summaryLines`
+- `assetLedger.internetExposureTotal`
 
 改造方式：
 
-- 顶部 4 个 KPI 用 `data-field`。
+- 顶部 3 个 KPI 用 `data-field`。
+- 台账资产按资产表有效行数统计，核心资产和 7 天内即将退库仍保留现有来源。
 - 三个环形图读取数组。
+- 资产防护统计里的“未防护资产”按台账资产减去在线、离线、已禁用、已降级计算。
 - 下方 “【资产统计】...” 这类段落统一改为：
 
 ```html
@@ -157,7 +158,6 @@ var assetTypes = reportData.assetLedger.typeDistribution || [];
 动态字段：
 
 - `riskOverview.grade`
-- `riskOverview.assetTotal`
 - `riskOverview.exposedServices`
 - `riskOverview.highVulns`
 - `riskOverview.weakPasswords`
@@ -213,6 +213,9 @@ var assetTypes = reportData.assetLedger.typeDistribution || [];
 改造方式：
 
 - 漏斗 KPI 用 `data-field`。
+- “接入安全设备”和“接入组件数”都应使用 `threatOps.devices.total`，口径一致，均为深信服设备总数 + 第三方设备数。
+- `threatOps.devices.sangfor` 表示深信服设备总数，数据源统一取 `/api/apex/device/v1/devices/list` 的 `data.total`，不要再按列表长度临时累加。
+- 深信服设备分类仍沿用现有 `devType` 映射：`af=3`，`sip=9`，`sta=25`，`aes=12/37/100038/50038/100012`，其余归入 `other_sf`。
 - 运营文字段落用 `data-section="threatOps.summary"`。
 - 安全事件分布图读取 `events.distribution` 和 `events.byBusinessSystem`。
 - 4 张高危事件表分别用 `data-repeat`。
