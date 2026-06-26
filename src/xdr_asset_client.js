@@ -1774,7 +1774,7 @@ async function fetchAlertReductionRate(cookieInfo, xdrBaseUrl, options) {
   return {
     alertTotal,
     incidentTotal,
-    reductionRate: Math.round(rate * 10000) / 10000
+    reductionRate: Math.round(rate * 10) / 10
   };
 }
 
