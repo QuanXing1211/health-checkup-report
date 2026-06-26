@@ -40,7 +40,7 @@ def main():
     if len(sys.argv) < 2:
         raise SystemExit("Usage: incident_status_stats.py <incident.xlsx>")
 
-    workbook = load_workbook(sys.argv[1], read_only=True, data_only=True)
+    workbook = load_workbook(sys.argv[1], data_only=True)
     sheet = workbook.active
 
     col_map = _build_col_map(sheet)

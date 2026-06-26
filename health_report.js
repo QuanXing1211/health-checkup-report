@@ -7,7 +7,7 @@ const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, fetchAlertReductionRate, readXdrCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts } = require('./src/xdr_asset_client');
+const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, fetchAlertReductionRate, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts } = require('./src/xdr_asset_client');
 const { renderReportToFile } = require('./src/template_renderer');
 
 async function main() {
@@ -20,7 +20,27 @@ async function main() {
     return;
   }
 
-  if (options['xdr-cookie-path']) {
+  // 统一查一次 customerId（只接受 --customer 自动查）
+  let customerId = '';
+  if (options['mssw-cookie-path'] && options.customer) {
+    try {
+      const msswCookie = await readMsswCookieInfo(options['mssw-cookie-path']);
+      customerId = await findMsswCustomerIdByName(msswCookie, options['mssw-base-url'], options.customer);
+      logger(`已自动获取 company_id: ${customerId}`);
+    } catch (err) {
+      logger(`自动查询 company_id 失败: ${err.message}`);
+    }
+  }
+
+  // 设备表导出
+  if (options['mssw-cookie-path']) {
+    await exportMsswDeviceList({
+      msswCookiePath: options['mssw-cookie-path'],
+      msswBaseUrl: options['mssw-base-url'],
+      customerId,
+      logger
+    });
+  } else if (options['xdr-cookie-path']) {
     await exportXdrDeviceList({
       xdrCookiePath: options['xdr-cookie-path'],
       xdrBaseUrl: options['xdr-base-url'],
@@ -37,6 +57,19 @@ async function main() {
         logger
       });
       outputResult(result, emitJson, logger, `XDR 资产表已导出: ${result.filePath}`);
+      return;
+    }
+
+    if (command === 'mssw-asset-export') {
+      requireArgs(options, ['mssw-cookie-path', 'customer-id']);
+      const result = await exportMsswAssetList({
+        msswCookiePath: options['mssw-cookie-path'],
+        msswBaseUrl: options['mssw-base-url'],
+        downloadDir: options['download-dir'],
+        customerId: options['customer-id'],
+        logger
+      });
+      outputResult(result, emitJson, logger, `MSSW 资产表已导出: ${result.filePath}`);
       return;
     }
 
@@ -86,10 +119,12 @@ async function main() {
 
   const xdrExports = await exportConfiguredXdrTables({
     xdrCookiePath: options['xdr-cookie-path'],
+    msswCookiePath: options['mssw-cookie-path'],
     downloadDir: options['download-dir'],
     start: options.start,
     end,
     xdrTables: options['xdr-tables'],
+    customerId,
     timeoutMs: options['timeout-ms'] ? Number(options['timeout-ms']) : undefined,
     pollIntervalMs: options['poll-interval-ms'] ? Number(options['poll-interval-ms']) : undefined,
     logger
@@ -105,7 +140,7 @@ async function main() {
 
   const reportData = await collectReportData({
     customer: options.customer,
-    customerId: options['customer-id'],
+    customerId,
     start: options.start,
     end,
     xdrCookiePath: options['xdr-cookie-path'],
@@ -179,6 +214,35 @@ async function main() {
       }
     }
   }
+
+  if (options['mssw-cookie-path']) {
+    try {
+      const msswCookie = await readMsswCookieInfo(options['mssw-cookie-path']);
+      reportData.msswCookie = msswCookie.cookieString;
+      logger(`MSSW Cookie 已加载: ${msswCookie.resolvedPath}`);
+
+      // 通过 MSSW 接口查询设备分类数量
+      try {
+        logger('正在通过 MSSW 查询设备分类数量...');
+        const deviceCounts = await collectMsswDeviceCategoryCounts(
+          msswCookie,
+          options['mssw-base-url'],
+          customerId,
+          logger
+        );
+        reportData.riskDetails = Object.assign(reportData.riskDetails || {}, deviceCounts);
+        reportData.riskOverview = Object.assign(reportData.riskOverview || {}, {
+          devices: deviceCounts.devices
+        });
+        logger(`MSSW 设备总数: ${deviceCounts.devices}，深信服: ${deviceCounts.sangfor}（AF: ${deviceCounts.af}, AES: ${deviceCounts.aes}, SIP: ${deviceCounts.sip}, STA: ${deviceCounts.sta}, 其他: ${deviceCounts.other_sf}），第三方: ${deviceCounts.third}`);
+      } catch (error) {
+        logger(`通过 MSSW 获取设备分类数量失败: ${error.message}，将跳过设备分类统计`);
+      }
+    } catch (error) {
+      logger(`加载 MSSW Cookie 失败: ${error.message}`);
+    }
+  }
+
   const reportDataJsonPath = options['output-json'] || path.join(outputDir, 'report-data.json');
   await writeJsonFile(reportDataJsonPath, reportData);
   logger(`数据已写入: ${reportDataJsonPath}`);
@@ -201,11 +265,11 @@ function printHelp() {
   node health_report.js --customer "客户名" --start YYYY-MM-DD [--end YYYY-MM-DD] [options]
 
 Options:
-  --customer-id <id>             Optional customer id
-  --customer <name>              Customer name
+  --customer <name>              Customer name (用于自动查询 company_id)
   --start <YYYY-MM-DD>           Report start date
   --end <YYYY-MM-DD>             Optional end date, default is script execution date
   --xdr-cookie-path <path>       XDR cookie file path
+  --mssw-cookie-path <path>      MSSW cookie file path (pre.soar.sangfor.com)
   --xdr-tables <names>           Optional XDR export tables, default asset,incident
   --download-dir <path>          Optional XDR download directory override
   --output-json <path>           Optional report data JSON path, default output/report-data.json
@@ -218,40 +282,71 @@ Options:
 }
 
 async function exportConfiguredXdrTables(options) {
-  if (!options.xdrCookiePath) {
+  if (!options.xdrCookiePath && !options.msswCookiePath) {
     return {};
   }
 
   const tables = parseXdrTables(options.xdrTables);
-  logWith(options.logger, `准备导出 XDR 表格: ${tables.join(', ')}`);
+  logWith(options.logger, `准备导出表格: ${tables.join(', ')}`);
   const results = {};
   for (const table of tables) {
     if (table === 'asset') {
-      logWith(options.logger, '开始处理表格: asset');
-      results.asset = await exportXdrAssetList({
-        xdrCookiePath: options.xdrCookiePath,
-        downloadDir: options.downloadDir,
-        timeoutMs: options.timeoutMs,
-        logger: options.logger
-      });
+      // TODO: 资产表接口暂不通，恢复时取消下面注释即可
+      // if (options.msswCookiePath) {
+      //   logWith(options.logger, '开始处理表格: asset (MSSW)');
+      //   results.asset = await exportMsswAssetList({
+      //     msswCookiePath: options.msswCookiePath,
+      //     msswBaseUrl: options.msswBaseUrl,
+      //     downloadDir: options.downloadDir,
+      //     customerId: options.customerId,
+      //     logger: options.logger
+      //   });
+      // } else if (options.xdrCookiePath) {
+      //   logWith(options.logger, '开始处理表格: asset (XDR)');
+      //   results.asset = await exportXdrAssetList({
+      //     xdrCookiePath: options.xdrCookiePath,
+      //     downloadDir: options.downloadDir,
+      //     timeoutMs: options.timeoutMs,
+      //     logger: options.logger
+      //   });
+      // } else {
+      //   logWith(options.logger, '跳过 asset 导出: 需要 --mssw-cookie-path 或 --xdr-cookie-path');
+      // }
+      logWith(options.logger, '跳过 asset 导出: 资产表接口暂不通');
       continue;
     }
 
     if (table === 'incident') {
-      logWith(options.logger, '开始处理表格: incident');
-      results.incident = await exportXdrIncidentList({
-        xdrCookiePath: options.xdrCookiePath,
-        downloadDir: options.downloadDir,
-        start: options.start,
-        end: options.end,
-        timeoutMs: options.timeoutMs,
-        pollIntervalMs: options.pollIntervalMs,
-        logger: options.logger
-      });
+      if (options.msswCookiePath) {
+        logWith(options.logger, '开始处理表格: incident (MSSW)');
+        results.incident = await exportMsswIncidentList({
+          msswCookiePath: options.msswCookiePath,
+          downloadDir: options.downloadDir,
+          start: options.start,
+          end: options.end,
+          customerId: options.customerId,
+          timeoutMs: options.timeoutMs,
+          pollIntervalMs: options.pollIntervalMs,
+          logger: options.logger
+        });
+      } else if (options.xdrCookiePath) {
+        logWith(options.logger, '开始处理表格: incident (XDR)');
+        results.incident = await exportXdrIncidentList({
+          xdrCookiePath: options.xdrCookiePath,
+          downloadDir: options.downloadDir,
+          start: options.start,
+          end: options.end,
+          timeoutMs: options.timeoutMs,
+          pollIntervalMs: options.pollIntervalMs,
+          logger: options.logger
+        });
+      } else {
+        logWith(options.logger, '跳过 incident 导出: 需要 --mssw-cookie-path 或 --xdr-cookie-path');
+      }
       continue;
     }
 
-    throw new Error(`Unsupported XDR export table: ${table}`);
+    throw new Error(`Unsupported export table: ${table}`);
   }
 
   return results;
@@ -292,7 +387,7 @@ async function summarizeExportedIncidentStatus(xdrExports, logger) {
 
   logWith(logger, `开始统计事件表处置状态: ${incidentFilePath}`);
   const stats = await summarizeIncidentStatus(incidentFilePath);
-  if (Number.isFinite(Number(xdrExports.incident.totalEvents))) {
+  if (Number(xdrExports.incident.totalEvents) > 0) {
     stats.totalEvents = Number(xdrExports.incident.totalEvents);
     stats.closeRate = stats.totalEvents ? Math.round((stats.closedEvents / stats.totalEvents) * 100) : 0;
   }

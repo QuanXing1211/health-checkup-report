@@ -7,6 +7,7 @@ const http = require('http');
 const path = require('path');
 
 const DEFAULT_XDR_BASE_URL = normalizeBaseUrl(process.env.SANGFOR_XDR_BASE_URL || 'xdr.sangfor.com.cn');
+const DEFAULT_MSSW_BASE_URL = normalizeBaseUrl('pre.soar.sangfor.com');
 const XDR_ASSET_PAGE_PATH = '/xdr/asset/host-asset';
 const ASSET_COUNT_ENDPOINT = '/apps/asset/view/asset/asset_view/count?_method=GET&viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const ASSET_PROTECTION_ENDPOINT = '/apps/asset/view/overview/asset_protection?_method=GET&viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
@@ -58,6 +59,11 @@ const DEVICE_TYPE_INFO_ENDPOINT = '/api/apex/device/v1/branch/dev_type_info?view
 const THIRD_PARTY_DEVICE_STATS_ENDPOINT = '/api/apex/thirdparty/v1/app/instance/list?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const LOG_SEARCH_COUNT_ENDPOINT = '/api/apex/logsearch/v1/log/search/count?enableCache=true&viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const OVERVIEW_COUNT_ENDPOINT = '/ngsoc/INCIDENT/api/v1/overview/count?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
+const MSSW_INCIDENT_EXPORT_ENDPOINT = '/gateway/mss-mdr/web/api/mssw/mss-mdr/v1/incidents/export/tasks';
+const MSSW_CUSTOMER_STATISTIC_ENDPOINT = '/gateway/customer-mgr-service/order/v1/user/customer_statistic';
+const MSSW_ASSET_EXPORT_FIELDS_ENDPOINT = '/apps/asset/view/asset/export_fields?_method=GET';
+const MSSW_ASSET_EXPORT_ENDPOINT = '/apps/asset/view/asset/export';
+const MSSW_ASSET_DOWNLOAD_ENDPOINT = '/apps/asset/view/asset/download_file';
 
 // devType 到分类名称的映射
 const DEVICE_TYPE_CATEGORIES = {
@@ -375,7 +381,8 @@ async function requestJson(url, { headers, body, timeout }) {
   return new Promise((resolve, reject) => {
     const req = transport.request(parsedUrl, {
       method: body === undefined ? 'GET' : 'POST',
-      headers
+      headers,
+      rejectUnauthorized: false
     }, (res) => {
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
@@ -416,7 +423,8 @@ async function requestBuffer(url, { headers }) {
   return new Promise((resolve, reject) => {
     const req = transport.request(parsedUrl, {
       method: 'GET',
-      headers
+      headers,
+      rejectUnauthorized: false
     }, (res) => {
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
@@ -2055,6 +2063,401 @@ async function resolveWorkingXdrBaseUrl(cookieInfo, explicitBaseUrl, logger) {
   throw new Error(`无法确定可用的 XDR 域名，已尝试: ${errors.join(' | ')}`);
 }
 
+async function readMsswCookieInfo(cookiePath) {
+  if (!cookiePath) {
+    throw new Error('MSSW mode requires --mssw-cookie-path');
+  }
+
+  const resolvedPath = await resolveCookiePath(cookiePath);
+  const rawContent = await fsp.readFile(resolvedPath, 'utf8');
+  const cookieString = String(rawContent || '').trim();
+
+  if (!cookieString) {
+    throw new Error(`MSSW Cookie 文件内容为空: ${resolvedPath}`);
+  }
+
+  return {
+    resolvedPath,
+    cookieString,
+    cookies: parseCookieString(cookieString)
+  };
+}
+
+function buildMsswHeaders(cookieString, baseUrl, overrides = {}) {
+  const msswBaseUrl = normalizeBaseUrl(baseUrl || DEFAULT_MSSW_BASE_URL);
+  return {
+    host: msswBaseUrl,
+    accept: 'application/json, text/plain, */*',
+    'accept-language': 'zh-CN,zh;q=0.9',
+    'content-type': 'application/json',
+    cookie: cookieString,
+    origin: `https://${msswBaseUrl}`,
+    referer: `https://${msswBaseUrl}/index.html`,
+    'sec-ch-ua': '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'x-requested-with': 'XMLHttpRequest',
+    ...overrides
+  };
+}
+
+const MSSW_INCIDENT_EXPORT_FIELDS = [
+  'incident_id', 'company_id', 'name', 'platform_id', 'host_ip',
+  'device_type', 'current_handler', 'incident_belong', 'event_push_label',
+  'gpt_result', 'gpt_sub_result', 'severity', 'deal_status',
+  'incident_threat_class', 'incident_threat_type', 'attack_state',
+  'end_time', 'created_time', 'company_name', 'src_ip', 'dst_ip',
+  'ioc', 'dev_source_name', 'dev_id_list'
+];
+
+function buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId, overrides = {}) {
+  const csrfToken = cookieInfo.cookies && cookieInfo.cookies['csrf_token'] || '';
+  return buildMsswHeaders(cookieInfo.cookieString, msswBaseUrl, {
+    'x-mssw-company-id': String(companyId || ''),
+    'x-csrf-token': csrfToken,
+    ...overrides
+  });
+}
+
+function buildMsswIncidentExportRequestBody({ begin, end, companyId, fields }) {
+  return {
+    filters: {
+      created_time: [begin, end],
+      customer_type: 'single_customer',
+      company_ids: [String(companyId)]
+    },
+    sorts: [{ field: 'sla_deadline', order: 'asc' }],
+    export_mode: 'custom',
+    format: 'xlsx',
+    is_all: 0,
+    my_customer: 0,
+    event_id_list: [],
+    fields: fields || MSSW_INCIDENT_EXPORT_FIELDS
+  };
+}
+
+function resolveMsswTimeRange(options = {}) {
+  const begin = parseLocalDate(options.begin || options.start, false);
+  const end = parseLocalDate(options.end, true);
+  if (!begin || !end) {
+    throw new Error('MSSW 事件导出需要 --start YYYY-MM-DD 和 --end YYYY-MM-DD');
+  }
+  if (begin > end) {
+    throw new Error('MSSW 事件导出时间范围无效: --start 不能晚于 --end');
+  }
+  return { begin, end };
+}
+
+async function triggerMsswIncidentExport(cookieInfo, msswBaseUrl, options) {
+  const { begin, end } = resolveMsswTimeRange(options);
+  const companyId = options.customerId || options.companyId || '';
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_INCIDENT_EXPORT_ENDPOINT}`;
+
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildMsswIncidentExportRequestBody({
+      begin: begin * 1000,
+      end: end * 1000,
+      companyId
+    }))
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`MSSW 事件导出创建任务失败: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  return response;
+}
+
+async function pollMsswIncidentExportTask(cookieInfo, msswBaseUrl, taskId, options = {}) {
+  const timeoutMs = Number(options.timeoutMs || 120000);
+  const intervalMs = Number(options.pollIntervalMs || 3000);
+  const startedAt = Date.now();
+  const logger = options.logger;
+  const companyId = options.customerId || options.companyId || '';
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_INCIDENT_EXPORT_ENDPOINT}/query`;
+  let lastStatus = '';
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    const response = await requestJson(url, {
+      headers,
+      body: JSON.stringify({ task_id: taskId })
+    });
+
+    const code = response && response.code;
+    if (code !== 0 && code !== '0') {
+      throw new Error(`MSSW 事件导出查询任务失败: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+    }
+
+    const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+    const status = String(data.status || '').toLowerCase();
+
+    if (status !== lastStatus) {
+      logInfo(logger, `事件导出任务状态: ${status}`);
+      lastStatus = status;
+    }
+
+    if (status === 'completed') {
+      return response;
+    }
+
+    if (status === 'failed' || status === 'error') {
+      throw new Error(`MSSW 事件导出失败: ${data.error_msg || '未知错误'}`);
+    }
+
+    await sleep(intervalMs);
+  }
+
+  throw new Error(`MSSW 事件导出轮询超时: ${timeoutMs}ms`);
+}
+
+async function downloadMsswIncidentFile(cookieInfo, msswBaseUrl, taskId, downloadDir, filename, companyId) {
+  const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const downloadUrl = `https://${msswHost}${MSSW_INCIDENT_EXPORT_ENDPOINT}/${taskId}/download`;
+
+  const csrfToken = cookieInfo.cookies && cookieInfo.cookies['csrf_token'] || '';
+  const headers = buildMsswHeaders(cookieInfo.cookieString, msswHost, {
+    accept: '*/*',
+    'x-mssw-company-id': String(companyId || ''),
+    'x-csrf-token': csrfToken
+  });
+  delete headers['x-requested-with'];
+  delete headers['content-type'];
+
+  const downloaded = await requestBuffer(downloadUrl, { headers });
+  const targetPath = path.join(downloadDir, filename);
+  await fsp.mkdir(downloadDir, { recursive: true });
+  await fsp.writeFile(targetPath, downloaded.buffer);
+
+  return {
+    ...downloaded,
+    filePath: targetPath,
+    filename,
+    downloadUrl
+  };
+}
+
+async function exportMsswIncidentList(options) {
+  const logger = options.logger;
+  logInfo(logger, `导出 MSSW 事件表: ${options.start} ~ ${options.end}`);
+  const cookieInfo = await readMsswCookieInfo(options.msswCookiePath);
+  const msswBaseUrl = normalizeBaseUrl(options.msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const companyId = options.customerId || options.companyId || '';
+
+  const exportResponse = await triggerMsswIncidentExport(cookieInfo, msswBaseUrl, options);
+  const exportData = exportResponse && exportResponse.data && typeof exportResponse.data === 'object' ? exportResponse.data : {};
+  const taskId = exportData.task_id;
+  if (!taskId) {
+    throw new Error(`MSSW 事件导出创建任务返回缺少 task_id: ${JSON.stringify(exportResponse).slice(0, 500)}`);
+  }
+
+  logInfo(logger, `事件导出任务: ${taskId}`);
+
+  const queryResponse = await pollMsswIncidentExportTask(cookieInfo, msswBaseUrl, taskId, options);
+  const queryData = queryResponse && queryResponse.data && typeof queryResponse.data === 'object' ? queryResponse.data : {};
+  const fileUrl = queryData.download_url;
+  const fileName = queryData.file_name || `incident-export-${taskId}.xlsx`;
+
+  if (!fileUrl) {
+    throw new Error(`MSSW 事件导出查询返回缺少下载路径: ${JSON.stringify(queryResponse).slice(0, 500)}`);
+  }
+
+  const downloadDir = options.downloadDir || path.dirname(cookieInfo.resolvedPath);
+  const downloaded = await downloadMsswIncidentFile(cookieInfo, msswBaseUrl, taskId, downloadDir, fileName, companyId);
+  logInfo(logger, `MSSW 事件表: ${downloaded.filePath}`);
+
+  return {
+    msswBaseUrl,
+    downloadDir,
+    filePath: downloaded.filePath,
+    filename: downloaded.filename,
+    taskId,
+    fileUrl,
+    downloadUrl: downloaded.downloadUrl,
+    exportResponse,
+    queryResponse,
+    downloadResponse: {
+      statusCode: downloaded.statusCode,
+      headers: downloaded.headers
+    }
+  };
+}
+
+function buildMsswAssetExportRequestBody(exportFields) {
+  return {
+    branch_id: 'all',
+    search_type: 'current',
+    platform_ids: [],
+    is_all: false,
+    ids: [],
+    exclude_ids: [],
+    export_fields: exportFields
+  };
+}
+
+async function fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId) {
+  const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const headers = buildMsswExportHeaders(cookieInfo, msswHost, companyId);
+  const url = `https://${msswHost}${MSSW_ASSET_EXPORT_FIELDS_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify({})
+  });
+
+  if (!response || response.success !== true || !response.data) {
+    throw new Error(`MSSW 资产字段接口返回异常: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  return response;
+}
+
+async function triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFields) {
+  const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const headers = buildMsswExportHeaders(cookieInfo, msswHost, companyId);
+  const url = `https://${msswHost}${MSSW_ASSET_EXPORT_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildMsswAssetExportRequestBody(exportFields))
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`MSSW 资产导出接口返回异常: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  return response;
+}
+
+async function downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, filename, downloadDir) {
+  const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const downloadUrl = `https://${msswHost}${MSSW_ASSET_DOWNLOAD_ENDPOINT}?file=${encodeURIComponent(filename)}`;
+
+  const csrfToken = cookieInfo.cookies && cookieInfo.cookies['csrf_token'] || '';
+  const headers = buildMsswHeaders(cookieInfo.cookieString, msswHost, {
+    accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream,*/*',
+    'x-mssw-company-id': String(companyId || ''),
+    'x-csrf-token': csrfToken
+  });
+  delete headers['content-type'];
+
+  const downloaded = await requestBuffer(downloadUrl, { headers });
+  const targetPath = path.join(downloadDir, filename);
+  await fsp.mkdir(downloadDir, { recursive: true });
+  await fsp.writeFile(targetPath, downloaded.buffer);
+  return {
+    ...downloaded,
+    filePath: targetPath
+  };
+}
+
+async function exportMsswAssetList(options) {
+  const logger = options.logger;
+  logInfo(logger, '导出 MSSW 资产表');
+  const cookieInfo = await readMsswCookieInfo(options.msswCookiePath);
+  const msswBaseUrl = normalizeBaseUrl(options.msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const companyId = options.customerId || options.companyId || '';
+
+  const exportFieldsResponse = await fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId);
+
+  const exportResponse = await triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFieldsResponse.data);
+  const filename = String(exportResponse && exportResponse.data ? exportResponse.data : exportResponse && exportResponse.filename ? exportResponse.filename : '');
+  if (!filename) {
+    throw new Error(`MSSW 资产导出接口返回缺少文件名: ${JSON.stringify(exportResponse).slice(0, 500)}`);
+  }
+
+  const downloadDir = options.downloadDir || path.dirname(cookieInfo.resolvedPath);
+  const downloaded = await downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, filename, downloadDir);
+  logInfo(logger, `MSSW 资产表: ${downloaded.filePath}`);
+
+  return {
+    msswBaseUrl,
+    downloadDir,
+    filePath: downloaded.filePath,
+    filename,
+    exportFields: exportFieldsResponse.data,
+    exportResponse,
+    downloadResponse: {
+      statusCode: downloaded.statusCode,
+      headers: downloaded.headers
+    }
+  };
+}
+
+async function fetchMsswCustomerListPage(cookieInfo, msswBaseUrl, { companyId, keyword, offset, limit }) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_CUSTOMER_STATISTIC_ENDPOINT}?_method=GET`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify({
+      order: 'desc',
+      keyword: keyword || '',
+      customer_category: 1,
+      company_id: String(companyId || ''),
+      offset: offset || 0,
+      limit: limit || 20
+    })
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`MSSW 客户列表查询失败: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  return response;
+}
+
+async function findMsswCustomerIdByName(cookieInfo, msswBaseUrl, customerName) {
+  if (!customerName || !String(customerName).trim()) {
+    throw new Error('findMsswCustomerIdByName 需要 customerName 参数');
+  }
+
+  const name = String(customerName).trim();
+  const pageSize = 20;
+  let offset = 0;
+  let foundId = null;
+
+  while (foundId === null) {
+    const response = await fetchMsswCustomerListPage(cookieInfo, msswBaseUrl, {
+      keyword: name,
+      offset,
+      limit: pageSize
+    });
+
+    const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+    const list = Array.isArray(data.list) ? data.list : [];
+    const total = Number(data.total || 0);
+
+    for (const item of list) {
+      if (item && String(item.company_name || '').trim() === name) {
+        foundId = String(item.company_id || '');
+        break;
+      }
+    }
+
+    if (foundId !== null) {
+      break;
+    }
+
+    offset += pageSize;
+    if (offset >= total || list.length < pageSize) {
+      break;
+    }
+  }
+
+  if (!foundId) {
+    throw new Error(`未找到匹配的客户: ${name}，请检查 --customer 参数或手动指定 --customer-id`);
+  }
+
+  return foundId;
+}
+
 async function triggerAssetExport(cookieInfo, xdrBaseUrl, exportFields) {
   const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl);
   const url = `https://${xdrBaseUrl}${EXPORT_ENDPOINT}`;
@@ -2316,6 +2719,46 @@ async function exportXdrDeviceList(options) {
   };
 }
 
+async function exportMsswDeviceList(options) {
+  const logger = options.logger;
+  logInfo(logger, '导出 MSSW 设备表');
+  const cookieInfo = await readMsswCookieInfo(options.msswCookiePath);
+  const msswBaseUrl = normalizeBaseUrl(options.msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const companyId = options.customerId || options.companyId || '';
+  const pageSize = 20;
+  const firstResponse = await fetchMsswDeviceList(cookieInfo, msswBaseUrl, companyId, pageSize, 1, [1, 2, 3, 4]);
+  const firstData = firstResponse && firstResponse.data && typeof firstResponse.data === 'object' ? firstResponse.data : {};
+  const total = Number(firstData.total || 0);
+  const firstPageDevices = Array.isArray(firstData.list) ? firstData.list : [];
+  const devices = [...firstPageDevices];
+  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
+
+  for (let pageNum = 2; pageNum <= totalPages; pageNum += 1) {
+    const pageResponse = await fetchMsswDeviceList(cookieInfo, msswBaseUrl, companyId, pageSize, pageNum, [1, 2, 3, 4]);
+    const pageData = pageResponse && pageResponse.data && typeof pageResponse.data === 'object' ? pageResponse.data : {};
+    const pageDevices = Array.isArray(pageData.list) ? pageData.list : [];
+    devices.push(...pageDevices);
+  }
+
+  const response = {
+    ...firstResponse,
+    data: {
+      ...firstData,
+      list: devices
+    }
+  };
+  const outputPath = path.join(path.resolve(__dirname, '..'), 'tmp', 'device.json');
+  await fsp.mkdir(path.dirname(outputPath), { recursive: true });
+  await fsp.writeFile(outputPath, JSON.stringify(response, null, 2), 'utf8');
+  logInfo(logger, 'MSSW 设备表: ' + outputPath + ' (共 ' + devices.length + ' 条)');
+
+  return {
+    msswBaseUrl,
+    filePath: outputPath,
+    response
+  };
+}
+
 async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
   const logger = options.logger;
   logInfo(logger, '拉取 XDR 资产台账统计');
@@ -2463,6 +2906,27 @@ async function fetchDeviceList(cookieInfo, xdrBaseUrl, pageSize, pageNum = 1) {
   return response;
 }
 
+async function fetchMsswDeviceList(cookieInfo, msswBaseUrl, companyId, pageSize, pageNum = 1, devStatus) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${DEVICE_LIST_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify({
+      keyword: '',
+      type: 0,
+      pageSize: pageSize || 1000,
+      pageNum,
+      devStatus: devStatus || [1, 2, 4]
+    })
+  });
+  // MSSW 设备列表接口成功时 code 可能是 "Success" 或 0
+  const code = response && response.code;
+  if (code !== 'Success' && code !== 0 && code !== '0' && code !== undefined) {
+    throw new Error(`MSSW 设备列表接口返回异常: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+  return response;
+}
+
 async function fetchThirdPartyDeviceStats(cookieInfo, xdrBaseUrl) {
   const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl);
   const url = `https://${normalizeBaseUrl(xdrBaseUrl)}${THIRD_PARTY_DEVICE_STATS_ENDPOINT}`;
@@ -2482,6 +2946,31 @@ async function fetchThirdPartyDeviceStats(cookieInfo, xdrBaseUrl) {
     })
   });
   assertXdrApiSuccess(response, 'XDR 第三方设备统计接口');
+  return response;
+}
+
+async function fetchMsswThirdPartyDeviceStats(cookieInfo, msswBaseUrl, companyId) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${THIRD_PARTY_DEVICE_STATS_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify({
+      name: '',
+      appIds: [],
+      hostIp: '',
+      statusList: [],
+      abilityTypeList: [],
+      enableList: [],
+      appInstanceId: '',
+      pageIndex: 1,
+      pageSize: 20
+    })
+  });
+  // MSSW 第三方设备统计接口成功时 code 可能是 "Success" 或 0
+  const code = response && response.code;
+  if (code !== 'Success' && code !== 0 && code !== '0' && code !== undefined) {
+    throw new Error(`MSSW 第三方设备统计接口返回异常: ${JSON.stringify(response).slice(0, 500)}`);
+  }
   return response;
 }
 
@@ -2529,6 +3018,62 @@ async function collectDeviceCategoryCounts(cookieInfo, xdrBaseUrl, logger) {
     log(`第三方设备数量: ${totalThird}`);
   } catch (error) {
     log(`获取第三方设备数量失败: ${error.message}，将跳过第三方设备统计`);
+  }
+
+  return {
+    devices: totalSangfor + totalThird,
+    sangfor: totalSangfor,
+    af: categoryCounts.af,
+    aes: categoryCounts.aes,
+    sip: categoryCounts.sip,
+    sta: categoryCounts.sta,
+    other_sf: categoryCounts.other,
+    third: totalThird
+  };
+}
+
+async function collectMsswDeviceCategoryCounts(cookieInfo, msswBaseUrl, companyId, logger) {
+  const log = typeof logger === 'function' ? logger : function() {};
+  // 查询深信服设备列表 (MSSW)
+  let firstPageResponse;
+  try {
+    firstPageResponse = await fetchMsswDeviceList(cookieInfo, msswBaseUrl, companyId, 1000, 1);
+  } catch (error) {
+    throw new Error(`获取 MSSW 设备列表失败: ${error.message}`);
+  }
+
+  const firstPageData = firstPageResponse && firstPageResponse.data && typeof firstPageResponse.data === 'object' ? firstPageResponse.data : {};
+  const totalSangfor = Number(firstPageData.total || 0);
+  const firstPageDevices = Array.isArray(firstPageData.list) ? firstPageData.list : [];
+
+  const categoryCounts = { af: 0, aes: 0, sip: 0, sta: 0, other: 0 };
+  const pageSize = 1000;
+  const totalPages = totalSangfor > 0 ? Math.ceil(totalSangfor / pageSize) : 1;
+  const devices = [...firstPageDevices];
+
+  for (let pageNum = 2; pageNum <= totalPages; pageNum += 1) {
+    const pageResponse = await fetchMsswDeviceList(cookieInfo, msswBaseUrl, companyId, pageSize, pageNum);
+    const pageData = pageResponse && pageResponse.data && typeof pageResponse.data === 'object' ? pageResponse.data : {};
+    const pageDevices = Array.isArray(pageData.list) ? pageData.list : [];
+    devices.push(...pageDevices);
+  }
+
+  for (const device of devices) {
+    const category = classifyDeviceType(Number(device.devType));
+    if (categoryCounts[category] !== undefined) {
+      categoryCounts[category] += 1;
+    }
+  }
+
+  // 单独查询第三方设备（容错，查不到就记为 0）
+  let totalThird = 0;
+  try {
+    const thirdPartyResponse = await fetchMsswThirdPartyDeviceStats(cookieInfo, msswBaseUrl, companyId);
+    const thirdPartyData = thirdPartyResponse && thirdPartyResponse.data && typeof thirdPartyResponse.data === 'object' ? thirdPartyResponse.data : {};
+    totalThird = Number(thirdPartyData.count || 0);
+    log(`MSSW 第三方设备数量: ${totalThird}`);
+  } catch (error) {
+    log(`获取 MSSW 第三方设备数量失败: ${error.message}，将跳过第三方设备统计`);
   }
 
   return {
@@ -2615,6 +3160,7 @@ async function fetchAlertReductionRate(cookieInfo, xdrBaseUrl, options) {
 
 module.exports = {
   DEFAULT_XDR_BASE_URL,
+  DEFAULT_MSSW_BASE_URL,
   ASSET_COUNT_ENDPOINT,
   ASSET_STATISTICS_ENDPOINT: ASSET_COUNT_ENDPOINT,
   ASSET_PROTECTION_ENDPOINT,
@@ -2625,6 +3171,17 @@ module.exports = {
   normalizeBaseUrl,
   normalizeCookieContent,
   readXdrCookieInfo,
+  readMsswCookieInfo,
+  buildMsswHeaders,
+  buildMsswExportHeaders,
+  buildMsswIncidentExportRequestBody,
+  resolveMsswTimeRange,
+  triggerMsswIncidentExport,
+  pollMsswIncidentExportTask,
+  downloadMsswIncidentFile,
+  exportMsswIncidentList,
+  fetchMsswCustomerListPage,
+  findMsswCustomerIdByName,
   buildExportFieldsRequestBody,
   buildAssetExportRequestBody,
   buildAssetCountRequestBody,
@@ -2678,5 +3235,14 @@ module.exports = {
   buildLogSearchCountRequestBody,
   fetchSecurityLogCount,
   buildOverviewCountRequestBody,
-  fetchAlertReductionRate
+  fetchAlertReductionRate,
+  buildMsswAssetExportRequestBody,
+  fetchMsswExportFields,
+  triggerMsswAssetExport,
+  downloadMsswAssetFile,
+  exportMsswAssetList,
+  exportMsswDeviceList,
+  fetchMsswDeviceList,
+  fetchMsswThirdPartyDeviceStats,
+  collectMsswDeviceCategoryCounts
 };

@@ -22,7 +22,12 @@ async function collectReportData(input) {
     return merged;
   }
 
-  throw new Error('Real data source requires --xdr-cookie-path.');
+  // MSSW 模式（无 xdr-cookie-path），跳过资产台账 API 查询
+  logInfo(input.logger, '使用 MSSW 数据生成报告（跳过 XDR 资产台账）');
+  const baseData = buildBaseReportData(input);
+  let merged = applyAssetStatusStats(baseData, input.assetStatusStats);
+  merged = applyIncidentStatusStats(merged, input.incidentStatusStats);
+  return merged;
 }
 
 function logInfo(logger, message) {

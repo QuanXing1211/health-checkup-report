@@ -1,18 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e \"\nconst { rankBusinessSystems } = require(''./src/business_system_ranking'');\nrankBusinessSystems({ logger: console.error }).then(r => {\n  console.log(''Top5:'');\n  r.top5.forEach((x,i) => console.log(''  ''+(i+1)+''.'', x.system, ''critical=''+x.critical, ''high=''+x.high, ''medium=''+x.medium, ''low=''+x.low, ''total=''+x.total));\n  console.log(''Excel:'', r.excelPath);\n}).catch(e => console.error(''ERROR:'', e));\n\")",
-      "Bash(node --check \"c:\\Users\\User\\Desktop\\health-checkup-report\\src\\xdr_asset_client.js\")",
-      "Bash(node --check \"c:\\Users\\User\\Desktop\\health-checkup-report\\health_report.js\")",
-      "Bash(node --check \"c:\\Users\\User\\Desktop\\health-checkup-report\\src\\template_renderer.js\")",
-      "Bash(node --check \"c:\\Users\\User\\Desktop\\health-checkup-report\\src\\data_client.js\")",
-      "Bash(npm test)",
-      "Bash(node tests/data_client.test.js)",
-      "Bash(node tests/renderer.test.js)",
-      "Bash(node -e \"const m = require(''./src/xdr_asset_client''); console.log(''Module loaded OK''); console.log(''Exports:'', Object.keys(m).join('', ''));\")",
-      "Bash(node -e \"\nconst { buildLogSearchCountRequestBody, parseLocalDate } = require(''./src/xdr_asset_client'');\nconst begin = parseLocalDate(''2026-06-18'', false);\nconst end = parseLocalDate(''2026-06-18'', true);\nconst body = buildLogSearchCountRequestBody({ begin, end });\nconsole.log(''Request body:'', JSON.stringify(body, null, 2));\nconsole.log(''begin:'', begin, ''end:'', end);\n\")",
-      "Bash(node -e \"\nconst { buildOverviewCountRequestBody, parseLocalDate, fetchAlertReductionRate } = require(''./src/xdr_asset_client'');\nconst begin = parseLocalDate(''2026-06-18'', false);\nconst end = parseLocalDate(''2026-06-18'', true);\nconst body = buildOverviewCountRequestBody({ begin, end });\nconsole.log(''Request body:'', JSON.stringify(body, null, 2));\nconsole.log(''begin:'', begin, ''end:'', end);\n\")",
-      "Bash(node -e \"const m = require(''./src/xdr_asset_client''); console.log(''buildOverviewCountRequestBody:'', typeof m.buildOverviewCountRequestBody); console.log(''fetchAlertReductionRate:'', typeof m.fetchAlertReductionRate);\")"
+      "Bash(node --check src/data_client.js)"
     ],
     "deny": [],
     "ask": []

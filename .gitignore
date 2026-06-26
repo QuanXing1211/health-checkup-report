@@ -3,4 +3,5 @@ output/
 *.log
 cookies.txt
 xdr_cookies.txt
+mssw_cookies.txt
 
