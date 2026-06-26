@@ -35,6 +35,8 @@ node health_report.js `
 
 当前 `output/report-data.json` 的字段约定如下。后续新增取值逻辑必须继续补这张表。
 
+业务系统排名脚本当前只按资产表的 `资产组名` 字段归因到业务系统；如果资产表缺少该列，则回退到脚本内置的 IP 兜底映射。
+
 | 字段 | 语义 | 来源 | 取值逻辑 |
 | --- | --- | --- | --- |
 | `projectBackground.title` | 报告标题 | CLI / 默认值 | 固定为 `首次安全体检报告` |
@@ -43,22 +45,53 @@ node health_report.js `
 | `projectBackground.startDate` | 报告开始日期 | `--start` | 直接取命令行参数 |
 | `projectBackground.endDate` | 报告结束日期 | `--end` | 未传则取脚本执行当天 |
 | `projectBackground.generatedAt` | 数据生成时间 | 运行时 | 取脚本执行时的 ISO 时间字符串 |
-| `assetLedger.approve_asset` | 待审核资产数 | XDR 资产统计接口 | 取资产统计接口返回 `approve_asset` |
-| `assetLedger.core_asset` | 核心资产数 | XDR 资产统计接口 | 取资产统计接口返回 `core_asset` |
-| `assetLedger.eliminate_asset` | 退库资产数 | XDR 资产统计接口 | 取资产统计接口返回 `eliminate_asset` |
-| `assetLedger.manage_asset` | 台账资产数 | XDR 资产统计接口 | 取资产统计接口返回 `manage_asset` |
-| `assetLedger.typeDistribution` | 资产类型分布 | XDR 资产类型接口 | 按接口返回的 `server / terminal / other` 组装为数组 |
-| `assetLedger.protectionDistribution` | 资产防护统计 | XDR 资产防护接口 | 按接口返回的 `online / offline / disabled / demoted / unprotected` 组装为数组 |
-| `assetLedger.internetExposureDistribution` | 互联网暴露资产分布 | XDR 互联网暴露接口 | 按接口返回的 `server / terminal / other` 组装为数组 |
+| `assetLedger.core_asset` | 核心资产数 | XDR 资产台账 count 接口 | 取 `{"magnitude":{"op":"=","val":"core"}}` 的 `total` |
+| `assetLedger.manage_asset` | 台账资产数 | 导出的资产表 Excel | 统计第三行开始的有效行数 |
+| `assetLedger.ready_to_outbound` | 7天内即将退库资产数 | XDR 资产台账 count 接口 | 取 `{"ready_to_outbound":{"op":"=","val":"last7d"}}` 的 `total` |
+| `assetLedger.typeDistribution` | 资产类型分布 | 导出的资产表 Excel | 按资产类型列统计 `服务器 / 终端`，其他 = 台账资产 - 服务器 - 终端 |
+| `assetLedger.protectionDistribution` | 资产防护统计 | 导出的资产表 Excel | 按 agent 状态列统计 `在线 / 离线 / 已禁用 / 已降级`，`未防护资产 = 台账资产 - 在线 - 离线 - 已禁用 - 已降级` |
+| `assetLedger.internetExposureDistribution` | 互联网暴露资产分布 | 导出的资产表 Excel | 按互联网暴露列筛出暴露资产，再按资产类型列统计 `服务器 / 终端`，其他 = 暴露资产 - 服务器 - 终端 |
+| `assetLedger.internetExposureTotal` | 互联网暴露资产总数 | 导出的资产表 Excel | 统计互联网暴露列中命中的资产数 |
+| `riskOverview.securityLogTotal` | XDR接收安全日志数 | XDR 安全日志量接口 | 取 `log/search/count` 接口返回的总数 |
+| `riskOverview.alertTotal` | 有效告警数 | XDR 告警消减率接口 | 取 `overview/count` 接口返回的 `alertTotalCount.value` |
+| `riskOverview.totalEvents` | 有效安全事件数 | 导出的事件表 Excel | 直接复用 `riskDetails.totalEvents`，即事件表非空数据行数 |
+| `riskOverview.closedEvents` | 处置闭环数 | 导出的事件表 Excel | 直接复用 `riskDetails.closedEvents`，即 `处置状态 = 处置完成` 的事件行数 |
+| `riskOverview.containedEvents` | 总计遏制数 | 导出的事件表 Excel | 直接复用 `riskDetails.containedEvents`，即 `处置状态 = 已遏制` 的事件行数 |
+| `riskOverview.alertReductionRate` | 告警消减率 | XDR 告警消减率接口 | `1 - 有效告警数 / XDR接收安全日志数`，按接口返回值保留小数 |
+| `riskOverview.closeRate` | 事件闭环率 | 导出的事件表 Excel | 直接复用 `riskDetails.closeRate`，保证与风险详情完全一致 |
+| `riskOverview.yunyingAlertStats.c2VirusTotal` | C2外联&病毒文件总数 | 两个接口汇总 | `病毒木马活动` + `主机失陷活动` 命中数之和 |
+| `riskOverview.yunyingAlertStats.webVulnTotal` | Web攻击&Web漏洞总数 | 两个接口汇总 | `网站攻击` + `漏洞攻击` 命中数之和 |
+| `riskOverview.yunyingAlertStats.virusFiles.total` | 病毒文件总数 | GPT 运营告警查询接口 | 过滤 `gptResult.renderValue === 病毒木马活动`，统计命中行数 |
+| `riskOverview.yunyingAlertStats.virusFiles.hostIps` | 病毒文件主机列表 | GPT 运营告警查询接口 | 收集命中行里的 `hostIp.originalValue`，去重后保留原始主机 IP |
+| `riskOverview.yunyingAlertStats.virusFiles.records` | 病毒文件命中明细 | GPT 运营告警查询接口 | 保留每条命中的 `hostIp` / `gptResult` 原始包装值 |
+| `riskOverview.yunyingAlertStats.c2ExternalLink.total` | C2外联总数 | GPT 运营告警查询接口 | 过滤 `gptResult.renderValue === 主机失陷活动`，统计命中行数 |
+| `riskOverview.yunyingAlertStats.c2ExternalLink.hostIps` | C2外联主机列表 | GPT 运营告警查询接口 | 收集命中行里的 `hostIp.originalValue`，去重后保留原始主机 IP |
+| `riskOverview.yunyingAlertStats.c2ExternalLink.records` | C2外联命中明细 | GPT 运营告警查询接口 | 保留每条命中的 `hostIp` / `gptResult` 原始包装值 |
+| `riskOverview.yunyingAlertStats.exploitAttacks.total` | 漏洞利用总数 | GPT 运营告警查询接口 | 过滤 `threatClass.renderValue === 漏洞攻击`，统计命中行数 |
+| `riskOverview.yunyingAlertStats.exploitAttacks.hostIps` | 漏洞利用主机列表 | GPT 运营告警查询接口 | 收集命中行里的 `hostIp.originalValue`，去重后保留原始主机 IP |
+| `riskOverview.yunyingAlertStats.exploitAttacks.records` | 漏洞利用命中明细 | GPT 运营告警查询接口 | 保留每条命中的 `hostIp` / `gptResult` 原始包装值 |
+| `riskOverview.yunyingAlertStats.webAttacks.total` | Web攻击总数 | GPT 运营告警查询接口 | 过滤 `threatClass.renderValue === 网站攻击`，统计命中行数 |
+| `riskOverview.yunyingAlertStats.webAttacks.hostIps` | Web攻击主机列表 | GPT 运营告警查询接口 | 收集命中行里的 `hostIp.originalValue`，去重后保留原始主机 IP |
+| `riskOverview.yunyingAlertStats.webAttacks.records` | Web攻击命中明细 | GPT 运营告警查询接口 | 保留每条命中的 `hostIp` / `gptResult` 原始包装值 |
 | `riskDetails.totalAlerts` | 告警总数 | XDR 告警查询接口 | 取告警查询接口 `data.total` |
 | `riskDetails.totalEvents` | 事件总数 | XDR 事件数量接口 + 导出的事件表 Excel | 优先取数量接口 `data.total`，并用导出表统计结果校正闭环率 |
 | `riskDetails.severeEvents` | 严重事件数 | 导出的事件表 Excel | 统计 C 列值等于 `严重` 的事件行数 |
 | `riskDetails.highEvents` | 高危事件数 | 导出的事件表 Excel | 统计 C 列值等于 `高危` 的事件行数 |
-| `riskDetails.closedEvents` | 已闭环事件数 | 导出的事件表 Excel | 统计 S 列值等于 `已闭环` 的事件行数 |
+| `riskDetails.closedEvents` | 已闭环事件数 | 导出的事件表 Excel | 统计 `处置状态` 列值等于 `处置完成` 的事件行数；指标名仍保留“已闭环” |
+| `riskDetails.containedEvents` | 已遏制事件数 | 导出的事件表 Excel | 统计 S 列值等于 `已遏制` 的事件行数 |
 | `riskDetails.processingEvents` | 处置中事件数 | 导出的事件表 Excel | 统计 S 列值等于 `处置中` 的事件行数 |
-| `riskDetails.closeRate` | 闭环率 | 导出的事件表 Excel | `已闭环 / 总事件数 * 100`，四舍五入为整数 |
-| `riskDetails.uniqueAssetCount` | 涉及资产数 | 导出的事件表 Excel | 取 G 列 IP 部分去重计数，格式 `ip(资产组名)` 截取 `(` 前部分 |
-| `riskDetails.averageContainMin` | 威胁平均遏制时间 | 导出的事件表 Excel | 统计 AB 列所有非空单元格的平均值，空格跳过，四舍五入为整数 |
+| `riskDetails.closeRate` | 闭环率 | 导出的事件表 Excel | `已闭环事件数 / 总事件数 * 100`，四舍五入为整数 |
+| `riskDetails.alertReductionRate` | 告警消减率 | XDR 告警消减率接口 | 直接复用 XDR `overview/count` 的消减率计算结果 |
+| `riskDetails.uniqueAssetCount` | 涉及到的资产数 | 导出的事件表 Excel | 遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址（如 `10.5.40.62(未归类组)` 取 `10.5.40.62`）后去重计数 |
+| `riskOverview.devices` | 接入组件数 | 深信服设备列表接口 + 第三方设备列表接口 | 深信服设备总数优先取 `/api/apex/device/v1/devices/list` 返回的 `data.total`，第三方设备数取 `/api/apex/thirdparty/v1/app/instance/list` 的 `data.count`，两者相加 |
+| `riskDetails.devices` | 接入安全设备数 | 深信服设备列表接口 + 第三方设备列表接口 | 保留兼容字段，值与 `riskDetails.sangfor + riskDetails.third` 一致 |
+| `riskDetails.sangfor` | 深信服设备数 | 深信服设备列表接口 | 取 `/api/apex/device/v1/devices/list` 返回的 `data.total` |
+| `riskDetails.third` | 第三方设备数 | 第三方设备列表接口 | 取 `/api/apex/thirdparty/v1/app/instance/list` 返回的 `data.count` |
+| `riskDetails.af` | AF 设备数 | 深信服设备列表接口 | 遍历设备列表中 `devType` 等于 `3` 的记录计数 |
+| `riskDetails.aes` | aES 设备数 | 深信服设备列表接口 | 遍历设备列表中 `devType` 属于 `12 / 37 / 100038 / 50038 / 100012` 的记录计数 |
+| `riskDetails.sip` | SIP 设备数 | 深信服设备列表接口 | 遍历设备列表中 `devType` 等于 `9` 的记录计数 |
+| `riskDetails.sta` | STA 设备数 | 深信服设备列表接口 | 遍历设备列表中 `devType` 等于 `25` 的记录计数 |
+| `riskDetails.other_sf` | 其它深信服设备数 | 深信服设备列表接口 | 遍历设备列表中未命中上述映射的记录计数 |
 
 说明：
 

@@ -124,30 +124,25 @@ _IP_TO_SYSTEM_FALLBACK = {
 
 
 def parse_assets(filepath):
-    """资产清单: 提取 IP → 所属业务 映射"""
+    """资产清单: 提取 IP → 资产组名 映射"""
     mapping = {}
     wb = load_workbook(filepath, read_only=True, data_only=True)
     ws = wb.active
     header = [normalize(cell) for cell in next(ws.iter_rows(values_only=True))]
 
-    ip_col = biz_col = biz2_col = None
+    ip_col = biz_group_col = None
     for i, name in enumerate(header):
         if name in ('IP地址', '风险资产'):
             ip_col = i
-        if name in ('所属业务',):
-            biz_col = i
         if name in ('资产组名',):
-            biz2_col = i
+            biz_group_col = i
 
-    if ip_col is None or (biz_col is None and biz2_col is None):
+    if ip_col is None or biz_group_col is None:
         return _IP_TO_SYSTEM_FALLBACK
 
     for row in ws.iter_rows(min_row=2, values_only=True):
         ip = normalize(row[ip_col] if len(row) > ip_col else '')
-        # 优先读"所属业务"，没有的话读"资产组名"
-        biz = normalize(row[biz_col] if biz_col is not None and len(row) > biz_col else '')
-        if not biz and biz2_col is not None:
-            biz = normalize(row[biz2_col] if len(row) > biz2_col else '')
+        biz = normalize(row[biz_group_col] if len(row) > biz_group_col else '')
         if ip and biz and ip not in ('未知', '') and biz not in ('未知', '', '未归类组'):
             mapping[ip] = biz
 

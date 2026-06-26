@@ -5,8 +5,9 @@ const path = require('path');
 const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
+const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, fetchAlertReductionRate, readXdrCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts } = require('./src/xdr_asset_client');
+const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, fetchAlertReductionRate, readXdrCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts } = require('./src/xdr_asset_client');
 const { renderReportToFile } = require('./src/template_renderer');
 
 async function main() {
@@ -17,6 +18,14 @@ async function main() {
   if (command === 'help' || options.help) {
     printHelp();
     return;
+  }
+
+  if (options['xdr-cookie-path']) {
+    await exportXdrDeviceList({
+      xdrCookiePath: options['xdr-cookie-path'],
+      xdrBaseUrl: options['xdr-base-url'],
+      logger
+    });
   }
 
   if (command && command !== 'generate') {
@@ -91,6 +100,7 @@ async function main() {
     logger('跳过 XDR 导出');
   }
 
+  const assetStatusStats = await summarizeExportedAssetStatus(xdrExports, logger);
   const incidentStatusStats = await summarizeExportedIncidentStatus(xdrExports, logger);
 
   const reportData = await collectReportData({
@@ -99,6 +109,7 @@ async function main() {
     start: options.start,
     end,
     xdrCookiePath: options['xdr-cookie-path'],
+    assetStatusStats,
     incidentStatusStats,
     logger
   });
@@ -159,6 +170,9 @@ async function main() {
         logger('正在查询设备分类数量...');
         const deviceCounts = await collectDeviceCategoryCounts(cookieInfo, resolved.xdrBaseUrl, logger);
         reportData.riskDetails = Object.assign(reportData.riskDetails || {}, deviceCounts);
+        reportData.riskOverview = Object.assign(reportData.riskOverview || {}, {
+          devices: deviceCounts.devices
+        });
         logger(`设备总数: ${deviceCounts.devices}, AF: ${deviceCounts.af}, AES: ${deviceCounts.aes}, SIP: ${deviceCounts.sip}, STA: ${deviceCounts.sta}`);
       } catch (error) {
         logger(`获取设备分类数量失败: ${error.message}，将跳过设备分类统计`);
@@ -282,7 +296,28 @@ async function summarizeExportedIncidentStatus(xdrExports, logger) {
     stats.totalEvents = Number(xdrExports.incident.totalEvents);
     stats.closeRate = stats.totalEvents ? Math.round((stats.closedEvents / stats.totalEvents) * 100) : 0;
   }
-  logWith(logger, `事件表统计完成: 事件数 ${stats.totalEvents} 起，严重 ${stats.severeEvents} 起，高危 ${stats.highEvents} 起，涉及资产 ${stats.uniqueAssetCount} 个，已闭环 ${stats.closedEvents} 起，处置中 ${stats.processingEvents} 起，闭环率 ${stats.closeRate}%`);
+  logWith(logger, `事件表统计完成: 事件数 ${stats.totalEvents} 起，严重 ${stats.severeEvents} 起，高危 ${stats.highEvents} 起，涉及到的资产数 ${stats.uniqueAssetCount} 个，已闭环 ${stats.closedEvents} 起，已遏制 ${stats.containedEvents} 起，处置中 ${stats.processingEvents} 起，闭环率 ${stats.closeRate}%`);
+  return stats;
+}
+
+async function summarizeExportedAssetStatus(xdrExports, logger) {
+  const assetFilePath = xdrExports && xdrExports.asset ? xdrExports.asset.filePath : '';
+  if (!assetFilePath) {
+    return null;
+  }
+
+  logWith(logger, `开始统计资产表: ${assetFilePath}`);
+  const stats = await summarizeAssetTable(assetFilePath);
+  const getCount = (name) => {
+    const item = Array.isArray(stats && stats.typeDistribution)
+      ? stats.typeDistribution.find((entry) => entry && entry.name === name)
+      : null;
+    return item ? Number(item.value || 0) : 0;
+  };
+  logWith(
+    logger,
+    `资产表统计完成: 资产总数 ${stats.assetTotal} 个，服务器 ${getCount('服务器')} 个，终端 ${getCount('终端')} 个，暴露资产 ${Number(stats.internetExposureTotal || 0)} 个`
+  );
   return stats;
 }
 

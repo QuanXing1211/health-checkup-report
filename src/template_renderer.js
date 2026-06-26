@@ -4,7 +4,7 @@ const fs = require('fs/promises');
 const path = require('path');
 
 const DATA_FIELD_MAP = {
-  'ops.devices-v': 'riskDetails.devices',
+  'ops.devices-v': 'riskOverview.devices',
   'ops.sangfor-v': 'riskDetails.sangfor',
   'ops.af-v': 'riskDetails.af',
   'ops.aes-v': 'riskDetails.aes',
@@ -117,7 +117,7 @@ function renderRepeats(html, data) {
 function renderAssetLedgerSummary(data) {
   const assetLedger = data.assetLedger || {};
   return [
-    paragraph(`【资产统计】台账资产${displayValue(assetLedger.manage_asset)}个，核心资产${displayValue(assetLedger.core_asset)}个，退库资产${displayValue(assetLedger.eliminate_asset)}个，待审核资产${displayValue(assetLedger.approve_asset)}个`),
+    paragraph(`【资产统计】台账资产${displayValue(assetLedger.manage_asset)}个，核心资产${displayValue(assetLedger.core_asset)}个，7天内即将退库${displayValue(assetLedger.ready_to_outbound)}个`),
     paragraph(`【资产类型分布】${formatNameValueList(assetLedger.typeDistribution)}`),
     paragraph(`【资产防护统计】${formatNameValueList(assetLedger.protectionDistribution)}`),
     paragraph(`【互联网暴露资产】${formatNameValueList(assetLedger.internetExposureDistribution)}`)
