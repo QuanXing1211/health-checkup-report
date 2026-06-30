@@ -1,0 +1,116 @@
+{
+  "projectBackground": {
+    "title": "首次安全体检报告",
+    "customerName": "测试001",
+    "customerId": "67262236",
+    "startDate": "2025-06-31",
+    "endDate": "2026-06-29",
+    "generatedAt": "2026-06-29T07:57:22.684Z"
+  },
+  "assetLedger": {
+    "core_asset": 22,
+    "ready_to_outbound": 0,
+    "manage_asset": 0,
+    "typeDistribution": [],
+    "protectionDistribution": [],
+    "internetExposureDistribution": []
+  },
+  "riskOverview": {
+    "incidentGptStats": {
+      "total": 8,
+      "hostCompromise": {
+        "total": 8,
+        "confirmedIncidentIds": [
+          "incident-276f8e1f-68c3-41c1-beff-8cfc53ded17e",
+          "incident-238c4c85-854b-42e4-abed-4411561a4a3d",
+          "incident-7de32116-da1f-49ea-bc26-9f65a12ffff1",
+          "incident-359b1ecf-b3b9-4d43-9fac-e1edba7716e4",
+          "incident-45b13141-fa01-4bcb-a85d-0a68961c51f9",
+          "incident-ee017945-7559-417d-87c8-96fce8c5e73b",
+          "incident-4adec58c-85fe-4682-b2a1-fcc9352ea027",
+          "incident-571bda15-8d13-4f23-af29-8f6013f95ca7"
+        ]
+      },
+      "virusTrojan": {
+        "total": 0,
+        "confirmedIncidentIds": []
+      },
+      "threatActorStats": [],
+      "threatTypeRanking": [],
+      "virusAttackAsset": "",
+      "nonAesCoveredAssets": [
+        "192.168.76.20",
+        "192.168.132.123"
+      ],
+      "unlabeledAssets": [
+        "192.168.76.20",
+        "192.168.132.123"
+      ]
+    },
+    "securityLogTotal": 0,
+    "alertTotal": 0,
+    "alertReductionRate": 0,
+    "closeRate": 52,
+    "closedEvents": 2058,
+    "containedEvents": 117,
+    "totalEvents": 3988,
+    "exploitStats": {
+      "total": 52,
+      "highRiskAsset": "172.20.81.107",
+      "attackSuccessCount": 2
+    },
+    "devices": 192
+  },
+  "riskDetails": {
+    "securityLogTotal": 0,
+    "alertTotal": 0,
+    "alertReductionRate": 0,
+    "closeRate": 52,
+    "totalEvents": 3988,
+    "severeEvents": 213,
+    "highEvents": 271,
+    "closedEvents": 2058,
+    "containedEvents": 117,
+    "processingEvents": 52,
+    "uniqueAssetCount": 2157,
+    "managedAssetEvents": 0,
+    "managedAssetContainedEvents": 0,
+    "managedAssetDisposedEvents": 0,
+    "managedEventCloseRate": 0,
+    "managedAssetCount": 0,
+    "topEventType": "后门攻击事件",
+    "top3BusinessSystems": [],
+    "eventTypeDistribution": [
+      {
+        "name": "后门攻击事件",
+        "value": 3623
+      },
+      {
+        "name": "-",
+        "value": 136
+      },
+      {
+        "name": "其他网络攻击事件",
+        "value": 53
+      },
+      {
+        "name": "漏洞利用",
+        "value": 52
+      },
+      {
+        "name": "挖矿病毒事件",
+        "value": 43
+      }
+    ],
+    "devices": 192,
+    "sangfor": 86,
+    "af": 33,
+    "aes": 45,
+    "sip": 2,
+    "sta": 1,
+    "other_sf": 5,
+    "third": 106
+  },
+  "appendix": {},
+  "msswCookie": "csrf_token=6fa9c710-cec9-4736-96ba-f5d33b684854; LAST_LOGIN_TYPE=sms; login-source=mss; pre_soc_token=4afce2eb-936a-4669-8ba4-0694fd76c57e; sensorsdata2015jssdkcross=%7B%22distinct_id%22%3A%221981b135d392ce-0cdb6893c548f9-26001c51-1327104-1981b135d3a77c%22%2C%22first_id%22%3A%22%22%2C%22props%22%3A%7B%22%24latest_traffic_source_type%22%3A%22%E7%9B%B4%E6%8E%A5%E6%B5%81%E9%87%8F%22%2C%22%24latest_search_keyword%22%3A%22%E6%9C%AA%E5%8F%96%E5%88%B0%E5%80%BC_%E7%9B%B4%E6%8E%A5%E6%89%93%E5%BC%80%22%2C%22%24latest_referrer%22%3A%22%22%7D%2C%22identities%22%3A%22eyIkaWRlbnRpdHlfY29va2llX2lkIjoiMTk4MWIxMzVkMzkyY2UtMGNkYjY4OTNjNTQ4ZjktMjYwMDFjNTEtMTMyNzEwNC0xOTgxYjEzNWQzYTc3YyJ9%22%2C%22history_login_id%22%3A%7B%22name%22%3A%22%22%2C%22value%22%3A%22%22%7D%2C%22%24device_id%22%3A%221981b135d392ce-0cdb6893c548f9-26001c51-1327104-1981b135d3a77c%22%7D; SF_cookie_91=19896900; SF_cookie_93=40912204; soc-token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOi0xLCJpc3MiOlsianMvdXdNNE1YaTJJNnMwMis4c0NWNloyL3U1RjI0YkY2NlNZMWVRT2ViUjJ0b01DU0VaWkF0WkRndGRra0NFRSJdLCJhdWQiOiJnUVd3Q0UzalVKMEJwK0VPbmpTSG5SbmRqSlpzZU42aGdmVHR6VGN2TmVKMnRvTUNTRVpaQXRaRGd0ZGtrQ0VFIiwiZW1haWxfbG9naW4iOiJxYWVsMUloNkdWazRqZkFoR1E2TWdYYTJnd0pJUmxrQzFrT0MxMlNRSVFRPSIsImVtYWlsIjoicWFlbDFJaDZHVms0amZBaEdRNk1nWGEyZ3dKSVJsa0Mxa09DMTJTUUlRUT0iLCJuYW1lIjoiYWRtaW4iLCJfaWQiOiI2NDA1NjM3MmY5YWRkOTFiMDllNjYzODEiLCJleHBlcnRfdHlwZSI6Im5vcm1hbCIsInNkc3BfaWQiOiIiLCJ0ZW5hbnRfaWQiOiIxMDAxIiwidGVuYW50X25hbWUiOiIiLCJwcm1faWQiOiIiLCJsb2dpbl90aW1lIjoiMTc4MjcxMjcyMDMyNiIsImNoYW5uZWwiOiIiLCJjaGFubmVsX2lkIjoiIiwicGhvbmVfbG9naW4iOiJGdWV2WldTSjVISG1oK05IQ0VYbUh3PT0iLCJqb2JfbnVtYmVyIjoiMTY0OTUiLCJ0aW1lIjoxNzgyNzEyNzIwMzI2LCJyb2xlIjp7Il9pZCI6IjYwMTE2YmQ4LTU5MzMtMDQ0ZS02NmU5LTIxYjYwMDAwMDAwMCIsIm5hbWUiOiJBZG1pbiIsInJvbGVfY29kZSI6IjAwMTEwMDEifSwiYXBwX2lkIjoibXNzX2RlZmF1bHQiLCJyb2xlcyI6WyI2MDExNmJkOC01OTMzLTA0NGUtNjZlOS0yMWI2MDAwMDAwMDAiXSwibG9naW4tc291cmNlIjoibXNzIiwiWC1FeHRlcm5hbC1TdHJlYW0iOiIifQ.BlkQ2QjfPdM8_S-hteM_tKUvBrBpQp8UYMA41jf3kXSACDBv0EISLxUiTChe_sEXDDPL3rrd94scNrgAGCehh7FEAvAHuY2cJZEESeZJohzRR7o4GD7k0bMBEW3-izz3ZLjxYSwdCo69hOhYABsB92cyUNW3chhSIT0QPJCSxCtRjOywYty7tEQoCzPOx6zagCrhm1FcFjGu8tCSWv2lkpZDFNEZlx4pq5Qb2GdGZJL-P-micZ-pEfg09M6tUoH5h4isZHQKdApKLVS-kdIvc5K66i64bebyOzWBenoPP5K5hkeUYvT5Y4i2eZtlcT_QGL1o4sVobRjnv0HSQR58EA; UEDC_LOGIN_LANGUAGE=zh_CN; UEDC_LOGIN_POLICY_VALUE=checked"
+}

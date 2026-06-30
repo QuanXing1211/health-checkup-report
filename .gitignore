@@ -1,5 +1,4 @@
 node_modules/
-output/
 *.log
 cookies.txt
 xdr_cookies.txt
