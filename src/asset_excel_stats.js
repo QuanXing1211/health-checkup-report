@@ -16,6 +16,8 @@ async function summarizeAssetTable(excelPath) {
   return {
     assetTotal,
     manage_asset: assetTotal,
+    core_asset: Number(parsed.core_asset || 0),
+    core_managed_asset: Number(parsed.core_managed_asset || 0),
     typeDistribution: toNameValueList(parsed.typeDistribution, [
       ['服务器', 'server'],
       ['终端', 'terminal'],
@@ -26,7 +28,7 @@ async function summarizeAssetTable(excelPath) {
       ['离线', '离线'],
       ['已禁用', '已禁用'],
       ['已降级', '已降级'],
-      ['未安装', '未安装']
+      ['未防护', '未防护']
     ]),
     internetExposureTotal: Number(parsed.internetExposureTotal || 0),
     internetExposureDistribution: toNameValueList(parsed.internetExposureDistribution, [

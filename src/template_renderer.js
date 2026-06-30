@@ -24,7 +24,10 @@ const SECTION_RENDERERS = {
 };
 
 const REPEAT_RENDERERS = {
-  'riskOverview.keyRisks': renderKeyRiskRows
+  'riskOverview.keyRisks': renderKeyRiskRows,
+  'riskDetails.highRiskIncidentExamples.vulnExploits': renderVulnExploitRows,
+  'riskDetails.highRiskIncidentExamples.viruses': renderVirusRows,
+  'riskDetails.highRiskIncidentExamples.c2Connections': renderC2Rows
 };
 
 async function renderReportToFile({ templatePath, outputDir, reportData }) {
@@ -146,6 +149,51 @@ function renderKeyRiskRows(rows) {
   ].join('')).join('');
 }
 
+function renderVulnExploitRows(rows) {
+  if (!rows.length) {
+    return '<tr><td colspan="4">暂无漏洞利用事件</td></tr>';
+  }
+
+  return rows.slice(0, 5).map((row) => [
+    '<tr>',
+    `<td><span class="sr-event-name">${escapeHtml(row.eventName || '')}</span></td>`,
+    `<td>${escapeHtml(row.affectedAsset || '')}</td>`,
+    `<td>${escapeHtml(row.lastOccurredAt || '')}</td>`,
+    `<td>${renderStatusTag(row.disposalStatus)}</td>`,
+    '</tr>'
+  ].join('')).join('');
+}
+
+function renderVirusRows(rows) {
+  if (!rows.length) {
+    return '<tr><td colspan="4">暂无病毒木马事件</td></tr>';
+  }
+
+  return rows.slice(0, 5).map((row) => [
+    '<tr>',
+    `<td><span class="sr-event-name">${escapeHtml(row.md5 || '')}</span></td>`,
+    `<td>${escapeHtml(row.affectedAsset || '')}</td>`,
+    `<td>${escapeHtml(row.lastOccurredAt || '')}</td>`,
+    `<td>${renderStatusTag(row.disposalStatus)}</td>`,
+    '</tr>'
+  ].join('')).join('');
+}
+
+function renderC2Rows(rows) {
+  if (!rows.length) {
+    return '<tr><td colspan="4">暂无 C2 外联事件</td></tr>';
+  }
+
+  return rows.slice(0, 5).map((row) => [
+    '<tr>',
+    `<td><span class="sr-event-name">${escapeHtml(row.ioc || '')}</span></td>`,
+    `<td>${escapeHtml(row.affectedAsset || '')}</td>`,
+    `<td>${escapeHtml(row.lastOccurredAt || '')}</td>`,
+    `<td>${renderStatusTag(row.disposalStatus)}</td>`,
+    '</tr>'
+  ].join('')).join('');
+}
+
 function paragraph(text) {
   return `<p class="sr-p">${text}</p>`;
 }
@@ -169,6 +217,12 @@ function formatNameValueList(items) {
 function formatLines(value) {
   const lines = Array.isArray(value) ? value : [value || ''];
   return lines.map((line, index) => `${index + 1}.${escapeHtml(String(line))}`).join('<br>');
+}
+
+function renderStatusTag(status) {
+  const text = String(status || '');
+  const level = /完成|闭环/.test(text) ? 'success' : (/处置中/.test(text) ? 'warning' : 'info');
+  return `<span class="sr-tag sr-tag--light sr-tag--${level}">${escapeHtml(text)}</span>`;
 }
 
 function injectReportData(html, data) {

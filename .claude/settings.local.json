@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e \"\nconst { extractIncidentTypeStats } = require(''./src/incident_excel_stats'');\nconst fs = require(''fs'');\nconst os = require(''os'');\nconst path = require(''path'');\nconst { execFileSync } = require(''child_process'');\nasync function test() {\n  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), ''health-report-''));\n  const excelPath = path.join(tmpDir, ''full.xlsx'');\n  const pyCode = [\n    ''from openpyxl import Workbook'',\n    ''import sys'',\n    ''wb = Workbook()'',\n    ''ws = wb.active'',\n    ''ws.append([\"\"等级\"\", \"\"安全事件一级分类\"\", \"\"影响资产\"\", \"\"处置状态\"\"])'',\n    ''ws.append([\"\"严重\"\", \"\"漏洞利用\"\", \"\"10.5.40.62\"\", \"\"处置完成\"\"])'',\n    ''ws.append([\"\"高危\"\", \"\"病毒木马\"\", \"\"10.5.40.63\"\", \"\"已遏制\"\"])'',\n    ''ws.append([\"\"高危\"\", \"\"漏洞利用\"\", \"\"10.5.40.62\"\", \"\"处置中\"\"])'',\n    ''ws.append([\"\"中危\"\", \"\"Web攻击\"\", \"\"192.168.1.10\"\", \"\"处置完成\"\"])'',\n    ''ws.append([\"\"低危\"\", \"\"暴力破解\"\", \"\"172.16.0.8\"\", \"\"处置完成\"\"])'',\n    ''wb.save(sys.argv[1])''\n  ].join(''\\n'');\n  execFileSync(''python'', [''-c'', pyCode, excelPath], { encoding: ''utf8'', stdio: ''pipe'' });\n  const result = await extractIncidentTypeStats(excelPath);\n  console.log(''topEventType:'', result.topEventType);\n  console.log(''eventTypeDistribution:'', JSON.stringify(result.eventTypeDistribution));\n  console.log(''All OK'');\n}\ntest().catch(e => { console.error(e); process.exit(1); });\n\")"
+      "Bash(node tests/data_client.test.js)",
+      "Bash(node tests/incident_excel_stats.test.js)",
+      "Bash(node tests/renderer.test.js)",
+      "Bash(node tests/asset_excel_stats.test.js)"
     ],
     "deny": [],
     "ask": []

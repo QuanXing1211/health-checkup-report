@@ -101,6 +101,54 @@ async function extractIncidentAssetInfo(incidentExcelPath, assetExcelPath, confi
   return JSON.parse(stdout);
 }
 
+async function extractC2ConnectionExamples(incidentExcelPath, confirmedIds) {
+  if (!incidentExcelPath || !Array.isArray(confirmedIds) || !confirmedIds.length) {
+    return {
+      c2Connections: []
+    };
+  }
+
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_c2_connection_examples.py');
+  const stdout = await execPythonWithArgs(
+    scriptPath,
+    [incidentExcelPath, JSON.stringify(confirmedIds)],
+    '提取 C2 外联事件举例失败'
+  );
+  return JSON.parse(stdout);
+}
+
+async function extractVirusTrojanExamples(incidentExcelPath, confirmedIds) {
+  if (!incidentExcelPath || !Array.isArray(confirmedIds) || !confirmedIds.length) {
+    return {
+      viruses: []
+    };
+  }
+
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_virus_trojan_examples.py');
+  const stdout = await execPythonWithArgs(
+    scriptPath,
+    [incidentExcelPath, JSON.stringify(confirmedIds)],
+    '提取病毒木马事件举例失败'
+  );
+  return JSON.parse(stdout);
+}
+
+async function extractVulnExploitExamples(incidentExcelPath, incidentIds) {
+  if (!incidentExcelPath || !Array.isArray(incidentIds) || !incidentIds.length) {
+    return {
+      vulnExploits: []
+    };
+  }
+
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_vuln_exploit_examples.py');
+  const stdout = await execPythonWithArgs(
+    scriptPath,
+    [incidentExcelPath, JSON.stringify(incidentIds)],
+    '提取漏洞利用事件举例失败'
+  );
+  return JSON.parse(stdout);
+}
+
 async function summarizeManagedAssetIncidents(assetExcelPath, incidentExcelPath) {
   if (!assetExcelPath || !incidentExcelPath) {
     return {
@@ -109,8 +157,10 @@ async function summarizeManagedAssetIncidents(assetExcelPath, incidentExcelPath)
       managedAssetDisposedEvents: 0,
       managedEventCloseRate: 0,
       managedAssetCount: 0,
+      managedAvgResponseTime: 0,
       topEventType: '',
-      top3BusinessSystems: []
+      top3BusinessSystems: '',
+      businessSystemEventDistribution: []
     };
   }
 
@@ -124,8 +174,10 @@ async function summarizeManagedAssetIncidents(assetExcelPath, incidentExcelPath)
     managedAssetDisposedEvents: Number(parsed.managedAssetDisposedEvents || 0),
     managedEventCloseRate: Number(parsed.managedEventCloseRate || 0),
     managedAssetCount: Number(parsed.managedAssetCount || 0),
+    managedAvgResponseTime: Number(parsed.managedAvgResponseTime || 0),
     topEventType: String(parsed.topEventType || ''),
-    top3BusinessSystems: Array.isArray(parsed.top3BusinessSystems) ? parsed.top3BusinessSystems : []
+    top3BusinessSystems: String(parsed.top3BusinessSystems || ''),
+    businessSystemEventDistribution: Array.isArray(parsed.businessSystemEventDistribution) ? parsed.businessSystemEventDistribution : []
   };
 }
 
@@ -134,7 +186,8 @@ async function extractExploitStats(incidentExcelPath) {
     return {
       total: 0,
       highRiskAsset: '',
-      attackSuccessCount: 0
+      attackSuccessCount: 0,
+      incidentIds: []
     };
   }
 
@@ -149,7 +202,8 @@ async function extractExploitStats(incidentExcelPath) {
   return {
     total: Number(parsed.total || 0),
     highRiskAsset: String(parsed.highRiskAsset || ''),
-    attackSuccessCount: Number(parsed.attackSuccessCount || 0)
+    attackSuccessCount: Number(parsed.attackSuccessCount || 0),
+    incidentIds: Array.isArray(parsed.incidentIds) ? parsed.incidentIds : []
   };
 }
 
@@ -180,6 +234,9 @@ module.exports = {
   removeIncidentRows,
   parseIncidentGptStats,
   extractIncidentAssetInfo,
+  extractC2ConnectionExamples,
+  extractVirusTrojanExamples,
+  extractVulnExploitExamples,
   summarizeManagedAssetIncidents,
   extractExploitStats,
   extractIncidentTypeStats

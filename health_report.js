@@ -6,8 +6,8 @@ const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
-const { summarizeIncidentStatus, extractExploitStats, summarizeManagedAssetIncidents, extractIncidentTypeStats } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, fetchAlertReductionRate, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/xdr_asset_client');
+const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats } = require('./src/incident_excel_stats');
+const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/xdr_asset_client');
 const { renderReportToFile } = require('./src/template_renderer');
 
 async function main() {
@@ -150,6 +150,7 @@ async function main() {
 
   // 从事件表提取漏洞利用统计（不阻断主流程）
   let exploitStats = null;
+  let vulnExploitExamples = [];
   const incidentFilePath = xdrExports && xdrExports.incident ? xdrExports.incident.filePath : '';
   if (incidentFilePath) {
     try {
@@ -157,6 +158,14 @@ async function main() {
       logger(`漏洞利用事件统计: 共 ${exploitStats.total} 起, 攻击成功 ${exploitStats.attackSuccessCount} 次, 影响资产 ${exploitStats.highRiskAsset || '无'}`);
     } catch (error) {
       logger(`提取漏洞利用事件统计失败（不影响主流程）: ${error.message}`);
+    }
+
+    try {
+      const exploitExamples = await extractVulnExploitExamples(incidentFilePath, exploitStats ? exploitStats.incidentIds : []);
+      vulnExploitExamples = Array.isArray(exploitExamples.vulnExploits) ? exploitExamples.vulnExploits : [];
+      logger(`漏洞利用事件举例已提取: ${vulnExploitExamples.length} 条`);
+    } catch (error) {
+      logger(`提取漏洞利用事件举例失败（不影响主流程）: ${error.message}`);
     }
   }
 
@@ -193,6 +202,11 @@ async function main() {
     logger(`漏洞利用数据已合并: total=${exploitStats.total}, attackSuccessCount=${exploitStats.attackSuccessCount}`);
   }
 
+  if (!reportData.riskDetails.highRiskIncidentExamples || typeof reportData.riskDetails.highRiskIncidentExamples !== 'object') {
+    reportData.riskDetails.highRiskIncidentExamples = {};
+  }
+  reportData.riskDetails.highRiskIncidentExamples.vulnExploits = vulnExploitExamples;
+
   // 合并托管资产事件统计到报告数据（始终写入默认值，有数据时覆盖）
   Object.assign(reportData.riskDetails, {
     managedAssetEvents: 0,
@@ -200,8 +214,10 @@ async function main() {
     managedAssetDisposedEvents: 0,
     managedEventCloseRate: 0,
     managedAssetCount: 0,
+    managedAvgResponseTime: 0,
     topEventType: '',
-    top3BusinessSystems: []
+    top3BusinessSystems: '',
+    businessSystemEventDistribution: []
   });
   if (managedAssetIncidentStats) {
     Object.assign(reportData.riskDetails, {
@@ -210,12 +226,15 @@ async function main() {
       managedAssetDisposedEvents: managedAssetIncidentStats.managedAssetDisposedEvents,
       managedEventCloseRate: managedAssetIncidentStats.managedEventCloseRate,
       managedAssetCount: managedAssetIncidentStats.managedAssetCount,
+      managedAvgResponseTime: managedAssetIncidentStats.managedAvgResponseTime,
       topEventType: managedAssetIncidentStats.topEventType,
-      top3BusinessSystems: managedAssetIncidentStats.top3BusinessSystems
+      top3BusinessSystems: managedAssetIncidentStats.top3BusinessSystems,
+      businessSystemEventDistribution: managedAssetIncidentStats.businessSystemEventDistribution
     });
-    logger(`托管资产事件数据已合并: events=${managedAssetIncidentStats.managedAssetEvents}, contained=${managedAssetIncidentStats.managedAssetContainedEvents}, disposed=${managedAssetIncidentStats.managedAssetDisposedEvents}, closeRate=${managedAssetIncidentStats.managedEventCloseRate}%`);
+    logger(`托管资产事件数据已合并: events=${managedAssetIncidentStats.managedAssetEvents}, contained=${managedAssetIncidentStats.managedAssetContainedEvents}, disposed=${managedAssetIncidentStats.managedAssetDisposedEvents}, closeRate=${managedAssetIncidentStats.managedEventCloseRate}%, avgResponseTime=${managedAssetIncidentStats.managedAvgResponseTime}分钟`);
     logger(`最多类型事件: ${managedAssetIncidentStats.topEventType}`);
-    logger(`TOP3业务系统: ${JSON.stringify(managedAssetIncidentStats.top3BusinessSystems)}`);
+    logger(`TOP3业务系统: ${managedAssetIncidentStats.top3BusinessSystems}`);
+    logger(`业务系统安全事件分布: ${JSON.stringify(managedAssetIncidentStats.businessSystemEventDistribution)}`);
   }
 
   // 从事件表独立计算安全事件类型分布（不依赖资产表）
@@ -230,6 +249,15 @@ async function main() {
     }
   }
 
+  // 事件类型分布超过 5 项时才在末尾补充"其他"（取值 = 总事件数 - 已有类型事件数之和）
+  const dist = reportData.riskDetails.eventTypeDistribution;
+  if (Array.isArray(dist) && dist.length >= 5) {
+    const sum = dist.reduce((acc, item) => acc + (item.value || 0), 0);
+    const otherValue = (reportData.riskDetails.totalEvents || 0) - sum;
+    dist.push({ name: '其他', value: otherValue >= 0 ? otherValue : 0 });
+    logger(`事件类型分布已补充"其他": ${otherValue} 起`);
+  }
+
   if (options['xdr-cookie-path']) {
     let cookieInfo, resolved;
     try {
@@ -237,51 +265,9 @@ async function main() {
       resolved = await resolveWorkingXdrBaseUrl(cookieInfo, options['xdr-base-url'], logger);
     } catch (error) {
       logger(`初始化 XDR 连接失败: ${error.message}`);
-      reportData.riskDetails.totalAlerts = 0;
     }
 
     if (cookieInfo && resolved) {
-      try {
-        logger('正在查询 XDR 告警总数...');
-        const alertCountResult = await fetchAlertTableCount(cookieInfo, resolved.xdrBaseUrl, {
-          start: effectiveTimeRange.start,
-          end: effectiveTimeRange.end
-        });
-        reportData.riskDetails.totalAlerts = alertCountResult.total;
-        logger(`告警总数: ${alertCountResult.total}`);
-      } catch (error) {
-        logger(`获取告警总数失败: ${error.message}，将跳过告警数`);
-        reportData.riskDetails.totalAlerts = 0;
-      }
-
-      try {
-        logger('正在查询安全日志量...');
-        const securityLogCount = await fetchSecurityLogCount(cookieInfo, resolved.xdrBaseUrl, {
-          start: effectiveTimeRange.start,
-          end: effectiveTimeRange.end
-        });
-        reportData.riskDetails.securityLogCount = securityLogCount;
-        logger(`安全日志量: ${securityLogCount}`);
-      } catch (error) {
-        logger(`获取安全日志量失败: ${error.message}，将跳过安全日志量`);
-        reportData.riskDetails.securityLogCount = 0;
-      }
-
-      try {
-        logger('正在查询告警消减率...');
-        const reductionResult = await fetchAlertReductionRate(cookieInfo, resolved.xdrBaseUrl, {
-          start: effectiveTimeRange.start,
-          end: effectiveTimeRange.end
-        });
-        reportData.riskDetails.alertTotal = reductionResult.alertTotal;
-        reportData.riskDetails.incidentTotal = reductionResult.incidentTotal;
-        reportData.riskDetails.reductionRate = reductionResult.reductionRate;
-        logger(`告警总数: ${reductionResult.alertTotal}, 事件数: ${reductionResult.incidentTotal}, 消减率: ${(reductionResult.reductionRate * 100).toFixed(2)}%`);
-      } catch (error) {
-        logger(`获取告警消减率失败: ${error.message}，将跳过告警消减率`);
-        reportData.riskDetails.reductionRate = 0;
-      }
-
       try {
         logger('正在查询设备分类数量...');
         const deviceCounts = await collectDeviceCategoryCounts(cookieInfo, resolved.xdrBaseUrl, logger);
@@ -299,7 +285,6 @@ async function main() {
   if (options['mssw-cookie-path']) {
     try {
       const loadedMsswCookie = msswCookie || await readMsswCookieInfo(options['mssw-cookie-path']);
-      reportData.msswCookie = loadedMsswCookie.cookieString;
       logger(`MSSW Cookie 已加载: ${loadedMsswCookie.resolvedPath}`);
 
       // 通过 MSSW 接口查询设备分类数量

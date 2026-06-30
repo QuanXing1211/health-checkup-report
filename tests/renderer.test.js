@@ -59,7 +59,33 @@ const data = {
     closedEvents: 68,
     containedEvents: 72,
     processingEvents: 18,
-    closeRate: 79
+    closeRate: 79,
+    highRiskIncidentExamples: {
+      vulnExploits: [
+        {
+          eventName: '利用漏洞获取Linux用户信息',
+          affectedAsset: '192.168.1.221',
+          lastOccurredAt: '2025-05-29 20:43:16',
+          disposalStatus: '已闭环'
+        }
+      ],
+      viruses: [
+        {
+          md5: 'a3f2…8c1d',
+          affectedAsset: '192.168.1.221',
+          lastOccurredAt: '2025-06-19 00:36:52',
+          disposalStatus: '已闭环'
+        }
+      ],
+      c2Connections: [
+        {
+          ioc: 'malicious.example.com',
+          affectedAsset: '192.168.1.221',
+          lastOccurredAt: '2025-06-19 00:36:52',
+          disposalStatus: '已闭环'
+        }
+      ]
+    }
   }
 };
 
@@ -80,6 +106,9 @@ const html = renderTemplate(`
 <div data-section="assetLedger.summary"></div>
 <p>涉及到的资产数 <span data-field="riskDetails.uniqueAssetCount">0</span> 个</p>
 <table><tbody data-repeat="riskOverview.keyRisks"></tbody></table>
+<table><tbody data-repeat="riskDetails.highRiskIncidentExamples.vulnExploits"></tbody></table>
+<table><tbody data-repeat="riskDetails.highRiskIncidentExamples.viruses"></tbody></table>
+<table><tbody data-repeat="riskDetails.highRiskIncidentExamples.c2Connections"></tbody></table>
 </body></html>
 `, data);
 
@@ -98,6 +127,9 @@ assert(html.includes('事件遏制 <span data-field="riskDetails.containedEvents
 assert(html.includes('【资产统计】台账资产520个，核心资产88个，7天内即将退库7个'));
 assert(html.includes('涉及到的资产数 <span data-field="riskDetails.uniqueAssetCount">12</span> 个'));
 assert(html.includes('<tbody data-repeat="riskOverview.keyRisks"><tr><td>【威胁运营】大量病毒文件、C2外联事件</td>'));
+assert(html.includes('<tbody data-repeat="riskDetails.highRiskIncidentExamples.vulnExploits"><tr><td><span class="sr-event-name">利用漏洞获取Linux用户信息</span></td><td>192.168.1.221</td><td>2025-05-29 20:43:16</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr></tbody>'));
+assert(html.includes('<tbody data-repeat="riskDetails.highRiskIncidentExamples.viruses"><tr><td><span class="sr-event-name">a3f2…8c1d</span></td><td>192.168.1.221</td><td>2025-06-19 00:36:52</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr></tbody>'));
+assert(html.includes('<tbody data-repeat="riskDetails.highRiskIncidentExamples.c2Connections"><tr><td><span class="sr-event-name">malicious.example.com</span></td><td>192.168.1.221</td><td>2025-06-19 00:36:52</td><td><span class="sr-tag sr-tag--light sr-tag--success">已闭环</span></td></tr></tbody>'));
 assert(html.includes('window.SECURITY_REPORT_DATA='));
 
 console.log('renderer.test.js passed');

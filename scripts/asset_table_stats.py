@@ -33,7 +33,8 @@ def classify_asset_type(value):
     return "other"
 
 
-CN_PROTECTION_STATUSES = {"在线", "离线", "已禁用", "已降级", "未安装"}
+CN_PROTECTION_STATUSES = {"在线", "离线", "已禁用", "已降级"}
+CN_UNPROTECTED_STATUSES = {"已卸载", "已移除", "未接入", "未授权"}
 
 
 def main():
@@ -49,8 +50,12 @@ def main():
     type_column = find_column(headers, ("资产类型(一级)",))
     protection_column = find_column(headers, ("agent状态",))
     exposure_column = find_column(headers, ("互联网暴露",))
+    importance_column = find_column(headers, ("重要级别",))
+    managed_column = find_column(headers, ("托管状态",))
 
     asset_total = 0
+    core_asset = 0
+    core_managed_asset = 0
     type_counts = {"server": 0, "terminal": 0}
     protection_counts = {}  # 直接记录中文值
     exposure_total = 0
@@ -73,6 +78,8 @@ def main():
             raw = normalize(row[protection_column])
             if raw in CN_PROTECTION_STATUSES:
                 protection_counts[raw] = protection_counts.get(raw, 0) + 1
+            elif raw in CN_UNPROTECTED_STATUSES:
+                protection_counts["未防护"] = protection_counts.get("未防护", 0) + 1
 
         # ---- 互联网暴露：仅"未暴露"算不暴露，其余都算暴露 ----
         exposed = False
@@ -88,8 +95,24 @@ def main():
                 if asset_type in exposure_type_counts:
                     exposure_type_counts[asset_type] += 1
 
+        # ---- 核心资产：根据"重要级别"列统计 ----
+        is_core = False
+        if importance_column is not None and importance_column < len(row):
+            raw = normalize(row[importance_column])
+            if raw and "核心" in raw:
+                is_core = True
+                core_asset += 1
+
+        # ---- 核心已托管：核心资产中"托管状态"为"已托管" ----
+        if is_core and managed_column is not None and managed_column < len(row):
+            raw = normalize(row[managed_column])
+            if "已托管" in raw:
+                core_managed_asset += 1
+
     print(json.dumps({
         "assetTotal": asset_total,
+        "core_asset": core_asset,
+        "core_managed_asset": core_managed_asset,
         "typeDistribution": {
             "server": type_counts["server"],
             "terminal": type_counts["terminal"],

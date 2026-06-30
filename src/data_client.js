@@ -28,6 +28,8 @@ async function collectReportData(input) {
     });
 
     let merged = deepMerge(baseData, xdrData);
+    // core_asset 改为由 Excel 资产表统计提供，不查接口
+    merged.assetLedger.core_asset = 0;
     merged = applyAssetStatusStats(merged, input.assetStatusStats);
     merged = applyIncidentStatusStats(merged, input.incidentStatusStats);
     return merged;
@@ -72,6 +74,7 @@ function applyIncidentStatusStats(reportData, stats) {
     merged.riskOverview.containedEvents = merged.riskDetails.containedEvents;
     merged.riskOverview.totalEvents = merged.riskDetails.totalEvents;
     merged.riskOverview.alertReductionRate = merged.riskDetails.alertReductionRate;
+    merged.riskOverview.affectedAssetCount = merged.riskDetails.uniqueAssetCount;
   }
 
   return merged;
@@ -84,6 +87,8 @@ function applyAssetStatusStats(reportData, stats) {
 
   const merged = deepMerge(reportData, {
     assetLedger: {
+      core_asset: Number(stats.core_asset || 0),
+      core_managed_asset: Number(stats.core_managed_asset || 0),
       manage_asset: Number(stats.manage_asset || stats.assetTotal || 0),
       typeDistribution: Array.isArray(stats.typeDistribution) ? stats.typeDistribution : [],
       protectionDistribution: Array.isArray(stats.protectionDistribution) ? stats.protectionDistribution : [],
@@ -111,8 +116,7 @@ function buildBaseReportData(input) {
     },
     assetLedger: {},
     riskOverview: {},
-    riskDetails: {},
-    appendix: {}
+    riskDetails: {}
   };
 }
 

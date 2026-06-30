@@ -6,7 +6,7 @@ const https = require('https');
 const http = require('http');
 const path = require('path');
 
-const { removeIncidentRows, parseIncidentGptStats, extractIncidentAssetInfo } = require('./incident_excel_stats');
+const { removeIncidentRows, parseIncidentGptStats, extractIncidentAssetInfo, extractC2ConnectionExamples, extractVirusTrojanExamples } = require('./incident_excel_stats');
 
 const DEFAULT_XDR_BASE_URL = normalizeBaseUrl(process.env.SANGFOR_XDR_BASE_URL || 'xdr.sangfor.com.cn');
 const DEFAULT_MSSW_BASE_URL = normalizeBaseUrl('pre.soar.sangfor.com');
@@ -2691,21 +2691,14 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
     end
   };
 
-  let assetCoreResponse, assetReadyToOutboundResponse;
+  let assetReadyToOutboundResponse;
   if (isMssw) {
-    [assetCoreResponse, assetReadyToOutboundResponse] = await Promise.all([
-      fetchMsswAssetCore(cookieInfo, xdrBaseUrl, companyId),
-      fetchMsswAssetReadyToOutbound(cookieInfo, xdrBaseUrl, companyId)
-    ]);
+    assetReadyToOutboundResponse = await fetchMsswAssetReadyToOutbound(cookieInfo, xdrBaseUrl, companyId);
   } else {
-    [assetCoreResponse, assetReadyToOutboundResponse] = await Promise.all([
-      fetchAssetCore(cookieInfo, xdrBaseUrl),
-      fetchAssetReadyToOutbound(cookieInfo, xdrBaseUrl)
-    ]);
+    assetReadyToOutboundResponse = await fetchAssetReadyToOutbound(cookieInfo, xdrBaseUrl);
   }
 
   const assetLedger = {
-    ...normalizeAssetCoreResponse(assetCoreResponse),
     ...normalizeAssetReadyToOutboundResponse(assetReadyToOutboundResponse),
     manage_asset: 0,
     typeDistribution: [],
@@ -2716,7 +2709,8 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
   let incidentGptStats = {
     total: 0,
     hostCompromise: {
-      total: 0
+      total: 0,
+      confirmedIncidentIds: []
     },
     virusTrojan: {
       total: 0,
@@ -2760,6 +2754,28 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
       } catch (error) {
         logInfo(logger, `提取事件资产信息失败（不影响主流程）: ${error.message}`);
       }
+
+      try {
+        const c2Ids = incidentGptStats.hostCompromise?.confirmedIncidentIds || [];
+        const c2Examples = await extractC2ConnectionExamples(options.incidentFilePath, c2Ids);
+        incidentGptStats.c2ConnectionExamples = Array.isArray(c2Examples.c2Connections)
+          ? c2Examples.c2Connections
+          : [];
+        logInfo(logger, `提取 C2 外联事件举例完成: ${incidentGptStats.c2ConnectionExamples.length} 条`);
+      } catch (error) {
+        logInfo(logger, `提取 C2 外联事件举例失败（不影响主流程）: ${error.message}`);
+      }
+
+      try {
+        const virusIds = incidentGptStats.virusTrojan?.confirmedIncidentIds || [];
+        const virusExamples = await extractVirusTrojanExamples(options.incidentFilePath, virusIds);
+        incidentGptStats.virusTrojanExamples = Array.isArray(virusExamples.viruses)
+          ? virusExamples.viruses
+          : [];
+        logInfo(logger, `提取病毒木马事件举例完成: ${incidentGptStats.virusTrojanExamples.length} 条`);
+      } catch (error) {
+        logInfo(logger, `提取病毒木马事件举例失败（不影响主流程）: ${error.message}`);
+      }
     }
   }
 
@@ -2789,9 +2805,16 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
       securityLogTotal,
       alertTotal,
       alertReductionRate,
-      closeRate: alertReductionRate
-    },
-    appendix: {}
+      closeRate: alertReductionRate,
+      highRiskIncidentExamples: {
+        viruses: Array.isArray(incidentGptStats.virusTrojanExamples)
+          ? incidentGptStats.virusTrojanExamples
+          : [],
+        c2Connections: Array.isArray(incidentGptStats.c2ConnectionExamples)
+          ? incidentGptStats.c2ConnectionExamples
+          : []
+      }
+    }
   };
 }
 

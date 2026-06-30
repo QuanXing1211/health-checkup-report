@@ -72,6 +72,7 @@ node health_report.js `
 | `riskOverview.containedEvents` | 总计遏制数 | 导出的事件表 Excel | 直接复用 `riskDetails.containedEvents`，即 `处置状态 = 已遏制` 的事件行数 |
 | `riskOverview.alertReductionRate` | 告警消减率 | XDR 告警消减率接口 | 直接复用 `riskDetails.alertReductionRate`；计算口径为 `(alertTotalCount.value - incidentCount.value) / alertTotalCount.value`，结果按 0.1 为粒度四舍五入 |
 | `riskOverview.closeRate` | 事件闭环率 | 导出的事件表 Excel | 直接复用 `riskDetails.closeRate`，保证与风险详情完全一致 |
+| `riskOverview.affectedAssetCount` | 影响资产数 | 导出的事件表 Excel | 直接复用 `riskDetails.uniqueAssetCount`；遍历事件表所有事件，提取"影响资产"列中的 IPv4 地址后去重计数 |
 | `riskOverview.incidentGptStats.total` | 已确认的威胁运营事件总数 | MSSW 事件表 Excel / MSSW 事件表接口 + 处置标签接口 | `incidentGptStats.hostCompromise.total + incidentGptStats.virusTrojan.total` |
 | `riskOverview.incidentGptStats.hostCompromise.total` | 已确认 C2 外联事件数 | MSSW 事件表 Excel / MSSW 事件表接口 + 处置标签接口 | 先筛出 `GPT研判结论 = 主机失陷活动` 的事件，再通过 `disposalTabs(IP)` 和 `disposalTabs(DNS)` 确认存在恶意实体后计数 |
 | `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 已确认 C2 外联事件 ID 列表 | 同上 | 保留通过确认的主机失陷事件 ID，按遍历顺序输出 |
@@ -85,7 +86,7 @@ node health_report.js `
 | `riskOverview.exploitStats.total` | 漏洞利用事件总数 | 导出的事件表 Excel | 读取 `安全事件一级分类` 列，值等于 `漏洞利用` 的事件行数 |
 | `riskOverview.exploitStats.highRiskAsset` | 漏洞利用高风险资产 | 导出的事件表 Excel | 取第一条 `安全事件一级分类 = 漏洞利用` 事件的 `影响资产` 原始值 |
 | `riskOverview.exploitStats.attackSuccessCount` | 漏洞利用成功次数 | 导出的事件表 Excel | 在 `安全事件一级分类 = 漏洞利用` 的事件中，统计 `攻击状态 = 成功` 的事件行数 |
-| `riskDetails.totalAlerts` | 告警总数 | XDR 告警查询接口 | 取告警查询接口 `data.total` |
+| `riskOverview.exploitStats.incidentIds` | 漏洞利用事件 ID 列表 | 导出的事件表 Excel | 保留 `安全事件一级分类 = 漏洞利用` 的事件 ID，按事件表遍历顺序输出 |
 | `riskDetails.totalEvents` | 事件总数 | XDR 事件数量接口 + 导出的事件表 Excel | 优先取数量接口 `data.total`，并用导出表统计结果校正闭环率 |
 | `riskDetails.severeEvents` | 严重事件数 | 导出的事件表 Excel | 读取表头为 `等级` 的列，统计值等于 `严重` 的事件行数 |
 | `riskDetails.highEvents` | 高危事件数 | 导出的事件表 Excel | 读取表头为 `等级` 的列，统计值等于 `高危` 的事件行数 |
@@ -95,6 +96,9 @@ node health_report.js `
 | `riskDetails.closeRate` | 闭环率 | XDR 事件数量接口 + 导出的事件表 Excel | 用 `closedEvents / totalEvents * 100` 计算，四舍五入为整数；若存在事件数量接口返回值，则分母使用接口 `data.total` |
 | `riskDetails.alertReductionRate` | 告警消减率 | XDR 告警消减率接口 | 取 `overview/count` 中 `alertTotalCount.value` 和 `incidentCount.value`，按 `(alertTotalCount.value - incidentCount.value) / alertTotalCount.value` 计算，结果按 0.1 为粒度四舍五入 |
 | `riskDetails.uniqueAssetCount` | 涉及到的资产数 | 导出的事件表 Excel | 遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址（如 `10.5.40.62(未归类组)` 取 `10.5.40.62`）后去重计数 |
+| `riskDetails.highRiskIncidentExamples.vulnExploits` | 高危及以上事件举例-漏洞利用类 | 导出的事件表 Excel + `riskOverview.exploitStats.incidentIds` | 按漏洞利用事件 ID 顺序回查事件表，最多取 5 条；带出 `事件名称`、`受影响资产`、`最近发生时间`、`处置状态` |
+| `riskDetails.highRiskIncidentExamples.viruses` | 高危及以上事件举例-病毒木马类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 按已确认病毒木马事件 ID 顺序回查事件表，最多取 5 条；从 `文件` 列中提取所有标记为 `严重` 的 MD5 并用 `、` 拼接，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
+| `riskDetails.highRiskIncidentExamples.c2Connections` | 高危及以上事件举例-C2外联类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 按已确认 C2 外联事件 ID 顺序回查事件表，最多取 5 条；从 `外网IP` 和 `域名` 列中提取所有标记为 `严重` 的实体并用 `、` 拼接，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
 | `riskOverview.devices` | 接入组件数 | 深信服设备列表接口 + 第三方设备列表接口 | 深信服设备总数优先取 `/api/apex/device/v1/devices/list` 返回的 `data.total`，第三方设备数取 `/api/apex/thirdparty/v1/app/instance/list` 的 `data.count`，两者相加 |
 | `riskDetails.devices` | 接入安全设备数 | 深信服设备列表接口 + 第三方设备列表接口 | 保留兼容字段，值与 `riskDetails.sangfor + riskDetails.third` 一致 |
 | `riskDetails.sangfor` | 深信服设备数 | 深信服设备列表接口 | 取 `/api/apex/device/v1/devices/list` 返回的 `data.total` |
