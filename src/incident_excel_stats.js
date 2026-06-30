@@ -109,8 +109,10 @@ async function summarizeManagedAssetIncidents(assetExcelPath, incidentExcelPath)
       managedAssetDisposedEvents: 0,
       managedEventCloseRate: 0,
       managedAssetCount: 0,
+      managedAvgResponseTime: 0,
       topEventType: '',
-      top3BusinessSystems: []
+      top3BusinessSystems: '',
+      businessSystemEventDistribution: []
     };
   }
 
@@ -124,8 +126,10 @@ async function summarizeManagedAssetIncidents(assetExcelPath, incidentExcelPath)
     managedAssetDisposedEvents: Number(parsed.managedAssetDisposedEvents || 0),
     managedEventCloseRate: Number(parsed.managedEventCloseRate || 0),
     managedAssetCount: Number(parsed.managedAssetCount || 0),
+    managedAvgResponseTime: Number(parsed.managedAvgResponseTime || 0),
     topEventType: String(parsed.topEventType || ''),
-    top3BusinessSystems: Array.isArray(parsed.top3BusinessSystems) ? parsed.top3BusinessSystems : []
+    top3BusinessSystems: String(parsed.top3BusinessSystems || ''),
+    businessSystemEventDistribution: Array.isArray(parsed.businessSystemEventDistribution) ? parsed.businessSystemEventDistribution : []
   };
 }
 

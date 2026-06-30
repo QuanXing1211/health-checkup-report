@@ -14,7 +14,6 @@ async function main() {
       exports: {
         fetchXdrAssetOverview: async () => ({
         assetLedger: {
-          core_asset: 12,
           ready_to_outbound: 3,
         },
         riskOverview: {
@@ -60,6 +59,8 @@ async function main() {
     assetStatusStats: {
       assetTotal: 555,
       manage_asset: 555,
+      core_asset: 12,
+      core_managed_asset: 8,
       typeDistribution: [
         { name: '服务器', value: 115 },
         { name: '终端', value: 36 },
@@ -70,7 +71,7 @@ async function main() {
         { name: '离线', value: 100 },
         { name: '已禁用', value: 20 },
         { name: '已降级', value: 10 },
-        { name: '未安装', value: 25 }
+        { name: '未防护', value: 25 }
       ],
       internetExposureTotal: 18,
       internetExposureDistribution: [
@@ -84,7 +85,8 @@ async function main() {
       closedEvents: 12,
       containedEvents: 5,
       processingEvents: 3,
-      closeRate: 7
+      closeRate: 7,
+      uniqueAssetCount: 42
     },
     logger: () => {}
   });
@@ -93,11 +95,12 @@ async function main() {
   assert.strictEqual(Object.prototype.hasOwnProperty.call(data, 'report'), false);
   assert.strictEqual(data.assetLedger.manage_asset, 555);
   assert.strictEqual(data.assetLedger.core_asset, 12);
+  assert.strictEqual(data.assetLedger.core_managed_asset, 8);
   assert.strictEqual(data.assetLedger.ready_to_outbound, 3);
   assert.strictEqual(data.assetLedger.assetTotal, 555);
   assert.strictEqual(data.assetLedger.internetExposureTotal, 18);
   assert.strictEqual(data.assetLedger.typeDistribution[0].value, 115);
-  assert.strictEqual(data.assetLedger.protectionDistribution[4].name, '未安装');
+  assert.strictEqual(data.assetLedger.protectionDistribution[4].name, '未防护');
   assert.strictEqual(data.assetLedger.internetExposureDistribution[2].value, 8);
   assert.strictEqual(data.riskOverview.securityLogTotal, 1250000);
   assert.strictEqual(data.riskOverview.alertTotal, 3200);
@@ -106,6 +109,7 @@ async function main() {
   assert.strictEqual(data.riskOverview.closedEvents, 12);
   assert.strictEqual(data.riskOverview.containedEvents, 5);
   assert.strictEqual(data.riskOverview.closeRate, 7);
+  assert.strictEqual(data.riskOverview.affectedAssetCount, 42);
   assert.strictEqual(data.riskOverview.incidentGptStats.hostCompromise.total, 2);
   assert.strictEqual(data.riskOverview.incidentGptStats.virusTrojan.total, 3);
   assert.strictEqual(data.riskOverview.incidentGptStats.threatActorStats[0].name, '银狐');
@@ -120,6 +124,7 @@ async function main() {
   assert.strictEqual(data.riskDetails.containedEvents, 5);
   assert.strictEqual(data.riskDetails.processingEvents, 3);
   assert.strictEqual(data.riskDetails.closeRate, 7);
+  assert.strictEqual(data.riskDetails.uniqueAssetCount, 42);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(data, 'ops'), false);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(data, 'risks'), false);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(data.riskOverview, 'keyRisks'), false);

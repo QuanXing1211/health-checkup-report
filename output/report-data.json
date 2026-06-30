@@ -5,36 +5,21 @@
     "customerId": "67262236",
     "startDate": "2025-06-31",
     "endDate": "2026-06-29",
-    "generatedAt": "2026-06-29T07:57:22.684Z"
+    "generatedAt": "2026-06-30T07:44:11.708Z"
   },
   "assetLedger": {
-    "core_asset": 22,
     "ready_to_outbound": 0,
     "manage_asset": 0,
-    "assetTotal": 195,
-    "typeDistribution": [
-      { "name": "服务器", "value": 45 },
-      { "name": "终端", "value": 148 },
-      { "name": "其他", "value": 2 }
-    ],
-    "protectionDistribution": [
-      { "name": "在线", "value": 162 },
-      { "name": "离线", "value": 28 },
-      { "name": "已禁用", "value": 3 },
-      { "name": "已降级", "value": 1 },
-      { "name": "未安装", "value": 1 }
-    ],
-    "internetExposureTotal": 18,
-    "internetExposureDistribution": [
-      { "name": "服务器", "value": 12 },
-      { "name": "终端", "value": 5 },
-      { "name": "其他", "value": 1 }]
+    "typeDistribution": [],
+    "protectionDistribution": [],
+    "internetExposureDistribution": [],
+    "core_asset": 0
   },
   "riskOverview": {
     "incidentGptStats": {
-      "total": 8,
+      "total": 9,
       "hostCompromise": {
-        "total": 8,
+        "total": 9,
         "confirmedIncidentIds": [
           "incident-276f8e1f-68c3-41c1-beff-8cfc53ded17e",
           "incident-238c4c85-854b-42e4-abed-4411561a4a3d",
@@ -43,7 +28,8 @@
           "incident-45b13141-fa01-4bcb-a85d-0a68961c51f9",
           "incident-ee017945-7559-417d-87c8-96fce8c5e73b",
           "incident-4adec58c-85fe-4682-b2a1-fcc9352ea027",
-          "incident-571bda15-8d13-4f23-af29-8f6013f95ca7"
+          "incident-571bda15-8d13-4f23-af29-8f6013f95ca7",
+          "incident-274aa689-9741-4fe0-834f-e96b8a4bb5ef"
         ]
       },
       "virusTrojan": {
@@ -65,65 +51,72 @@
     "securityLogTotal": 0,
     "alertTotal": 0,
     "alertReductionRate": 0,
-    "closeRate": 52,
-    "closedEvents": 2058,
-    "containedEvents": 117,
-    "totalEvents": 3988,
+    "closeRate": 53,
+    "closedEvents": 2040,
+    "containedEvents": 68,
+    "totalEvents": 3884,
+    "affectedAssetCount": 2137,
     "exploitStats": {
-      "total": 52,
+      "total": 53,
       "highRiskAsset": "172.20.81.107",
       "attackSuccessCount": 2
     },
-    "devices": 192
+    "devices": 193
   },
   "riskDetails": {
     "securityLogTotal": 0,
     "alertTotal": 0,
     "alertReductionRate": 0,
-    "closeRate": 52,
-    "totalEvents": 3988,
-    "severeEvents": 213,
-    "highEvents": 271,
-    "closedEvents": 2058,
-    "containedEvents": 117,
-    "processingEvents": 52,
-    "uniqueAssetCount": 2157,
+    "closeRate": 53,
+    "totalEvents": 3884,
+    "severeEvents": 152,
+    "highEvents": 260,
+    "closedEvents": 2040,
+    "containedEvents": 68,
+    "processingEvents": 53,
+    "uniqueAssetCount": 2137,
     "managedAssetEvents": 0,
     "managedAssetContainedEvents": 0,
     "managedAssetDisposedEvents": 0,
     "managedEventCloseRate": 0,
     "managedAssetCount": 0,
+    "managedAvgResponseTime": 0,
     "topEventType": "后门攻击事件",
     "top3BusinessSystems": [],
+    "businessSystemEventDistribution": [],
     "eventTypeDistribution": [
       {
         "name": "后门攻击事件",
-        "value": 3623
+        "value": 3525
       },
       {
         "name": "-",
-        "value": 136
-      },
-      {
-        "name": "其他网络攻击事件",
-        "value": 53
+        "value": 139
       },
       {
         "name": "漏洞利用",
-        "value": 52
+        "value": 53
       },
       {
         "name": "挖矿病毒事件",
-        "value": 43
+        "value": 46
+      },
+      {
+        "name": "其他网络攻击事件",
+        "value": 44
+      },
+      {
+        "name": "其他",
+        "value": 77
       }
     ],
-    "devices": 192,
-    "sangfor": 86,
+    "devices": 193,
+    "sangfor": 87,
     "af": 33,
     "aes": 45,
     "sip": 2,
     "sta": 1,
-    "other_sf": 5,
+    "other_sf": 6,
     "third": 106
   },
   "appendix": {},

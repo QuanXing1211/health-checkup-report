@@ -72,6 +72,7 @@ node health_report.js `
 | `riskOverview.containedEvents` | 总计遏制数 | 导出的事件表 Excel | 直接复用 `riskDetails.containedEvents`，即 `处置状态 = 已遏制` 的事件行数 |
 | `riskOverview.alertReductionRate` | 告警消减率 | XDR 告警消减率接口 | 直接复用 `riskDetails.alertReductionRate`；计算口径为 `(alertTotalCount.value - incidentCount.value) / alertTotalCount.value`，结果按 0.1 为粒度四舍五入 |
 | `riskOverview.closeRate` | 事件闭环率 | 导出的事件表 Excel | 直接复用 `riskDetails.closeRate`，保证与风险详情完全一致 |
+| `riskOverview.affectedAssetCount` | 影响资产数 | 导出的事件表 Excel | 直接复用 `riskDetails.uniqueAssetCount`；遍历事件表所有事件，提取"影响资产"列中的 IPv4 地址后去重计数 |
 | `riskOverview.incidentGptStats.total` | 已确认的威胁运营事件总数 | MSSW 事件表 Excel / MSSW 事件表接口 + 处置标签接口 | `incidentGptStats.hostCompromise.total + incidentGptStats.virusTrojan.total` |
 | `riskOverview.incidentGptStats.hostCompromise.total` | 已确认 C2 外联事件数 | MSSW 事件表 Excel / MSSW 事件表接口 + 处置标签接口 | 先筛出 `GPT研判结论 = 主机失陷活动` 的事件，再通过 `disposalTabs(IP)` 和 `disposalTabs(DNS)` 确认存在恶意实体后计数 |
 | `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 已确认 C2 外联事件 ID 列表 | 同上 | 保留通过确认的主机失陷事件 ID，按遍历顺序输出 |

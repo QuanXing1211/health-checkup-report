@@ -200,8 +200,10 @@ async function main() {
     managedAssetDisposedEvents: 0,
     managedEventCloseRate: 0,
     managedAssetCount: 0,
+    managedAvgResponseTime: 0,
     topEventType: '',
-    top3BusinessSystems: []
+    top3BusinessSystems: '',
+    businessSystemEventDistribution: []
   });
   if (managedAssetIncidentStats) {
     Object.assign(reportData.riskDetails, {
@@ -210,12 +212,15 @@ async function main() {
       managedAssetDisposedEvents: managedAssetIncidentStats.managedAssetDisposedEvents,
       managedEventCloseRate: managedAssetIncidentStats.managedEventCloseRate,
       managedAssetCount: managedAssetIncidentStats.managedAssetCount,
+      managedAvgResponseTime: managedAssetIncidentStats.managedAvgResponseTime,
       topEventType: managedAssetIncidentStats.topEventType,
-      top3BusinessSystems: managedAssetIncidentStats.top3BusinessSystems
+      top3BusinessSystems: managedAssetIncidentStats.top3BusinessSystems,
+      businessSystemEventDistribution: managedAssetIncidentStats.businessSystemEventDistribution
     });
-    logger(`托管资产事件数据已合并: events=${managedAssetIncidentStats.managedAssetEvents}, contained=${managedAssetIncidentStats.managedAssetContainedEvents}, disposed=${managedAssetIncidentStats.managedAssetDisposedEvents}, closeRate=${managedAssetIncidentStats.managedEventCloseRate}%`);
+    logger(`托管资产事件数据已合并: events=${managedAssetIncidentStats.managedAssetEvents}, contained=${managedAssetIncidentStats.managedAssetContainedEvents}, disposed=${managedAssetIncidentStats.managedAssetDisposedEvents}, closeRate=${managedAssetIncidentStats.managedEventCloseRate}%, avgResponseTime=${managedAssetIncidentStats.managedAvgResponseTime}分钟`);
     logger(`最多类型事件: ${managedAssetIncidentStats.topEventType}`);
-    logger(`TOP3业务系统: ${JSON.stringify(managedAssetIncidentStats.top3BusinessSystems)}`);
+    logger(`TOP3业务系统: ${managedAssetIncidentStats.top3BusinessSystems}`);
+    logger(`业务系统安全事件分布: ${JSON.stringify(managedAssetIncidentStats.businessSystemEventDistribution)}`);
   }
 
   // 从事件表独立计算安全事件类型分布（不依赖资产表）
@@ -228,6 +233,15 @@ async function main() {
     } catch (error) {
       logger(`提取安全事件类型分布失败（不影响主流程）: ${error.message}`);
     }
+  }
+
+  // 事件类型分布超过 5 项时才在末尾补充"其他"（取值 = 总事件数 - 已有类型事件数之和）
+  const dist = reportData.riskDetails.eventTypeDistribution;
+  if (Array.isArray(dist) && dist.length >= 5) {
+    const sum = dist.reduce((acc, item) => acc + (item.value || 0), 0);
+    const otherValue = (reportData.riskDetails.totalEvents || 0) - sum;
+    dist.push({ name: '其他', value: otherValue >= 0 ? otherValue : 0 });
+    logger(`事件类型分布已补充"其他": ${otherValue} 起`);
   }
 
   if (options['xdr-cookie-path']) {
@@ -299,7 +313,6 @@ async function main() {
   if (options['mssw-cookie-path']) {
     try {
       const loadedMsswCookie = msswCookie || await readMsswCookieInfo(options['mssw-cookie-path']);
-      reportData.msswCookie = loadedMsswCookie.cookieString;
       logger(`MSSW Cookie 已加载: ${loadedMsswCookie.resolvedPath}`);
 
       // 通过 MSSW 接口查询设备分类数量

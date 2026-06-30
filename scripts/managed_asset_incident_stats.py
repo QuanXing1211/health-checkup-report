@@ -46,6 +46,38 @@ def top_n(counter, n):
     return [{"name": k, "value": v} for k, v in counter.most_common(n)]
 
 
+def parse_response_time(value):
+    """解析响应时间（分钟），支持 "23"、"23分钟"、"23 min" 等格式"""
+    text = normalize(value)
+    if not text:
+        return None
+
+    # 尝试直接解析数字
+    try:
+        return float(text)
+    except ValueError:
+        pass
+
+    # 尝试提取数字（支持 "23分钟"、"23min" 等格式）
+    m = re.search(r'(\d+(?:\.\d+)?)\s*[分钟分min]*', text)
+    if m:
+        return float(m.group(1))
+
+    return None
+
+
+def top_n_with_other(counter, n):
+    """取 Counter 前 n 项, 超过 n 项时末尾补充"其他"（取值 = 总数 - 前 n 项之和）"""
+    items = counter.most_common(n)
+    total = sum(counter.values())
+    top_sum = sum(v for _, v in items)
+
+    result = [{"name": k, "value": v} for k, v in items]
+    if len(counter) > n:
+        result.append({"name": "其他", "value": total - top_sum})
+    return result
+
+
 def main():
     if len(sys.argv) < 3:
         raise SystemExit("Usage: managed_asset_incident_stats.py <asset.xlsx> <incident.xlsx>")
@@ -103,8 +135,10 @@ def main():
             "managedAssetDisposedEvents": 0,
             "managedEventCloseRate": 0,
             "managedAssetCount": 0,
+            "managedAvgResponseTime": 0,
             "topEventType": "",
-            "top3BusinessSystems": [],
+            "top3BusinessSystems": "",
+            "businessSystemEventDistribution": [],
             "error": f"读取资产表失败: {str(e)}"
         }, ensure_ascii=False))
         return
@@ -113,6 +147,7 @@ def main():
     total_managed = 0
     contained_managed = 0
     disposed_managed = 0
+    disposed_response_times = []
     event_type_counter = Counter()
     business_counter = Counter()
 
@@ -126,6 +161,7 @@ def main():
         status_col = find_column(incident_headers, ["处置状态"])
         asset_col = find_column(incident_headers, ["影响资产"])
         event_type_col = find_column(incident_headers, ["安全事件一级分类"])
+        response_time_col = find_column(incident_headers, ["响应时间"])
 
         for row in incident_ws.iter_rows(min_row=2, values_only=True):
             if not any(normalize(cell) for cell in row):
@@ -161,6 +197,11 @@ def main():
                     contained_managed += 1
                 elif status == "处置完成":
                     disposed_managed += 1
+                    # 收集处置完成事件的响应时间
+                    if response_time_col is not None and response_time_col < len(row):
+                        rt = parse_response_time(row[response_time_col])
+                        if rt is not None:
+                            disposed_response_times.append(rt)
 
         incident_wb.close()
     except Exception as e:
@@ -170,13 +211,16 @@ def main():
             "managedAssetDisposedEvents": 0,
             "managedEventCloseRate": 0,
             "managedAssetCount": len(managed_asset_ips),
+            "managedAvgResponseTime": 0,
             "topEventType": "",
-            "top3BusinessSystems": [],
+            "top3BusinessSystems": "",
+            "businessSystemEventDistribution": [],
             "error": f"读取事件表失败: {str(e)}"
         }, ensure_ascii=False))
         return
 
     close_rate = round((disposed_managed / total_managed) * 100) if total_managed else 0
+    avg_response_time = round(sum(disposed_response_times) / len(disposed_response_times), 1) if disposed_response_times else 0
 
     result = {
         "managedAssetEvents": total_managed,
@@ -184,8 +228,10 @@ def main():
         "managedAssetDisposedEvents": disposed_managed,
         "managedEventCloseRate": close_rate,
         "managedAssetCount": len(managed_asset_ips),
+        "managedAvgResponseTime": avg_response_time,
         "topEventType": top1_name(event_type_counter),
-        "top3BusinessSystems": top_n(business_counter, 3)
+        "top3BusinessSystems": "、".join(item["name"] for item in top_n_with_other(business_counter, 5)[:3]),
+        "businessSystemEventDistribution": top_n_with_other(business_counter, 5)
     }
 
     print(json.dumps(result, ensure_ascii=False))

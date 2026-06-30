@@ -2691,21 +2691,14 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
     end
   };
 
-  let assetCoreResponse, assetReadyToOutboundResponse;
+  let assetReadyToOutboundResponse;
   if (isMssw) {
-    [assetCoreResponse, assetReadyToOutboundResponse] = await Promise.all([
-      fetchMsswAssetCore(cookieInfo, xdrBaseUrl, companyId),
-      fetchMsswAssetReadyToOutbound(cookieInfo, xdrBaseUrl, companyId)
-    ]);
+    assetReadyToOutboundResponse = await fetchMsswAssetReadyToOutbound(cookieInfo, xdrBaseUrl, companyId);
   } else {
-    [assetCoreResponse, assetReadyToOutboundResponse] = await Promise.all([
-      fetchAssetCore(cookieInfo, xdrBaseUrl),
-      fetchAssetReadyToOutbound(cookieInfo, xdrBaseUrl)
-    ]);
+    assetReadyToOutboundResponse = await fetchAssetReadyToOutbound(cookieInfo, xdrBaseUrl);
   }
 
   const assetLedger = {
-    ...normalizeAssetCoreResponse(assetCoreResponse),
     ...normalizeAssetReadyToOutboundResponse(assetReadyToOutboundResponse),
     manage_asset: 0,
     typeDistribution: [],
@@ -2790,8 +2783,7 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
       alertTotal,
       alertReductionRate,
       closeRate: alertReductionRate
-    },
-    appendix: {}
+    }
   };
 }
 

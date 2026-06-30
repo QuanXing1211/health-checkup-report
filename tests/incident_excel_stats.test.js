@@ -16,12 +16,12 @@ async function main() {
     'import sys',
     'wb = Workbook()',
     'ws = wb.active',
-    'ws.append(["等级", "处置状态", "影响资产", "安全事件一级分类"])',
-    'ws.append(["严重", "处置完成", "10.5.40.62(未归类组)", "漏洞利用"])',
-    'ws.append(["高危", "已遏制", "10.5.40.63(未归类组)", "病毒木马"])',
-    'ws.append(["高危", "处置中", "10.5.40.62(未归类组)", "漏洞利用"])',
-    'ws.append(["中危", "处置完成", "192.168.1.10(未归类组)", "Web攻击"])',
-    'ws.append(["低危", "处置完成", "172.16.0.8(组B)", "暴力破解"])',
+    'ws.append(["等级", "处置状态", "影响资产", "安全事件一级分类", "响应时间"])',
+    'ws.append(["严重", "处置完成", "10.5.40.62(未归类组)", "漏洞利用", "30分钟"])',
+    'ws.append(["高危", "已遏制", "10.5.40.63(未归类组)", "病毒木马", ""])',
+    'ws.append(["高危", "处置中", "10.5.40.62(未归类组)", "漏洞利用", ""])',
+    'ws.append(["中危", "处置完成", "192.168.1.10(未归类组)", "Web攻击", "20分钟"])',
+    'ws.append(["低危", "处置完成", "172.16.0.8(组B)", "暴力破解", "45"])',
     'wb.save(sys.argv[1])'
   ].join('\n');
 
@@ -105,16 +105,25 @@ async function main() {
   assert.strictEqual(managedStats.managedAssetDisposedEvents, 2, '处置完成事件数应为 2（事件1,5）');
   assert.strictEqual(managedStats.managedAssetCount, 3, '托管资产IP数应为 3（10.5.40.62, 10.5.40.63, 172.16.0.8）');
   assert.strictEqual(managedStats.managedEventCloseRate, 50, '闭环率应为 50%');
+  assert.strictEqual(managedStats.managedAvgResponseTime, 37.5, '平均响应时长应为 37.5 分钟（(30+45)/2）');
 
   // 最多类型事件 TOP1
   assert.strictEqual(typeof managedStats.topEventType, 'string', 'topEventType 应为字符串');
   assert.strictEqual(managedStats.topEventType, '漏洞利用', '最多事件类型应为 漏洞利用');
 
-  // TOP3 业务系统安全事件分布
-  assert.ok(Array.isArray(managedStats.top3BusinessSystems), 'top3BusinessSystems 应为数组');
-  assert.strictEqual(managedStats.top3BusinessSystems.length, 3, '应有3个业务系统');
-  assert.strictEqual(managedStats.top3BusinessSystems[0].name, 'OA系统', 'TOP1 应为OA系统');
-  assert.strictEqual(managedStats.top3BusinessSystems[0].value, 2, 'OA系统应有2起事件');
+  // TOP3 业务系统名称（取 businessSystemEventDistribution 前三项 name，拼接为文本）
+  assert.strictEqual(typeof managedStats.top3BusinessSystems, 'string', 'top3BusinessSystems 应为字符串');
+  assert.strictEqual(managedStats.top3BusinessSystems, 'OA系统、ERP系统、VPN系统', 'TOP3 应为 OA系统、ERP系统、VPN系统');
+
+  // 业务系统安全事件分布（top5 + 其他）
+  assert.ok(Array.isArray(managedStats.businessSystemEventDistribution), 'businessSystemEventDistribution 应为数组');
+  assert.strictEqual(managedStats.businessSystemEventDistribution.length, 4, '共有4个业务系统（不到5项，不加"其他"）');
+  assert.strictEqual(managedStats.businessSystemEventDistribution[0].name, 'OA系统', 'TOP1 应为OA系统');
+  assert.strictEqual(managedStats.businessSystemEventDistribution[0].value, 2, 'OA系统应有2起事件');
+  assert.strictEqual(managedStats.businessSystemEventDistribution[1].name, 'ERP系统', 'TOP2 应为ERP系统');
+  assert.strictEqual(managedStats.businessSystemEventDistribution[1].value, 1, 'ERP系统应有1起事件');
+  assert.strictEqual(managedStats.businessSystemEventDistribution[2].name, 'VPN系统', 'TOP3 应为VPN系统');
+  assert.strictEqual(managedStats.businessSystemEventDistribution[3].name, '邮件系统', 'TOP4 应为邮件系统');
 
   // Test with empty paths
   const emptyManagedStats = await summarizeManagedAssetIncidents(null, null);
@@ -123,9 +132,11 @@ async function main() {
   assert.strictEqual(emptyManagedStats.managedAssetDisposedEvents, 0);
   assert.strictEqual(emptyManagedStats.managedEventCloseRate, 0);
   assert.strictEqual(emptyManagedStats.managedAssetCount, 0);
+  assert.strictEqual(emptyManagedStats.managedAvgResponseTime, 0, '空数据时 managedAvgResponseTime 应为 0');
   assert.strictEqual(emptyManagedStats.topEventType, '', '空数据时 topEventType 应为空字符串');
-  assert.ok(Array.isArray(emptyManagedStats.top3BusinessSystems), '空数据时 top3BusinessSystems 应为数组');
-  assert.strictEqual(emptyManagedStats.top3BusinessSystems.length, 0, '空数据时 top3BusinessSystems 应为空');
+  assert.strictEqual(emptyManagedStats.top3BusinessSystems, '', '空数据时 top3BusinessSystems 应为空字符串');
+  assert.ok(Array.isArray(emptyManagedStats.businessSystemEventDistribution), '空数据时 businessSystemEventDistribution 应为数组');
+  assert.strictEqual(emptyManagedStats.businessSystemEventDistribution.length, 0, '空数据时 businessSystemEventDistribution 应为空');
 
   console.log('incident_excel_stats.test.js passed');
 }
