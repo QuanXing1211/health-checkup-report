@@ -9,6 +9,7 @@
   },
   "assetLedger": {
     "core_asset": 22,
+    "core_managed_asset": 8,
     "ready_to_outbound": 0,
     "manage_asset": 0,
     "assetTotal": 195,
@@ -18,11 +19,11 @@
       { "name": "其他", "value": 2 }
     ],
     "protectionDistribution": [
-      { "name": "在线", "value": 162 },
-      { "name": "离线", "value": 28 },
-      { "name": "已禁用", "value": 3 },
-      { "name": "已降级", "value": 1 },
-      { "name": "未安装", "value": 1 }
+      { "name": "在线", "value": 400 },
+      { "name": "离线", "value": 100 },
+      { "name": "已禁用", "value": 20 },
+      { "name": "已降级", "value": 10 },
+      { "name": "未防护", "value": 25 }
     ],
     "internetExposureTotal": 18,
     "internetExposureDistribution": [
@@ -47,12 +48,27 @@
         ]
       },
       "virusTrojan": {
-        "total": 0,
-        "confirmedIncidentIds": []
+        "total": 2,
+        "confirmedIncidentIds": [
+          "incident-571bda15-8d13-4f23-af29-8f6013f95ca7",
+          "incident-1d8a6010-0d13-47d1-9983-7b91c2321001"
+      ]
       },
-      "threatActorStats": [],
-      "threatTypeRanking": [],
-      "virusAttackAsset": "",
+      "threatActorStats": [
+         {
+          "name": "银狐",
+          "count": 6
+        },
+        {
+          "name": "金眼狗",
+          "count": 3
+        }
+      ],
+      "threatTypeRanking": [
+        "木马攻击",
+        "C2外联"
+      ],
+      "virusAttackAsset": "192.168.76.20",
       "nonAesCoveredAssets": [
         "192.168.76.20",
         "192.168.132.123"
@@ -69,6 +85,7 @@
     "closedEvents": 2058,
     "containedEvents": 117,
     "totalEvents": 3988,
+    "affectedAssetCount": 2137,
     "exploitStats": {
       "total": 52,
       "highRiskAsset": "172.20.81.107",
@@ -93,8 +110,9 @@
     "managedAssetDisposedEvents": 0,
     "managedEventCloseRate": 0,
     "managedAssetCount": 0,
+    "managedAvgResponseTime": 0,
     "topEventType": "后门攻击事件",
-    "top3BusinessSystems": [],
+    "top3BusinessSystems": "OA系统、ERP系统、VPN系统",
     "eventTypeDistribution": [
       {
         "name": "后门攻击事件",
@@ -115,8 +133,20 @@
       {
         "name": "挖矿病毒事件",
         "value": 43
+      },
+      {
+        "name": "其他",
+        "value": 12
       }
     ],
+    "businessSystemEventDistribution": [
+      { "name": "OA系统",   "value": 2 },
+      { "name": "ERP系统",  "value": 1 },
+      { "name": "VPN系统",  "value": 1 },
+      { "name": "邮件系统", "value": 1 },
+      { "name": "OB系统", "value": 3 },
+      { "name": "其他", "value": 1 }
+  ],
     "devices": 192,
     "sangfor": 86,
     "af": 33,
