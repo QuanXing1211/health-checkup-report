@@ -11,9 +11,24 @@
     "core_asset": 22,
     "ready_to_outbound": 0,
     "manage_asset": 0,
-    "typeDistribution": [],
-    "protectionDistribution": [],
-    "internetExposureDistribution": []
+    "assetTotal": 195,
+    "typeDistribution": [
+      { "name": "服务器", "value": 45 },
+      { "name": "终端", "value": 148 },
+      { "name": "其他", "value": 2 }
+    ],
+    "protectionDistribution": [
+      { "name": "在线", "value": 162 },
+      { "name": "离线", "value": 28 },
+      { "name": "已禁用", "value": 3 },
+      { "name": "已降级", "value": 1 },
+      { "name": "未安装", "value": 1 }
+    ],
+    "internetExposureTotal": 18,
+    "internetExposureDistribution": [
+      { "name": "服务器", "value": 12 },
+      { "name": "终端", "value": 5 },
+      { "name": "其他", "value": 1 }]
   },
   "riskOverview": {
     "incidentGptStats": {

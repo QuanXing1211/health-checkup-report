@@ -13,11 +13,12 @@ def normalize_header(value):
 
 
 def find_column(headers, aliases):
+    normalized_aliases = [normalize_header(alias) for alias in aliases]
     for index, header in enumerate(headers):
         normalized = normalize_header(header)
         if not normalized:
             continue
-        for alias in aliases:
+        for alias in normalized_aliases:
             if alias in normalized:
                 return index
     return None

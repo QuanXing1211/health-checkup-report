@@ -17,12 +17,12 @@ async function main() {
     'wb = Workbook()',
     'ws = wb.active',
     'ws.append(["资产导出", "", "", "", ""])',
-    'ws.append(["序号", "资产名称", "资产类型", "agent状态", "互联网暴露"])',
-    'ws.append([1, "A", "服务器", 1, "yes"])',
-    'ws.append([2, "B", "终端", 0, "no"])',
-    'ws.append([3, "C", "数据库", 2, "yes"])',
-    'ws.append([4, "D", "服务器", 3, "no"])',
-    'ws.append([5, "E", "终端", None, "yes"])',
+    'ws.append(["序号", "资产名称", "资产类型(一级)", "agent状态", "互联网暴露"])',
+    'ws.append([1, "A", "服务器", "在线", "公网"])',
+    'ws.append([2, "B", "终端", "离线", "未暴露"])',
+    'ws.append([3, "C", "数据库", "已禁用", "边界暴露"])',
+    'ws.append([4, "D", "服务器", "已降级", "未暴露"])',
+    'ws.append([5, "E", "终端", "未安装", "互联网"])',
     'ws.append([None, None, None, None, None])',
     'wb.save(sys.argv[1])'
   ].join('\n');
@@ -46,7 +46,7 @@ async function main() {
     { name: '离线', value: 1 },
     { name: '已禁用', value: 1 },
     { name: '已降级', value: 1 },
-    { name: '未防护资产', value: 1 }
+    { name: '未安装', value: 1 }
   ]);
   assert.strictEqual(stats.internetExposureTotal, 3);
   assert.deepStrictEqual(stats.internetExposureDistribution, [

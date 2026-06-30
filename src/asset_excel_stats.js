@@ -50,7 +50,8 @@ function execPython(scriptPath, excelPath) {
     execFile('python', [scriptPath, excelPath], {
       encoding: 'utf8',
       windowsHide: true,
-      maxBuffer: 1024 * 1024
+      maxBuffer: 1024 * 1024,
+      env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' })
     }, (error, stdout, stderr) => {
       if (error) {
         reject(new Error(`资产表统计失败: ${stderr || error.message}`));
