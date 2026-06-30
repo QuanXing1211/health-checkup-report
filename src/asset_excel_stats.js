@@ -22,11 +22,11 @@ async function summarizeAssetTable(excelPath) {
       ['其他', 'other']
     ]),
     protectionDistribution: toNameValueList(parsed.protectionDistribution, [
-      ['在线', 'online'],
-      ['离线', 'offline'],
-      ['已禁用', 'disabled'],
-      ['已降级', 'demoted'],
-      ['未防护资产', 'unprotected']
+      ['在线', '在线'],
+      ['离线', '离线'],
+      ['已禁用', '已禁用'],
+      ['已降级', '已降级'],
+      ['未安装', '未安装']
     ]),
     internetExposureTotal: Number(parsed.internetExposureTotal || 0),
     internetExposureDistribution: toNameValueList(parsed.internetExposureDistribution, [

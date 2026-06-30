@@ -3,8 +3,12 @@
 const { fetchXdrAssetOverview } = require('./xdr_asset_client');
 
 async function collectReportData(input) {
-  if (input.xdrCookiePath) {
-    logInfo(input.logger, '使用 XDR 数据生成报告资产台账');
+  const isXdr = !!input.xdrCookiePath;
+  const isMssw = !!input.msswCookiePath && !input.xdrCookiePath;
+
+  if (isXdr || isMssw) {
+    const mode = isXdr ? 'XDR' : 'MSSW';
+    logInfo(input.logger, `使用 ${mode} 数据生成报告资产台账`);
     const baseData = buildBaseReportData(input);
     const xdrData = await fetchXdrAssetOverview(input.xdrCookiePath, {
       logger: input.logger,
@@ -13,7 +17,14 @@ async function collectReportData(input) {
         customerId: input.customerId || null,
         startDate: input.start || '',
         endDate: input.end || ''
-      }
+      },
+      ...(isMssw ? {
+        msswCookiePath: input.msswCookiePath,
+        msswBaseUrl: input.msswBaseUrl,
+        customerId: input.customerId,
+        incidentFilePath: input.incidentFilePath,
+        assetFilePath: input.assetFilePath
+      } : {})
     });
 
     let merged = deepMerge(baseData, xdrData);
@@ -22,8 +33,7 @@ async function collectReportData(input) {
     return merged;
   }
 
-  // MSSW 模式（无 xdr-cookie-path），跳过资产台账 API 查询
-  logInfo(input.logger, '使用 MSSW 数据生成报告（跳过 XDR 资产台账）');
+  logInfo(input.logger, '使用基础数据生成报告（跳过资产台账 API）');
   const baseData = buildBaseReportData(input);
   let merged = applyAssetStatusStats(baseData, input.assetStatusStats);
   merged = applyIncidentStatusStats(merged, input.incidentStatusStats);

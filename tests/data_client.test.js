@@ -1,16 +1,18 @@
 'use strict';
 
 const assert = require('assert');
-const path = require('path');
 
 async function main() {
-  const xdrClientPath = path.resolve(__dirname, '..', 'src', 'xdr_asset_client.js');
-  require.cache[xdrClientPath] = {
-    id: xdrClientPath,
-    filename: xdrClientPath,
-    loaded: true,
-    exports: {
-      fetchXdrAssetOverview: async () => ({
+  const xdrClientPath = require.resolve('../src/xdr_asset_client');
+  const originalCacheEntry = require.cache[xdrClientPath];
+
+  try {
+    require.cache[xdrClientPath] = {
+      id: xdrClientPath,
+      filename: xdrClientPath,
+      loaded: true,
+      exports: {
+        fetchXdrAssetOverview: async () => ({
         assetLedger: {
           core_asset: 12,
           ready_to_outbound: 3,
@@ -20,53 +22,20 @@ async function main() {
           alertTotal: 3200,
           alertReductionRate: 0.97,
           closeRate: 97,
-          yunyingAlertStats: {
-            c2VirusTotal: 5,
-            webVulnTotal: 5,
-            virusFiles: {
+          incidentGptStats: {
+            total: 5,
+            hostCompromise: {
               total: 2,
-              hostIps: ['10.5.40.62'],
-              records: [
-                {
-                  hostIp: { originalValue: '10.5.40.62', renderValue: '10.5.40.62' },
-                  threatClass: { originalValue: 120, renderValue: '病毒木马活动' },
-                  gptResult: { originalValue: 120, renderValue: '病毒木马活动' }
-                }
-              ]
+              confirmedIncidentIds: ['incident-aaa', 'incident-bbb']
             },
-            c2ExternalLink: {
+            virusTrojan: {
               total: 3,
-              hostIps: ['10.5.40.63', '10.5.40.64'],
-              records: [
-                {
-                  hostIp: { originalValue: '10.5.40.63', renderValue: '10.5.40.63' },
-                  threatClass: { originalValue: 121, renderValue: '主机失陷活动' },
-                  gptResult: { originalValue: 121, renderValue: '主机失陷活动' }
-                }
-              ]
+              confirmedIncidentIds: ['incident-ccc', 'incident-ddd', 'incident-eee']
             },
-            exploitAttacks: {
-              total: 1,
-              hostIps: ['10.5.40.65'],
-              records: [
-                {
-                  hostIp: { originalValue: '10.5.40.65', renderValue: '10.5.40.65' },
-                  threatClass: { originalValue: 30, renderValue: '漏洞攻击' },
-                  gptResult: { originalValue: 122, renderValue: '其他类型' }
-                }
-              ]
-            },
-            webAttacks: {
-              total: 4,
-              hostIps: ['10.5.40.66'],
-              records: [
-                {
-                  hostIp: { originalValue: '10.5.40.66', renderValue: '10.5.40.66' },
-                  threatClass: { originalValue: 90, renderValue: '网站攻击' },
-                  gptResult: { originalValue: 122, renderValue: '其他类型' }
-                }
-              ]
-            }
+            threatActorStats: [
+              { name: '银狐', count: 2 },
+              { name: '勒索', count: 1 }
+            ]
           }
         },
         projectBackground: {
@@ -137,16 +106,12 @@ async function main() {
   assert.strictEqual(data.riskOverview.closedEvents, 12);
   assert.strictEqual(data.riskOverview.containedEvents, 5);
   assert.strictEqual(data.riskOverview.closeRate, 7);
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.c2VirusTotal, 5);
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.webVulnTotal, 5);
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.virusFiles.total, 2);
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.virusFiles.hostIps[0], '10.5.40.62');
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.c2ExternalLink.total, 3);
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.c2ExternalLink.hostIps[1], '10.5.40.64');
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.exploitAttacks.total, 1);
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.exploitAttacks.hostIps[0], '10.5.40.65');
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.webAttacks.total, 4);
-  assert.strictEqual(data.riskOverview.yunyingAlertStats.webAttacks.hostIps[0], '10.5.40.66');
+  assert.strictEqual(data.riskOverview.incidentGptStats.hostCompromise.total, 2);
+  assert.strictEqual(data.riskOverview.incidentGptStats.virusTrojan.total, 3);
+  assert.strictEqual(data.riskOverview.incidentGptStats.threatActorStats[0].name, '银狐');
+  assert.strictEqual(data.riskOverview.incidentGptStats.threatActorStats[0].count, 2);
+  assert.strictEqual(data.riskOverview.incidentGptStats.threatActorStats[1].name, '勒索');
+  assert.strictEqual(data.riskOverview.incidentGptStats.threatActorStats[1].count, 1);
   assert.strictEqual(data.riskDetails.totalEvents, 177);
   assert.strictEqual(data.riskDetails.alertReductionRate, 0.97);
   assert.strictEqual(data.riskDetails.severeEvents, 0);
@@ -160,6 +125,13 @@ async function main() {
   assert.strictEqual(Object.prototype.hasOwnProperty.call(data.riskOverview, 'keyRisks'), false);
 
   console.log('data_client.test.js passed');
+  } finally {
+    if (originalCacheEntry) {
+      require.cache[xdrClientPath] = originalCacheEntry;
+    } else {
+      delete require.cache[xdrClientPath];
+    }
+  }
 }
 
 main().catch((error) => {

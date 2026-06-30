@@ -6,7 +6,7 @@ const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
-const { summarizeIncidentStatus } = require('./src/incident_excel_stats');
+const { summarizeIncidentStatus, extractExploitStats, summarizeManagedAssetIncidents, extractIncidentTypeStats } = require('./src/incident_excel_stats');
 const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, fetchAlertTableCount, fetchSecurityLogCount, fetchAlertReductionRate, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/xdr_asset_client');
 const { renderReportToFile } = require('./src/template_renderer');
 
@@ -148,16 +148,87 @@ async function main() {
   const assetStatusStats = await summarizeExportedAssetStatus(xdrExports, logger);
   const incidentStatusStats = await summarizeExportedIncidentStatus(xdrExports, logger);
 
+  // 从事件表提取漏洞利用统计（不阻断主流程）
+  let exploitStats = null;
+  const incidentFilePath = xdrExports && xdrExports.incident ? xdrExports.incident.filePath : '';
+  if (incidentFilePath) {
+    try {
+      exploitStats = await extractExploitStats(incidentFilePath);
+      logger(`漏洞利用事件统计: 共 ${exploitStats.total} 起, 攻击成功 ${exploitStats.attackSuccessCount} 次, 影响资产 ${exploitStats.highRiskAsset || '无'}`);
+    } catch (error) {
+      logger(`提取漏洞利用事件统计失败（不影响主流程）: ${error.message}`);
+    }
+  }
+
+  // 从资产表和事件表提取托管资产安全事件统计（不阻断主流程）
+  const assetFilePath = xdrExports && xdrExports.asset ? xdrExports.asset.filePath : '';
+  let managedAssetIncidentStats = null;
+  if (assetFilePath && incidentFilePath) {
+    try {
+      managedAssetIncidentStats = await summarizeManagedAssetIncidents(assetFilePath, incidentFilePath);
+      logger(`托管资产事件统计: 共 ${managedAssetIncidentStats.managedAssetEvents} 起事件, 涉及 ${managedAssetIncidentStats.managedAssetCount} 个托管资产, 已遏制 ${managedAssetIncidentStats.managedAssetContainedEvents} 起, 处置完成 ${managedAssetIncidentStats.managedAssetDisposedEvents} 起, 闭环率 ${managedAssetIncidentStats.managedEventCloseRate}%`);
+    } catch (error) {
+      logger(`托管资产事件统计失败（不影响主流程）: ${error.message}`);
+    }
+  }
+
   const reportData = await collectReportData({
     customer: options.customer,
     customerId,
     start: effectiveTimeRange.start,
     end: effectiveTimeRange.end,
     xdrCookiePath: options['xdr-cookie-path'],
+    msswCookiePath: options['mssw-cookie-path'],
+    msswBaseUrl: options['mssw-base-url'],
     assetStatusStats,
     incidentStatusStats,
+    incidentFilePath: xdrExports.incident ? xdrExports.incident.filePath : undefined,
+    assetFilePath: xdrExports.asset ? xdrExports.asset.filePath : undefined,
     logger
   });
+
+  // 合并漏洞利用统计到报告数据
+  if (exploitStats) {
+    reportData.riskOverview.exploitStats = exploitStats;
+    logger(`漏洞利用数据已合并: total=${exploitStats.total}, attackSuccessCount=${exploitStats.attackSuccessCount}`);
+  }
+
+  // 合并托管资产事件统计到报告数据（始终写入默认值，有数据时覆盖）
+  Object.assign(reportData.riskDetails, {
+    managedAssetEvents: 0,
+    managedAssetContainedEvents: 0,
+    managedAssetDisposedEvents: 0,
+    managedEventCloseRate: 0,
+    managedAssetCount: 0,
+    topEventType: '',
+    top3BusinessSystems: []
+  });
+  if (managedAssetIncidentStats) {
+    Object.assign(reportData.riskDetails, {
+      managedAssetEvents: managedAssetIncidentStats.managedAssetEvents,
+      managedAssetContainedEvents: managedAssetIncidentStats.managedAssetContainedEvents,
+      managedAssetDisposedEvents: managedAssetIncidentStats.managedAssetDisposedEvents,
+      managedEventCloseRate: managedAssetIncidentStats.managedEventCloseRate,
+      managedAssetCount: managedAssetIncidentStats.managedAssetCount,
+      topEventType: managedAssetIncidentStats.topEventType,
+      top3BusinessSystems: managedAssetIncidentStats.top3BusinessSystems
+    });
+    logger(`托管资产事件数据已合并: events=${managedAssetIncidentStats.managedAssetEvents}, contained=${managedAssetIncidentStats.managedAssetContainedEvents}, disposed=${managedAssetIncidentStats.managedAssetDisposedEvents}, closeRate=${managedAssetIncidentStats.managedEventCloseRate}%`);
+    logger(`最多类型事件: ${managedAssetIncidentStats.topEventType}`);
+    logger(`TOP3业务系统: ${JSON.stringify(managedAssetIncidentStats.top3BusinessSystems)}`);
+  }
+
+  // 从事件表独立计算安全事件类型分布（不依赖资产表）
+  if (incidentFilePath) {
+    try {
+      const incidentTypeStats = await extractIncidentTypeStats(incidentFilePath);
+      reportData.riskDetails.topEventType = incidentTypeStats.topEventType;
+      reportData.riskDetails.eventTypeDistribution = incidentTypeStats.eventTypeDistribution;
+      logger(`安全事件类型分布已计算: topEventType=${incidentTypeStats.topEventType}`);
+    } catch (error) {
+      logger(`提取安全事件类型分布失败（不影响主流程）: ${error.message}`);
+    }
+  }
 
   if (options['xdr-cookie-path']) {
     let cookieInfo, resolved;

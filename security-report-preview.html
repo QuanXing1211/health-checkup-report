@@ -374,7 +374,7 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
   <p class="sr-p">安全体检总体评级：<span class="sr-grade sr-grade--{{ riskOverview.grade }}">{{ riskOverview.grade }}</span></p>
   <div data-section="riskOverview.summary"></div>
   <p class="sr-p muted">XDR接收安全日志数 <span data-field="riskOverview.securityLogTotal">0</span> 条；有效告警数 <span data-field="riskOverview.alertTotal">0</span> 条；有效安全事件数 <span data-field="riskOverview.totalEvents">0</span> 起；处置闭环数 <span data-field="riskOverview.closedEvents">0</span> 起；总计遏制 <span data-field="riskOverview.containedEvents">0</span> 起；告警消减率 <span data-field="riskOverview.alertReductionRate">0</span>%；事件闭环率 <span data-field="riskOverview.closeRate">0</span>%。</p>
-  <p class="sr-p muted">GPT 运营告警中，C2外联&病毒文件共 <span data-field="riskOverview.yunyingAlertStats.c2VirusTotal">0</span> 起（病毒文件 <span data-field="riskOverview.yunyingAlertStats.virusFiles.total">0</span> 起，C2外联 <span data-field="riskOverview.yunyingAlertStats.c2ExternalLink.total">0</span> 起）；Web攻击&Web漏洞共 <span data-field="riskOverview.yunyingAlertStats.webVulnTotal">0</span> 起（Web攻击 <span data-field="riskOverview.yunyingAlertStats.webAttacks.total">0</span> 起，Web漏洞 <span data-field="riskOverview.yunyingAlertStats.exploitAttacks.total">0</span> 起）。</p>
+  <p class="sr-p muted">事件表 GPT 研判：主机失陷活动 <span data-field="riskOverview.incidentGptStats.hostCompromise.total">0</span> 起；病毒木马活动 <span data-field="riskOverview.incidentGptStats.virusTrojan.total">0</span> 起。</p>
   <h3 class="sr-h2" id="sec-key-risks">关键风险如下</h3>
   <table class="sr-tbl"><thead><tr><th>安全风险</th><th>问题描述</th><th>风险影响</th><th>安全加固策略</th><th>落地情况</th></tr></thead><tbody data-repeat="riskOverview.keyRisks"></tbody></table>
   <h3 class="sr-h2" id="sec-top5-risk">风险资产 TOP5</h3>
@@ -387,6 +387,7 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
   <h2 class="sr-h1">4. 风险详情</h2>
   <p class="sr-p">风险汇总如下：</p>
   <p class="sr-p">近期处理告警共计 <span data-field="riskDetails.totalAlerts">{{ riskDetails.totalAlerts }}</span> 个，其中监测到有效安全事件 <span data-field="riskDetails.totalEvents">{{ riskDetails.totalEvents }}</span> 起（严重事件 <span data-field="riskDetails.severeEvents">{{ riskDetails.severeEvents }}</span> 起、高危事件 <span data-field="riskDetails.highEvents">{{ riskDetails.highEvents }}</span> 起），涉及到的资产数 <span data-field="riskDetails.uniqueAssetCount">{{ riskDetails.uniqueAssetCount }}</span> 个；事件遏制 <span data-field="riskDetails.containedEvents">{{ riskDetails.containedEvents }}</span> 起；有效拦截攻击 318 次；已闭环 <span data-field="riskDetails.closedEvents">{{ riskDetails.closedEvents }}</span> 起，处置中 <span data-field="riskDetails.processingEvents">{{ riskDetails.processingEvents }}</span> 起（闭环率：<span data-field="riskDetails.closeRate">{{ riskDetails.closeRate }}</span>%）。</p>
+  <p class="sr-p">【托管资产安全事件】托管资产 <span data-field="riskDetails.managedAssetCount">{{ riskDetails.managedAssetCount }}</span> 个，共发生安全事件 <span data-field="riskDetails.managedAssetEvents">{{ riskDetails.managedAssetEvents }}</span> 起，已遏制 <span data-field="riskDetails.managedAssetContainedEvents">{{ riskDetails.managedAssetContainedEvents }}</span> 起，处置完成 <span data-field="riskDetails.managedAssetDisposedEvents">{{ riskDetails.managedAssetDisposedEvents }}</span> 起，托管事件闭环率 <span data-field="riskDetails.managedEventCloseRate">{{ riskDetails.managedEventCloseRate }}</span>%。</p>
   <p class="sr-p">互联网业务总计发现风险 127 个（风险暴露面：42 个；漏洞：56 个；弱密码：29 个），其中高危及以上风险：23 个。</p>
   <p class="sr-p">内网核心业务总计发现风险 89 个（漏洞：68 个；弱密码：21 个），其中高危风险：15 个。</p>
 
@@ -435,11 +436,8 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
   <h3 class="sr-h2" id="sec-high-risk-events">4.1.3 高危安全事件</h3>
   <p class="sr-p">高危安全事件是指攻击者获取系统控制权后安装恶意软件并长期潜伏，导致关键业务系统被控制破坏。典型类型包括恶意文件、黑客工具、漏洞利用、内网爆破、WEB 攻击等。以下为典型安全事件，详情见安全事件清单.xlsx。</p>
   <h4 class="sr-h3">漏洞利用</h4>
-  <p class="sr-p">本次体检共发现漏洞利用事件 1 起，存在该风险的主机列表举例如下：</p>
-  <table class="sr-tbl"><thead><tr><th>类型</th><th>事件名称</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td>漏洞利用</td><td>利用漏洞获取Linux用户信息</td><td>192.168.1.221</td><td>2025-06-26 16:42:10</td><td>可能导致数据泄露、系统崩溃和业务中断</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr></tbody></table>
-  <h4 class="sr-h3">高危 Web 攻击</h4>
-  <p class="sr-p">本次体检共发现高危 Web 攻击事件 4 起，举例如下：</p>
-  <table class="sr-tbl"><thead><tr><th>类型</th><th>事件名称</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td><span class="sr-tag sr-tag--light sr-tag--high">远程代码执行</span></td><td>利用漏洞获取Linux用户信息</td><td>192.168.1.221</td><td>2025-05-29 20:43:16</td><td>可完全控制系统、造成数据泄露</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--medium">代码注入</span></td><td>主机存在通用SQL注入攻击</td><td>192.168.1.210</td><td>2025-06-13 02:37:53</td><td>可窃取、修改或删除数据</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--medium">代码注入</span></td><td>主机存在通用SQL注入攻击</td><td>192.168.1.220</td><td>2025-06-07 10:31:44</td><td>可破坏系统功能</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr></tbody></table>
+  <p class="sr-p">本次体检共发现漏洞利用事件 <span data-field="riskOverview.exploitStats.total">0</span> 起，攻击成功 <span data-field="riskOverview.exploitStats.attackSuccessCount">0</span> 次，存在该风险的主机列表举例如下：</p>
+  <table class="sr-tbl"><thead><tr><th>类型</th><th>事件名称</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td>漏洞利用</td><td>利用漏洞获取Linux用户信息</td><td data-field="riskOverview.exploitStats.highRiskAsset">192.168.1.221</td><td>2025-06-26 16:42:10</td><td>可能导致数据泄露、系统崩溃和业务中断</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr></tbody></table>
   <h4 class="sr-h3">高危病毒</h4>
   <table class="sr-tbl"><thead><tr><th>类型</th><th>病毒Hash</th><th>受影响主机</th><th>最近发生时间</th><th>风险危害</th><th>处置状态</th></tr></thead><tbody><tr><td><span class="sr-tag sr-tag--light sr-tag--high">银狐木马</span></td><td>a3f2…8c1d</td><td>192.168.1.221</td><td>2025-06-19 00:36:52</td><td>可能成为远控肉鸡，危害程度可能恶化</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr><tr><td><span class="sr-tag sr-tag--light sr-tag--medium">钓鱼软件</span></td><td>b7e1…4f9a</td><td>192.168.1.221</td><td>2025-06-19 17:53:06</td><td>可能导致凭据泄露</td><td><span class="sr-tag sr-tag--light sr-tag--success">处置完成</span></td></tr></tbody></table>
   <h4 class="sr-h3">主机失陷外联</h4>
@@ -1553,12 +1551,18 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
     var el = document.getElementById('m2-ring2');
     if (!el || typeof echarts === 'undefined') return;
     var c1 = null;
-    var ringData = [
-      { value: 44, name: '漏洞利用攻击', itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#CF171D'},{offset:1,color:'#82010E'}]) } },
-      { value: 28, name: '暴力破解尝试', itemStyle: { color: '#FA721B' } },
-      { value: 18, name: '恶意软件感染', itemStyle: { color: '#F6B615' } },
-      { value: 10, name: '钓鱼/社会工程', itemStyle: { color: '#0BA7B5' } }
-    ];
+
+    // 优先读取注入数据（topEventType为字符串），无则用默认示例
+    var reportData = window.SECURITY_REPORT_DATA && window.SECURITY_REPORT_DATA.riskDetails;
+    var topType = reportData && reportData.topEventType;
+    var ringData = topType
+      ? [{ value: 1, name: topType, itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#CF171D'},{offset:1,color:'#82010E'}]) } }]
+      : [
+          { value: 44, name: '漏洞利用攻击', itemStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#CF171D'},{offset:1,color:'#82010E'}]) } },
+          { value: 28, name: '暴力破解尝试', itemStyle: { color: '#FA721B' } },
+          { value: 18, name: '恶意软件感染', itemStyle: { color: '#F6B615' } },
+          { value: 10, name: '钓鱼/社会工程', itemStyle: { color: '#0BA7B5' } }
+        ];
     var ringTotal = ringData.reduce(function(s, d) { return s + d.value; }, 0);
     function renderM2Ring2() {
       if (!c1) c1 = echarts.init(el);
@@ -1634,30 +1638,47 @@ body{font-family:var(--seer-font-family);background:var(--bg);font-size:14px;-we
 
   // 条形图1：业务系统安全事件排名
   var priorityColor = { '重点系统': '#CF171D', '优先处置': '#FA721B', '尽快处置': '#FA721B', '持续监控': '#F6B615' };
-  var sysDetails = [
-    { highRisk: 28, priority: '重点系统' },
-    { highRisk: 25, priority: '重点系统' },
-    { highRisk: 22, priority: '重点系统' },
-    { highRisk: 15, priority: '尽快处置' },
-    { highRisk: 12, priority: '尽快处置' },
-    { highRisk: 8,  priority: '尽快处置' },
-    { highRisk: 5,  priority: '持续监控' },
-    { highRisk: 3,  priority: '持续监控' }
-  ];
+
+  // 优先读取注入数据，无则用默认示例
+  var reportData = window.SECURITY_REPORT_DATA && window.SECURITY_REPORT_DATA.riskDetails;
+  var bizDistData = (reportData && reportData.top3BusinessSystems) || [];
+  var hasBizData = bizDistData.length > 0;
+
+  var sysNames = hasBizData
+    ? bizDistData.map(function(item) { return item.name; })
+    : ['OA系统','VPN系统','ERP系统','邮件系统','MES系统','数据库','文件服务器','登录机'];
+  var sysValues = hasBizData
+    ? bizDistData.map(function(item) { return item.value; })
+    : [72, 65, 58, 48, 42, 35, 28, 18];
+  var sysDetails = hasBizData
+    ? bizDistData.map(function() { return { highRisk: 0, priority: '尽快处置' }; })
+    : [
+        { highRisk: 28, priority: '重点系统' },
+        { highRisk: 25, priority: '重点系统' },
+        { highRisk: 22, priority: '重点系统' },
+        { highRisk: 15, priority: '尽快处置' },
+        { highRisk: 12, priority: '尽快处置' },
+        { highRisk: 8,  priority: '尽快处置' },
+        { highRisk: 5,  priority: '持续监控' },
+        { highRisk: 3,  priority: '持续监控' }
+      ];
   var c1b = echarts.init(document.getElementById('m2-bar-sys'));
   c1b.setOption({
     tooltip: { trigger: 'item',
       formatter: function(p) {
         var d = sysDetails[p.dataIndex];
-        return '<b>' + p.name + '</b><br/>事件数: <b>' + p.value + '</b><br/>高危事件: <b style="color:#CF171D">' + d.highRisk + '</b><br/>处置优先级: <span style="color:' + priorityColor[d.priority] + '">' + d.priority + '</span>';
+        var tip = '<b>' + p.name + '</b><br/>事件数: <b>' + p.value + '</b>';
+        if (d && d.highRisk !== undefined) tip += '<br/>高危事件: <b style="color:#CF171D">' + d.highRisk + '</b>';
+        if (d && d.priority) tip += '<br/>处置优先级: <span style="color:' + priorityColor[d.priority] + '">' + d.priority + '</span>';
+        return tip;
       }
     },
     grid: { left: 110, top: 30, right: 80, bottom: 60 },
     xAxis: { type: 'value', name: '{a|事件数}', nameLocation: 'center', nameGap: 22, nameTextStyle: { rich: { a: { color: '#9CA3AF', fontSize: 9, fontFamily: 'PingFang SC,sans-serif' } } }, axisLabel: { color: '#9CA3AF', fontSize: 9 } },
-    yAxis: { type: 'category', data: ['OA系统','VPN系统','ERP系统','邮件系统','MES系统','数据库','文件服务器','登录机'], axisLabel: { color: '#2F3540', fontSize: 10, fontFamily: 'PingFang SC,sans-serif' } },
+    yAxis: { type: 'category', data: sysNames, axisLabel: { color: '#2F3540', fontSize: 10, fontFamily: 'PingFang SC,sans-serif' } },
     series: [{
       type: 'bar', barWidth: 14, barMaxWidth: 20,
-      data: [72, 65, 58, 48, 42, 35, 28, 18],
+      data: sysValues,
       itemStyle: { color: function(p) { return priorityColor[sysDetails[p.dataIndex].priority]; }, barBorderRadius: [0, 4, 4, 0] },
       label: { show: true, position: 'right', fontSize: 9, color: '#2F3540', formatter: '{c}' }
     }]

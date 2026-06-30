@@ -32,29 +32,7 @@ def classify_asset_type(value):
     return "other"
 
 
-def classify_protection_status(value):
-    text = normalize(value)
-    mapping = {
-        "0": "offline",
-        "1": "online",
-        "2": "disabled",
-        "3": "demoted",
-        "在线": "online",
-        "离线": "offline",
-        "已禁用": "disabled",
-        "已降级": "demoted"
-    }
-    if text in mapping:
-        return mapping[text]
-    try:
-        return mapping[str(int(float(text)))]
-    except Exception:
-        return None
-
-
-def is_exposed(value):
-    text = normalize(value).lower()
-    return text in {"1", "yes", "true", "是", "暴露", "y"}
+CN_PROTECTION_STATUSES = {"在线", "离线", "已禁用", "已降级", "未安装"}
 
 
 def main():
@@ -66,34 +44,41 @@ def main():
     header_row = next(sheet.iter_rows(min_row=2, max_row=2, values_only=True), ())
     headers = list(header_row)
 
-    type_column = find_column(headers, ("资产类型",))
-    protection_column = find_column(headers, ("agent状态", "连接状态"))
-    exposure_column = find_column(headers, ("互联网暴露", "是否暴露"))
+    # 列匹配（仅指定的列名）
+    type_column = find_column(headers, ("资产类型(一级)",))
+    protection_column = find_column(headers, ("agent状态",))
+    exposure_column = find_column(headers, ("互联网暴露",))
 
     asset_total = 0
     type_counts = {"server": 0, "terminal": 0}
-    protection_counts = {"online": 0, "offline": 0, "disabled": 0, "demoted": 0}
+    protection_counts = {}  # 直接记录中文值
     exposure_total = 0
     exposure_type_counts = {"server": 0, "terminal": 0}
+
     for row in sheet.iter_rows(min_row=3, values_only=True):
         if not any(normalize(cell) for cell in row):
             continue
 
         asset_total += 1
 
+        # ---- 资产类型（一级） ----
         if type_column is not None and type_column < len(row):
             asset_type = classify_asset_type(row[type_column])
             if asset_type in type_counts:
                 type_counts[asset_type] += 1
 
+        # ---- agent 状态：直接记录中文值 ----
         if protection_column is not None and protection_column < len(row):
-            status = classify_protection_status(row[protection_column])
-            if status in protection_counts:
-                protection_counts[status] += 1
+            raw = normalize(row[protection_column])
+            if raw in CN_PROTECTION_STATUSES:
+                protection_counts[raw] = protection_counts.get(raw, 0) + 1
 
+        # ---- 互联网暴露：仅"未暴露"算不暴露，其余都算暴露 ----
         exposed = False
         if exposure_column is not None and exposure_column < len(row):
-            exposed = is_exposed(row[exposure_column])
+            raw = normalize(row[exposure_column])
+            if raw and raw != "未暴露":
+                exposed = True
 
         if exposed:
             exposure_total += 1
@@ -109,13 +94,7 @@ def main():
             "terminal": type_counts["terminal"],
             "other": max(asset_total - type_counts["server"] - type_counts["terminal"], 0)
         },
-        "protectionDistribution": {
-            "online": protection_counts["online"],
-            "offline": protection_counts["offline"],
-            "disabled": protection_counts["disabled"],
-            "demoted": protection_counts["demoted"],
-            "unprotected": max(asset_total - protection_counts["online"] - protection_counts["offline"] - protection_counts["disabled"] - protection_counts["demoted"], 0)
-        },
+        "protectionDistribution": protection_counts,
         "internetExposureTotal": exposure_total,
         "internetExposureDistribution": {
             "server": exposure_type_counts["server"],

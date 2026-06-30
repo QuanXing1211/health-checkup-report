@@ -6,6 +6,8 @@ const https = require('https');
 const http = require('http');
 const path = require('path');
 
+const { removeIncidentRows, parseIncidentGptStats, extractIncidentAssetInfo } = require('./incident_excel_stats');
+
 const DEFAULT_XDR_BASE_URL = normalizeBaseUrl(process.env.SANGFOR_XDR_BASE_URL || 'xdr.sangfor.com.cn');
 const DEFAULT_MSSW_BASE_URL = normalizeBaseUrl('pre.soar.sangfor.com');
 const XDR_ASSET_PAGE_PATH = '/xdr/asset/host-asset';
@@ -40,20 +42,7 @@ const ALERT_TABLE_SERVICE_INFO = {
   serviceType: 'table',
   handler: 'alertTableQueryHandler'
 };
-const GPT_YUNYING_ALERT_QUERY_ENDPOINT = '/ngsoc/GPT_API_JAVA/api/v1/table/query/gptYunyingAlertTableQueryHandler/6a38ac0320c2b912aef72ef6?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
-const GPT_YUNYING_ALERT_VIEW_INSTANCE_ID = '6a38ac0320c2b912aef72ef6';
-const GPT_YUNYING_ALERT_SERVICE_INFO = {
-  appName: 'gpt-api-java',
-  servletContextPath: '/',
-  serviceType: 'table',
-  handler: 'gptYunyingAlertTableQueryHandler'
-};
-const GPT_YUNYING_ALERT_MATCHERS = {
-  virusFiles: '病毒木马活动',
-  c2ExternalLink: '主机失陷活动',
-  exploitAttacks: '漏洞攻击',
-  webAttacks: '网站攻击'
-};
+const DISPOSAL_TABS_ENDPOINT = '/ngsoc/INCIDENT/api/v1/incidents';
 const DEVICE_LIST_ENDPOINT = '/api/apex/device/v1/devices/list?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const DEVICE_TYPE_INFO_ENDPOINT = '/api/apex/device/v1/branch/dev_type_info?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const THIRD_PARTY_DEVICE_STATS_ENDPOINT = '/api/apex/thirdparty/v1/app/instance/list?viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
@@ -65,6 +54,8 @@ const MSSW_PROJECT_LIST_ENDPOINT = '/gateway/customer-mgr-service/order/v1/proje
 const MSSW_ASSET_EXPORT_FIELDS_ENDPOINT = '/apps/asset/view/asset/export_fields?_method=GET';
 const MSSW_ASSET_EXPORT_ENDPOINT = '/apps/asset/view/asset/export';
 const MSSW_ASSET_DOWNLOAD_ENDPOINT = '/apps/asset/view/asset/download_file';
+const MSSW_ASSET_COUNT_ENDPOINT = '/apps/asset/view/asset/asset_view/count?_method=GET';
+const MSSW_INCIDENT_TABLE_ENDPOINT = '/gateway/mss-mdr/web/api/mssw/mss-mdr/v1/incident_table';
 
 // devType 到分类名称的映射
 const DEVICE_TYPE_CATEGORIES = {
@@ -1151,616 +1142,328 @@ function buildAlertCountRequestBody({ begin, end }) {
     enableHistory: true
   };
 }
+// GPT 定性结论威胁家族名称列表
+const THREAT_ACTOR_NAMES = [
+  '勒索', '银狐', '黑猫', '金眼狗', '海莲花', '幼象', '响尾蛇',
+  '魔罗桫', '摩诃草', '蔓灵花', '肚脑虫', 'CNC', '人面马', '桃色沙尘暴',
+  'CharmingKitten', '污水', 'RocketKitten', 'APT42', '蓝色魔眼', '索伦之眼',
+  '方程式', 'Longhorn', '伪猎者', '寄生兽', '图拉', '沙虫', '舒适熊', '奇幻熊',
+  'KimSuky', '隐士', '拉萨路', '双尾蝎', '透明部落', '夜鹰', 'Machete', '草无根',
+  'Careto', 'Chafer', 'Gorgon Group', 'Hacking Team', '黑格莎', 'Mabna Institute',
+  '潜行者', 'SNOWGLOBE', 'SWEED', 'Tempting Cedar Spyware', 'TurkHackTeam',
+  'Vendetta', '魔鼠', '暗象', '毒针', '黄金雕', '摩耶象', '拍拍熊', '三色堇',
+  '双异鼠', '旺刺', '芜琼洞', '暗蚊', '金相狐', '金蝉', 'FaCai', 'DragonRank',
+  '夜枭', '雪狼', 'cobaltstrike'
+];
 
-function buildAlertThreatClassRequestBody({ begin, end, pageNum = 1, pageSize = 1000 }) {
-  const spl = 'filter 是否关联事件  in { "已关联" } | filter 告警一级分类  in { "网站攻击", "漏洞攻击" }';
+function buildDisposalTabsRequestBody(disposalType) {
   return {
-    extensionParams: null,
-    spl: {
-      mappedSpl: spl,
-      originalSpl: spl,
-      extensionParams: {
-        frontRender: [
-          {
-            displayField: '是否关联事件',
-            field: 'incidentRelated',
-            value: [true],
-            headerType: 'metaType',
-            searchType: 'selector',
-            valueText: '已关联',
-            isValueNegate: false,
-            type: 'number',
-            filterSelect: 'renderValue'
-          },
-          {
-            displayField: '告警一级分类',
-            field: 'threatClass',
-            value: [90, 30],
-            headerType: 'analysisThreatClass',
-            searchType: 'treeSelector',
-            valueText: '网站攻击, 漏洞攻击',
-            isValueNegate: false,
-            type: 'number',
-            filterSelect: 'renderValue',
-            isReadonly: false
-          }
-        ],
-        mappedInputSpl: '',
-        originalInputSpl: ''
-      }
-    },
-    serviceInfo: ALERT_TABLE_SERVICE_INFO,
-    globalCondition: {
-      branchIds: [],
-      time: {
-        timeField: 'firstTime',
-        begin: { type: 'absolute', value: begin },
-        end: { type: 'absolute', value: end }
-      }
-    },
-    table: {
-      enable: true,
-      viewName: 'AlertView',
-      aggregationStrategies: null,
-      tableFields: buildAlertTableFields(),
-      pageNum,
-      pageSize,
-      serviceInfo: ALERT_TABLE_SERVICE_INFO,
-      subTable: null,
-      rightClicked: false,
-      selectAllPage: true,
-      routers: [
-        {
-          icon: null,
-          path: '/incident/event/detail',
-          type: 'drillDown',
-          params: null,
-          actionParams: {
-            quarantineHostDisableFlag: '$quarantineHostDisableFlag',
-            disposedDisableFlag: '$disposedDisableFlag',
-            ignoreDisableFlag: '$ignoreDisableFlag',
-            trustFileDisableFlag: '$trustFileDisableFlag',
-            disposeFileDisableFlag: '$disposeFileDisableFlag',
-            soarDisableFlag: '$soarDisableFlag',
-            orderDisableFlag: '$orderDisableFlag',
-            disposingDisableFlag: '$disposingDisableFlag',
-            banIpDisableFlag: '$banIpDisableFlag',
-            gptResultStrategyDisableFlag: '$gptResultStrategyDisableFlag',
-            pendingDisableFlag: '$pendingDisableFlag',
-            toBeTransferDisableFlag: '$toBeTransferDisableFlag',
-            id: '$uuId',
-            customAlertGenerateIncidentDisableFlag: '$customAlertGenerateIncidentDisableFlag',
-            misReportDisableFlag: '$misReportDisableFlag'
-          },
-          applicableCols: ['name']
-        }
-      ],
-      rightActions: [
-        {
-          name: 'addFilter',
-          type: 'filter',
-          params: null,
-          actionParams: null,
-          applicableCols: ['responseHead', 'smtpTo', 'devSourceNames', 'sendFrom', 'occurTime', 'ignoreDisableFlag', 'platformIsDelete', 'recommendation', 'threatSubType', 'ftpCwd', 'similarId', 'srcPort', 'platformHostBranchId', 'accessDirection', 'huntingDomains', 'xUserGroup', 'humanCheck', 'redisLogin', 'tenant', 'fullTextSearch', 'quarantineHostDisableFlag', 'hostIp', 'respStatus', 'devices', 'ndrSecdetectBreachMid', 'mitreid', 'dealStatus', 'threatTypeProxy', 'aiRuleId', 'aiRuleIds', 'vulnName', 'soarDisableFlag', 'ftpCommand', 'newFullTextSearch', 'redisPassword', 'incidentRelated', 'gptAction', 'redisCommandCall', 'dealTime', 'threatType', 'orderDisableFlag', 'mssStatus', 'domain', 'disposingDisableFlag', 'reqCookie', 'whiteStatus', 'engineName', 'customAlertGenerateIncidentDisableFlag', 'gptRespAction', 'natTransform', 'dataAuthorityOwner', 'ioaRuleRelated', 'responseBody', 'webmailAttachmentFilename', 'statusChangeDisableFlag', 'featureInfo', 'dstIpStr', 'incidentRootIds', 'trustFileDisableFlag', 'regionIds', 'investigationResult', 'smtpFrom', 'ftpUser', 'ruleIds', 'dstPort', 'webmailSubject', 'whiteListIds', 'pName', 'requestBody', 'srcAssetAnalyzeResultsStatus', 'pendingDisableFlag', 'addWhiteDisableFlag', 'misReportDisableFlag', 'suspectedMisReport', 'hostClassify1Id', 'disposedDisableFlag', 'combineType', 'updateTime', 'userAgent', 'fileMd5', 'dstIpInfos', 'url', 'firstTime', 'platformHostGroupIds', 'devUId', 'riskTag', 'gptJudgementEngine', 'stage', 'dealAction', 'hostCountryName', 'exploitCveId', 'gptResultStrategyDisableFlag', 'huntingMD5s', 'hostAddress', 'dstIp', 'xForwardedFor', 'dnsQueries', 'alertRuleId', 'lastTime', 'similarRuleId', 'gptRuleUid', 'mysqlCommand', 'xUserName', 'requestHead', 'sasUsername', 'checker', 'disposeFileDisableFlag', 'webmailFrom', 'hostBranchId', 'attckTechnique', 'disposalRecord', 'srcIpInfos', 'fileState', 'devUIdProxy', 'banIpDisableFlag', 'srcAssetAnalyzeResults', 'sqlServerRequest', 'smtpSubject', 'fusionAlert', 'srcIp', 'attackResult', 'read', 'gptStartAt', 'virusName', 'correctGptResult', 'snmpVersion', 'threatClass', 'huntingIps', 'proofType', 'cveId', 'webmailUser', 'isCascade', 'trafficForwardLocation', 'hostAssetAnalyzeResult', 'gptSubResult', 'insertTime', 'hostProvinceName', 'gptAnalyzeTrace', 'webmailTo', 'name', 'dataAuthorityBranchId', 'gptResult', '_id', 'gptEngineList', 'logType', 'hostIpStr', 'platformIdAndGroupId', 'gptEndAt', 'humanNote', 'description', 'platformRole', 'srcIpStr', 'fileStatus', 'humanInvestigation', 'hostGroupIds', 'gptAnalyzeTime', 'hostAssetId', 'severity', 'owner', 'hostClassifyId', 'confidence', 'attckSubTechnique', 'platformId', 'label', 'uploadTime', 'uuId', 'logTraceInfo', 'disposeTime', 'regionId', 'threatSubTypeProxy', 'operationLabels', 'dnsAnswers', 'toBeTransferDisableFlag', 'threatDefine', 'dataAuthorityCooperators', 'username']
-        },
-        {
-          name: 'removeFilter',
-          type: 'filter',
-          params: null,
-          actionParams: null,
-          applicableCols: ['responseHead', 'smtpTo', 'devSourceNames', 'sendFrom', 'occurTime', 'ignoreDisableFlag', 'platformIsDelete', 'recommendation', 'threatSubType', 'ftpCwd', 'similarId', 'srcPort', 'platformHostBranchId', 'accessDirection', 'huntingDomains', 'xUserGroup', 'humanCheck', 'redisLogin', 'tenant', 'fullTextSearch', 'quarantineHostDisableFlag', 'hostIp', 'respStatus', 'devices', 'ndrSecdetectBreachMid', 'mitreid', 'dealStatus', 'threatTypeProxy', 'aiRuleId', 'aiRuleIds', 'vulnName', 'soarDisableFlag', 'ftpCommand', 'newFullTextSearch', 'redisPassword', 'incidentRelated', 'gptAction', 'redisCommandCall', 'dealTime', 'threatType', 'orderDisableFlag', 'mssStatus', 'domain', 'disposingDisableFlag', 'reqCookie', 'whiteStatus', 'engineName', 'customAlertGenerateIncidentDisableFlag', 'gptRespAction', 'natTransform', 'dataAuthorityOwner', 'ioaRuleRelated', 'responseBody', 'webmailAttachmentFilename', 'statusChangeDisableFlag', 'featureInfo', 'dstIpStr', 'incidentRootIds', 'trustFileDisableFlag', 'regionIds', 'investigationResult', 'smtpFrom', 'ftpUser', 'ruleIds', 'dstPort', 'webmailSubject', 'whiteListIds', 'pName', 'requestBody', 'srcAssetAnalyzeResultsStatus', 'pendingDisableFlag', 'addWhiteDisableFlag', 'misReportDisableFlag', 'suspectedMisReport', 'hostClassify1Id', 'disposedDisableFlag', 'combineType', 'updateTime', 'userAgent', 'fileMd5', 'dstIpInfos', 'url', 'firstTime', 'platformHostGroupIds', 'devUId', 'riskTag', 'gptJudgementEngine', 'stage', 'dealAction', 'hostCountryName', 'exploitCveId', 'gptResultStrategyDisableFlag', 'huntingMD5s', 'hostAddress', 'dstIp', 'xForwardedFor', 'dnsQueries', 'alertRuleId', 'lastTime', 'similarRuleId', 'gptRuleUid', 'mysqlCommand', 'xUserName', 'requestHead', 'sasUsername', 'checker', 'disposeFileDisableFlag', 'webmailFrom', 'hostBranchId', 'attckTechnique', 'disposalRecord', 'srcIpInfos', 'fileState', 'devUIdProxy', 'banIpDisableFlag', 'srcAssetAnalyzeResults', 'sqlServerRequest', 'smtpSubject', 'fusionAlert', 'srcIp', 'attackResult', 'read', 'gptStartAt', 'virusName', 'correctGptResult', 'snmpVersion', 'threatClass', 'huntingIps', 'proofType', 'cveId', 'webmailUser', 'isCascade', 'trafficForwardLocation', 'hostAssetAnalyzeResult', 'gptSubResult', 'insertTime', 'hostProvinceName', 'gptAnalyzeTrace', 'webmailTo', 'name', 'dataAuthorityBranchId', 'gptResult', '_id', 'gptEngineList', 'logType', 'hostIpStr', 'platformIdAndGroupId', 'gptEndAt', 'humanNote', 'description', 'platformRole', 'srcIpStr', 'fileStatus', 'humanInvestigation', 'hostGroupIds', 'gptAnalyzeTime', 'hostAssetId', 'severity', 'owner', 'hostClassifyId', 'confidence', 'attckSubTechnique', 'platformId', 'label', 'uploadTime', 'uuId', 'logTraceInfo', 'disposeTime', 'regionId', 'threatSubTypeProxy', 'operationLabels', 'dnsAnswers', 'toBeTransferDisableFlag', 'threatDefine', 'dataAuthorityCooperators', 'username']
-        }
-      ],
-      extensionParams: {}
-    },
-    tag: null,
-    viewName: 'AlertView',
-    model: 'expert',
-    autoRefresh: false,
-    viewInstanceId: ALERT_VIEW_INSTANCE_ID,
-    enableHistory: true
+    type: disposalType || 'FILE',
+    pageNum: 1,
+    pageSize: 20,
+    location: []
   };
 }
 
-function buildGptYunyingAlertTableFields() {
-  return [
-    ['lastTime', true, true, 'desc', 130, null, 'value'],
-    ['newestUsername', true, false, 'disable', 150, null, 'value'],
-    ['checkOutUsername', true, false, 'disable', 150, null, 'value'],
-    ['responsible', true, false, 'disable', 80, null, 'value'],
-    ['uuId', true, false, 'disable', 200, null, 'value'],
-    ['name', true, true, 'disable', 200, null, 'value'],
-    ['severity', true, true, 'disable', 85, null, 'value'],
-    ['threatDefine', true, true, 'disable', 95, null, 'array'],
-    ['srcIp', true, true, 'disable', 125, null, 'array'],
-    ['dstIp', true, true, 'disable', 125, null, 'array'],
-    ['hostIp', true, true, 'disable', 145, null, 'value'],
-    ['gptResult', true, true, 'disable', 150, null, 'value'],
-    ['attackResult', true, true, 'disable', 105, null, 'value'],
-    ['accessDirection', true, true, 'disable', 110, null, 'value'],
-    ['devUIdProxy', true, true, 'disable', 120, null, 'array'],
-    ['gptJudgementEngine', true, true, 'disable', 120, null, 'value'],
-    ['gptAnalyzeTrace', true, true, 'disable', 150, null, 'value'],
-    ['correctGptResult', true, true, 'disable', 150, null, 'value'],
-    ['updateTime', true, true, 'disable', 150, null, 'value'],
-    ['investigationResult', true, true, 'disable', 150, null, 'array'],
-    ['humanInvestigation', true, true, 'disable', 130, null, 'value'],
-    ['featureInfo', true, true, 'disable', 250, null, 'value'],
-    ['humanNote', true, true, 'disable', 130, null, 'value'],
-    ['gptYunyingPayloadStatus', true, true, 'disable', 150, null, 'value'],
-    ['gptYunyingChecker', true, true, 'disable', 150, null, 'value'],
-    ['modelLabel', true, true, 'disable', 150, null, 'value'],
-    ['correctGptResultHistory', true, true, 'disable', 150, null, 'value'],
-    ['correctGptResultConflict', true, true, 'disable', 150, null, 'value'],
-    ['correctGptResultHumanCount', true, true, 'disable', 150, null, 'value']
-  ].map(([field, show, selected, sort, columnWidth, fixed, dataType]) => ({
-    field,
-    show,
-    selected,
-    sort,
-    columnWidth,
-    fixed,
-    dataType
-  }));
+async function fetchDisposalTabs(cookieInfo, msswBaseUrl, companyId, incidentId, disposalType) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${DISPOSAL_TABS_ENDPOINT}/${incidentId}/disposalTabs`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildDisposalTabsRequestBody(disposalType))
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`处置标签接口查询失败 (${incidentId}, type=${disposalType}): ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+  return response;
 }
 
-function buildGptYunyingAlertSubTableFields() {
-  return [
-    ['id', false, false, 'notSortable', null, null, 'value'],
-    ['alertId', false, false, 'notSortable', null, null, 'value'],
-    ['eventId', false, false, 'notSortable', null, null, 'value'],
-    ['foundTime', true, true, 'disable', null, null, 'value'],
-    ['alertLevel', true, true, 'desc', null, null, 'value'],
-    ['alertName', true, true, 'notSortable', null, null, 'value'],
-    ['alertDescription', true, true, 'notSortable', null, null, 'value'],
-    ['matchPros', true, true, 'notSortable', null, null, 'array'],
-    ['riskTag', true, true, 'notSortable', null, null, 'value'],
-    ['attcks', true, true, 'notSortable', null, null, 'array'],
-    ['alertTypeProxy', true, true, 'notSortable', null, null, 'array']
-  ].map(([field, show, selected, sort, columnWidth, fixed, dataType]) => ({
-    viewName: 'ProcessTreeAlertView',
-    field,
-    displayField: field,
-    type: 'string',
-    show,
-    selected,
-    sort,
-    aggregate: false,
-    searchType: 'disable',
-    headerType: '',
-    columnWidth,
-    render: null,
-    filterSelect: 'renderValue',
-    dataType,
-    groupSupport: false,
-    selectKey: false,
-    commonField: null,
-    countType: null,
-    tipsInfo: '',
-    fixed,
-    fullTextSearchSupport: null,
-    metadataShardName: 'incident',
-    headerName: field,
-    headerNameI18n: `metadata.metaApi.ProcessTreeAlertApi.properties.${field}.headerName`
-  }));
+function countMalwareFilesFromDisposalTabs(response) {
+  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+  const entities = Array.isArray(data.entities) ? data.entities : [];
+  let count = 0;
+  for (const entity of entities) {
+    const threatLevelDesc = String(entity && entity.threatLevelDesc || '').trim();
+    if (threatLevelDesc.includes('恶意')) {
+      count += 1;
+    }
+  }
+  return count;
 }
 
-function buildGptYunyingAlertTableQuerySection(pageNum, pageSize) {
-  return {
-    enable: true,
-    viewName: 'GptYunyingAlertView',
-    aggregationStrategies: null,
-    tableFields: buildGptYunyingAlertTableFields(),
-    pageNum,
-    pageSize,
-    serviceInfo: GPT_YUNYING_ALERT_SERVICE_INFO,
-    subTable: {
-      enable: true,
-      viewName: 'ProcessTreeAlertView',
-      aggregationStrategies: null,
-      tableFields: buildGptYunyingAlertSubTableFields(),
-      pageNum: null,
-      pageSize: null,
-      serviceInfo: {
-        appName: 'gpt-api-java',
-        servletContextPath: '/',
-        serviceType: 'subTable',
-        handler: 'processTreeAlertGroupSubTableQueryHandler'
+async function queryMsswIncidentBySearchKey(cookieInfo, msswBaseUrl, companyId, incidentId) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_INCIDENT_TABLE_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify({
+      limit: 20,
+      offset: 0,
+      filters: {
+        search_key: incidentId,
+        customer_type: 'single_customer',
+        company_ids: [String(companyId)]
       },
-      subTable: null,
-      rightClicked: null,
-      selectAllPage: false,
-      routers: [],
-      rightActions: [],
-      extensionParams: null,
-      tag: null,
-      type: 'group',
-      tableMappings: [
-        {
-          parentField: 'uuId',
-          childField: 'eventId'
+      sorts: [{ field: 'sla_deadline', order: 'asc' }]
+    })
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`事件表按 search_key 查询失败 (${incidentId}): ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+  return response;
+}
+
+function extractGptSubResultFromResponse(response) {
+  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+  const list = Array.isArray(data.list) ? data.list : [];
+  if (list.length === 0) return '';
+  const gptSubResult = list[0] && list[0].gpt_sub_result && typeof list[0].gpt_sub_result === 'object' ? list[0].gpt_sub_result : {};
+  return String(gptSubResult.render_value || '').trim();
+}
+
+function matchThreatActor(gptSubResultValue) {
+  if (!gptSubResultValue) return '';
+  for (const name of THREAT_ACTOR_NAMES) {
+    if (gptSubResultValue.includes(name)) {
+      return name;
+    }
+  }
+  return '';
+}
+
+function buildIncidentGptTableRequestBody({ offset, limit, startTimeMs, endTimeMs, customerId }) {
+  return {
+    limit,
+    offset,
+    filters: {
+      end_time: [startTimeMs, endTimeMs],
+      customer_type: 'single_customer',
+      company_ids: [String(customerId)]
+    },
+    sorts: [{ field: 'sla_deadline', order: 'asc' }]
+  };
+}
+
+async function fetchMsswIncidentGptTablePage(cookieInfo, msswBaseUrl, companyId, options) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_INCIDENT_TABLE_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildIncidentGptTableRequestBody(options))
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`MSSW 事件表（GPT 统计）查询失败: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+  return response;
+}
+
+function hasMaliciousEntity(response) {
+  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+  const entities = Array.isArray(data.entities) ? data.entities : [];
+  for (const entity of entities) {
+    const threatLevelDesc = String(entity && entity.threatLevelDesc || '').trim();
+    if (threatLevelDesc.includes('恶意')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function confirmHostCompromiseIncident(cookieInfo, msswBaseUrl, companyId, incidentId) {
+  // 主机失陷需要检查 IP 和 DNS 两种标签，任一有"恶意"即确认
+  const ipResponse = await fetchDisposalTabs(cookieInfo, msswBaseUrl, companyId, incidentId, 'IP');
+  if (hasMaliciousEntity(ipResponse)) return true;
+
+  const dnsResponse = await fetchDisposalTabs(cookieInfo, msswBaseUrl, companyId, incidentId, 'DNS');
+  if (hasMaliciousEntity(dnsResponse)) return true;
+
+  return false;
+}
+
+async function fetchMsswIncidentGptStats(cookieInfo, msswBaseUrl, companyId, startTimeMs, endTimeMs, logger, incidentFilePath) {
+  const threatActorCounts = {};
+  let hostCompromiseIds = [];
+  let virusTrojanIds = [];
+  let gptSubResultMap = {};
+
+  if (incidentFilePath) {
+    // 从已导出的事件表 Excel 读取 GPT 研判结论
+    logInfo(logger, `从事件表 Excel 读取 GPT 研判结论: ${incidentFilePath}`);
+    const excelData = await parseIncidentGptStats(incidentFilePath);
+    hostCompromiseIds = excelData.hostCompromiseIds;
+    virusTrojanIds = excelData.virusTrojanIds;
+    gptSubResultMap = excelData.gptSubResultMap;
+    logInfo(logger, `Excel 分类完成: 主机失陷活动 ${hostCompromiseIds.length} 个, 病毒木马活动 ${virusTrojanIds.length} 个`);
+  } else {
+    // 降级：从 API 分页拉取事件表（向后兼容）
+    logInfo(logger, '开始拉取事件表 GPT 研判结论统计...');
+    const pageSize = 20;
+    let offset = 0;
+    while (true) {
+      const response = await fetchMsswIncidentGptTablePage(cookieInfo, msswBaseUrl, companyId, {
+        offset,
+        limit: pageSize,
+        startTimeMs,
+        endTimeMs,
+        customerId: companyId
+      });
+
+      const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+      const list = Array.isArray(data.list) ? data.list : [];
+      const total = Number(data.total || 0);
+
+      for (const item of list) {
+        if (!item || !item.incident_id) continue;
+
+        const gptResult = item.gpt_result && typeof item.gpt_result === 'object' ? item.gpt_result : {};
+        const gptResultValue = String(gptResult.render_value || '').trim();
+
+        if (gptResultValue === '主机失陷活动') {
+          hostCompromiseIds.push(item.incident_id);
+        } else if (gptResultValue === '病毒木马活动') {
+          virusTrojanIds.push(item.incident_id);
         }
-      ],
-      tableMapping: null
-    },
-    rightClicked: false,
-    selectAllPage: true,
-    routers: [
-      {
-        icon: null,
-        path: '/incident/event/detail',
-        type: 'drillDown',
-        params: null,
-        actionParams: {
-          quarantineHostDisableFlag: '$quarantineHostDisableFlag',
-          disposedDisableFlag: '$disposedDisableFlag',
-          orderDisableFlag: '$orderDisableFlag',
-          disposingDisableFlag: '$disposingDisableFlag',
-          pendingDisableFlag: '$pendingDisableFlag',
-          ignoreDisableFlag: '$ignoreDisableFlag',
-          trustFileDisableFlag: '$trustFileDisableFlag',
-          toBeTransferDisableFlag: '$toBeTransferDisableFlag',
-          id: '$uuId',
-          disposeFileDisableFlag: '$disposeFileDisableFlag',
-          soarDisableFlag: '$soarDisableFlag',
-          misReportDisableFlag: '$misReportDisableFlag'
-        },
-        applicableCols: ['name']
-      }
-    ],
-    rightActions: [],
-    extensionParams: {},
-    tag: null
-  };
-}
 
-function buildGptYunyingAlertTableQueryRequestBody({ begin, end, pageNum = 1, pageSize = 1000 }) {
+        // 顺便收集 gpt_sub_result
+        const gptSubResult = item.gpt_sub_result && typeof item.gpt_sub_result === 'object' ? item.gpt_sub_result : {};
+        const subValue = String(gptSubResult.render_value || '').trim();
+        if (subValue && subValue !== '-') {
+          gptSubResultMap[item.incident_id] = subValue;
+        }
+      }
+
+      logInfo(logger, `事件表拉取进度: ${hostCompromiseIds.length + virusTrojanIds.length}/${total}（主机失陷: ${hostCompromiseIds.length}, 病毒木马: ${virusTrojanIds.length}）`);
+
+      if (list.length < pageSize) {
+        break;
+      }
+      offset += pageSize;
+    }
+    logInfo(logger, `事件表分类完成: 主机失陷活动 ${hostCompromiseIds.length} 个, 病毒木马活动 ${virusTrojanIds.length} 个`);
+  }
+
+  // Step 2: 对每个病毒木马事件，调用 disposalTabs(FILE) 确认是否为真正的病毒木马活动
+  logInfo(logger, '开始确认病毒木马事件的恶意文件（查询 FILE 处置标签）...');
+  const confirmedVirusTrojanIds = [];
+  for (let i = 0; i < virusTrojanIds.length; i += 1) {
+    const incidentId = virusTrojanIds[i];
+    try {
+      const disposalResponse = await fetchDisposalTabs(cookieInfo, msswBaseUrl, companyId, incidentId, 'FILE');
+      if (hasMaliciousEntity(disposalResponse)) {
+        confirmedVirusTrojanIds.push(incidentId);
+        logInfo(logger, `病毒木马事件 #${i + 1}/${virusTrojanIds.length} ${incidentId}: 确认成立`);
+      } else {
+        logInfo(logger, `病毒木马事件 #${i + 1}/${virusTrojanIds.length} ${incidentId}: 未确认（无恶意文件标签）`);
+      }
+    } catch (error) {
+      logInfo(logger, `病毒木马事件 #${i + 1}/${virusTrojanIds.length} ${incidentId} 处置标签(FILE)查询失败: ${error.message}`);
+    }
+  }
+
+  logInfo(logger, `病毒木马确认完成: ${confirmedVirusTrojanIds.length}/${virusTrojanIds.length} 个确认为病毒木马活动`);
+
+  // Step 3: 对每个主机失陷事件，调用 disposalTabs(IP+DNS) 确认是否为真正的 C2 外联
+  logInfo(logger, '开始确认主机失陷事件的 C2 外联（查询 IP+DNS 处置标签）...');
+  const confirmedHostCompromiseIds = [];
+  for (let i = 0; i < hostCompromiseIds.length; i += 1) {
+    const incidentId = hostCompromiseIds[i];
+    try {
+      const isConfirmed = await confirmHostCompromiseIncident(cookieInfo, msswBaseUrl, companyId, incidentId);
+      if (isConfirmed) {
+        confirmedHostCompromiseIds.push(incidentId);
+        logInfo(logger, `主机失陷事件 #${i + 1}/${hostCompromiseIds.length} ${incidentId}: 确认成立`);
+      } else {
+        logInfo(logger, `主机失陷事件 #${i + 1}/${hostCompromiseIds.length} ${incidentId}: 未确认（无恶意标签）`);
+      }
+    } catch (error) {
+      logInfo(logger, `主机失陷事件 #${i + 1}/${hostCompromiseIds.length} ${incidentId} C2确认查询失败: ${error.message}`);
+    }
+  }
+
+  logInfo(logger, `主机失陷确认完成: ${confirmedHostCompromiseIds.length}/${hostCompromiseIds.length} 个确认为 C2 外联`);
+
+  // Step 4: 对已确认的事件，从 gptSubResultMap 查询 GPT 定性结论并统计威胁家族
+  const allIncidentIds = [...confirmedVirusTrojanIds, ...confirmedHostCompromiseIds];
+  logInfo(logger, `开始统计已确认事件（病毒木马 ${confirmedVirusTrojanIds.length} + 主机失陷 ${confirmedHostCompromiseIds.length} = ${allIncidentIds.length}）的 GPT 定性结论...`);
+
+  if (incidentFilePath) {
+    // 从 Excel 的 GPT定性结论 列直接查找
+    for (let i = 0; i < allIncidentIds.length; i += 1) {
+      const incidentId = allIncidentIds[i];
+      const subValue = gptSubResultMap[incidentId] || '';
+      if (!subValue) {
+        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: 无 GPT 定性结论`);
+        continue;
+      }
+      const matchedActor = matchThreatActor(subValue);
+      if (matchedActor) {
+        threatActorCounts[matchedActor] = (threatActorCounts[matchedActor] || 0) + 1;
+        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性=${subValue}, 匹配=${matchedActor}`);
+      } else {
+        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性=${subValue}, 未匹配`);
+      }
+    }
+  } else {
+    // 降级：逐个调 API 查询
+    for (let i = 0; i < allIncidentIds.length; i += 1) {
+      const incidentId = allIncidentIds[i];
+      try {
+        const incidentResponse = await queryMsswIncidentBySearchKey(cookieInfo, msswBaseUrl, companyId, incidentId);
+        const gptSubResultValue = extractGptSubResultFromResponse(incidentResponse);
+        if (!gptSubResultValue) continue;
+
+        const matchedActor = matchThreatActor(gptSubResultValue);
+        if (matchedActor) {
+          threatActorCounts[matchedActor] = (threatActorCounts[matchedActor] || 0) + 1;
+          logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性=${gptSubResultValue}, 匹配=${matchedActor}`);
+        } else {
+          logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性=${gptSubResultValue}, 未匹配`);
+        }
+      } catch (error) {
+        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId} GPT定性查询失败: ${error.message}`);
+      }
+    }
+  }
+
+  // Step 5: 排序取 top 2（合并病毒木马 + 主机失陷的统计结果）
+  const sortedActors = Object.entries(threatActorCounts)
+    .sort(([, countA], [, countB]) => countB - countA)
+    .slice(0, 2)
+    .map(([name, count]) => ({ name, count }));
+
+  logInfo(logger, `威胁家族 Top2（合并统计）: ${JSON.stringify(sortedActors)}`);
+
+  // Step 6: 按固定优先级顺序取 top2（勒索 > 银狐 > 黑猫 > ...，只要有就按序取）
+  const matchedActorsSet = new Set(Object.keys(threatActorCounts));
+  const threatTypeRanking = [];
+  for (const name of THREAT_ACTOR_NAMES) {
+    if (matchedActorsSet.has(name)) {
+      threatTypeRanking.push(name);
+      if (threatTypeRanking.length >= 2) break;
+    }
+  }
+  logInfo(logger, `威胁类型 Top2（固定优先级）: ${JSON.stringify(threatTypeRanking)}`);
+
+  const combinedTotal = confirmedHostCompromiseIds.length + confirmedVirusTrojanIds.length;
+
   return {
-    extensionParams: null,
-    spl: {
-      mappedSpl: '',
-      originalSpl: '',
-      extensionParams: {
-        frontRender: [],
-        mappedInputSpl: '',
-        originalInputSpl: ''
-      }
+    total: combinedTotal,
+    hostCompromise: {
+      total: confirmedHostCompromiseIds.length,
+      confirmedIncidentIds: confirmedHostCompromiseIds
     },
-    serviceInfo: GPT_YUNYING_ALERT_SERVICE_INFO,
-    globalCondition: {
-      branchIds: [],
-      time: {
-        timeField: 'firstTime',
-        begin: { type: 'absolute', value: begin },
-        end: { type: 'absolute', value: end }
-      }
+    virusTrojan: {
+      total: confirmedVirusTrojanIds.length,
+      confirmedIncidentIds: confirmedVirusTrojanIds
     },
-    table: buildGptYunyingAlertTableQuerySection(pageNum, pageSize),
-    rightClicked: false,
-    selectAllPage: true,
-    routers: [],
-    rightActions: [],
-    extensionParams: {},
-    tag: null,
-    type: 'group',
-    viewName: 'GptYunyingAlertView',
-    model: 'simple',
-    autoRefresh: false,
-    viewInstanceId: GPT_YUNYING_ALERT_VIEW_INSTANCE_ID,
-    enableHistory: false
-  };
-}
-
-function getWrappedField(fieldValue) {
-  const value = fieldValue && typeof fieldValue === 'object' ? fieldValue : {};
-  return {
-    originalValue: value.originalValue,
-    renderValue: value.renderValue
-  };
-}
-
-function normalizeYunyingMatchValue(value) {
-  return String(value || '').trim();
-}
-
-function resolveGptYunyingAlertTimeRange(options = {}) {
-  const start = options.start || (options.projectBackground && options.projectBackground.startDate) || options.begin;
-  const end = options.end || (options.projectBackground && options.projectBackground.endDate);
-  return resolveIncidentTimeRange({ start, end });
-}
-
-function summarizeGptYunyingAlertRows(rows, logger) {
-  const summary = {
-    virusFiles: {
-      total: 0,
-      hostIps: [],
-      records: []
-    },
-    c2ExternalLink: {
-      total: 0,
-      hostIps: [],
-      records: []
-    },
-    exploitAttacks: {
-      total: 0,
-      hostIps: [],
-      records: []
-    },
-    webAttacks: {
-      total: 0,
-      hostIps: [],
-      records: []
-    }
-  };
-  const hostIpSets = {
-    virusFiles: new Set(),
-    c2ExternalLink: new Set(),
-    exploitAttacks: new Set(),
-    webAttacks: new Set()
-  };
-  const log = typeof logger === 'function' ? logger : null;
-  const rowsList = Array.isArray(rows) ? rows : [];
-
-  if (log) {
-    logInfo(log, `GPT 运营告警明细行数: ${rowsList.length}`);
-  }
-
-  for (let index = 0; index < rowsList.length; index += 1) {
-    const row = rowsList[index];
-    const gptResult = getWrappedField(row && row.gptResult);
-    const gptResultValue = normalizeYunyingMatchValue(gptResult.renderValue);
-    const threatClass = getWrappedField(row && row.threatClass);
-    const threatClassValue = normalizeYunyingMatchValue(threatClass.renderValue);
-    const hostIp = getWrappedField(row && row.hostIp);
-    const hostIpOriginalValue = normalizeYunyingMatchValue(hostIp.originalValue);
-    const record = {
-      hostIp,
-      gptResult,
-      threatClass
-    };
-
-    if (log) {
-      logInfo(
-        log,
-        `GPT 运营告警行#${index + 1}: hostIp=${hostIpOriginalValue || '空'}, threatClass=${threatClassValue || '空'}, gptResult=${gptResultValue || '空'}`
-      );
-    }
-
-    if (gptResultValue === GPT_YUNYING_ALERT_MATCHERS.virusFiles) {
-      summary.virusFiles.total += 1;
-      summary.virusFiles.records.push(record);
-      if (hostIpOriginalValue && !hostIpSets.virusFiles.has(hostIpOriginalValue)) {
-        hostIpSets.virusFiles.add(hostIpOriginalValue);
-        summary.virusFiles.hostIps.push(hostIpOriginalValue);
-      }
-      continue;
-    }
-
-    if (gptResultValue === GPT_YUNYING_ALERT_MATCHERS.c2ExternalLink) {
-      summary.c2ExternalLink.total += 1;
-      summary.c2ExternalLink.records.push(record);
-      if (hostIpOriginalValue && !hostIpSets.c2ExternalLink.has(hostIpOriginalValue)) {
-        hostIpSets.c2ExternalLink.add(hostIpOriginalValue);
-        summary.c2ExternalLink.hostIps.push(hostIpOriginalValue);
-      }
-      continue;
-    }
-
-    if (threatClassValue === GPT_YUNYING_ALERT_MATCHERS.exploitAttacks) {
-      summary.exploitAttacks.total += 1;
-      summary.exploitAttacks.records.push(record);
-      if (hostIpOriginalValue && !hostIpSets.exploitAttacks.has(hostIpOriginalValue)) {
-        hostIpSets.exploitAttacks.add(hostIpOriginalValue);
-        summary.exploitAttacks.hostIps.push(hostIpOriginalValue);
-      }
-      continue;
-    }
-
-    if (threatClassValue === GPT_YUNYING_ALERT_MATCHERS.webAttacks) {
-      summary.webAttacks.total += 1;
-      summary.webAttacks.records.push(record);
-      if (hostIpOriginalValue && !hostIpSets.webAttacks.has(hostIpOriginalValue)) {
-        hostIpSets.webAttacks.add(hostIpOriginalValue);
-        summary.webAttacks.hostIps.push(hostIpOriginalValue);
-      }
-      continue;
-    }
-
-    if (log) {
-      logInfo(
-        log,
-        `GPT 运营告警未命中: gptResult=${gptResultValue || '空'}, threatClass=${threatClassValue || '空'}`
-      );
-    }
-  }
-
-  if (log) {
-    logInfo(
-      log,
-      `GPT 运营告警汇总: 病毒木马=${summary.virusFiles.total}, C2外联=${summary.c2ExternalLink.total}, 漏洞利用=${summary.exploitAttacks.total}, Web攻击=${summary.webAttacks.total}`
-    );
-  }
-
-  return summary;
-}
-
-function summarizeAlertThreatClassRows(rows, logger) {
-  const summary = {
-    exploitAttacks: {
-      total: 0,
-      hostIps: [],
-      records: []
-    },
-    webAttacks: {
-      total: 0,
-      hostIps: [],
-      records: []
-    }
-  };
-  const hostIpSets = {
-    exploitAttacks: new Set(),
-    webAttacks: new Set()
-  };
-  const log = typeof logger === 'function' ? logger : null;
-  const rowsList = Array.isArray(rows) ? rows : [];
-
-  if (log) {
-    logInfo(log, `告警总览明细行数: ${rowsList.length}`);
-  }
-
-  for (let index = 0; index < rowsList.length; index += 1) {
-    const row = rowsList[index];
-    const threatClass = getWrappedField(row && row.threatClass);
-    const threatClassValue = normalizeYunyingMatchValue(threatClass.renderValue);
-    const hostIp = getWrappedField(row && row.hostIp);
-    const hostIpOriginalValue = normalizeYunyingMatchValue(hostIp.originalValue);
-    const record = {
-      hostIp,
-      threatClass
-    };
-
-    if (log) {
-      logInfo(
-        log,
-        `告警总览行#${index + 1}: hostIp=${hostIpOriginalValue || '空'}, threatClass=${threatClassValue || '空'}`
-      );
-    }
-
-    if (threatClassValue === GPT_YUNYING_ALERT_MATCHERS.exploitAttacks) {
-      summary.exploitAttacks.total += 1;
-      summary.exploitAttacks.records.push(record);
-      if (hostIpOriginalValue && !hostIpSets.exploitAttacks.has(hostIpOriginalValue)) {
-        hostIpSets.exploitAttacks.add(hostIpOriginalValue);
-        summary.exploitAttacks.hostIps.push(hostIpOriginalValue);
-      }
-      continue;
-    }
-
-    if (threatClassValue === GPT_YUNYING_ALERT_MATCHERS.webAttacks) {
-      summary.webAttacks.total += 1;
-      summary.webAttacks.records.push(record);
-      if (hostIpOriginalValue && !hostIpSets.webAttacks.has(hostIpOriginalValue)) {
-        hostIpSets.webAttacks.add(hostIpOriginalValue);
-        summary.webAttacks.hostIps.push(hostIpOriginalValue);
-      }
-      continue;
-    }
-
-    if (log) {
-      logInfo(log, `告警总览未命中: threatClass=${threatClassValue || '空'}`);
-    }
-  }
-
-  if (log) {
-    logInfo(log, `告警总览汇总: 漏洞利用=${summary.exploitAttacks.total}, Web攻击=${summary.webAttacks.total}`);
-  }
-
-  return summary;
-}
-
-async function fetchGptYunyingAlertTablePage(cookieInfo, xdrBaseUrl, options, pageNum, pageSize) {
-  const headers = buildXdrPageHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl, {
-    accept: 'application/json, text/plain, */*',
-    'content-type': 'application/json',
-    origin: `https://${normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL)}`,
-    referer: `https://${normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL)}/`,
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-origin',
-    'x-requested-with': 'XMLHttpRequest'
-  });
-  const url = `https://${normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL)}${GPT_YUNYING_ALERT_QUERY_ENDPOINT}`;
-  const timeRange = resolveGptYunyingAlertTimeRange(options);
-  const response = await requestJson(url, {
-    headers,
-    body: JSON.stringify(buildGptYunyingAlertTableQueryRequestBody({
-      begin: timeRange.begin,
-      end: timeRange.end,
-      pageNum,
-      pageSize
-    }))
-  });
-  assertXdrApiSuccess(response, 'XDR GPT 运营告警查询接口');
-  return response;
-}
-
-async function fetchGptYunyingAlertOverview(cookieInfo, xdrBaseUrl, options = {}) {
-  const logger = options.logger;
-  logInfo(logger, '拉取 GPT 运营告警风险总览');
-  const pageSize = Number(options.pageSize || 1000);
-  const firstPage = await fetchGptYunyingAlertTablePage(cookieInfo, xdrBaseUrl, options, 1, pageSize);
-  const firstData = firstPage && firstPage.data && typeof firstPage.data === 'object' ? firstPage.data : {};
-  const total = Number(firstData.total || 0);
-  const rows = Array.isArray(firstData.data) ? [...firstData.data] : [];
-  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
-
-  for (let pageNum = 2; pageNum <= totalPages; pageNum += 1) {
-    const pageResponse = await fetchGptYunyingAlertTablePage(cookieInfo, xdrBaseUrl, options, pageNum, pageSize);
-    const pageData = pageResponse && pageResponse.data && typeof pageResponse.data === 'object' ? pageResponse.data : {};
-    const pageRows = Array.isArray(pageData.data) ? pageData.data : [];
-    rows.push(...pageRows);
-    if (pageRows.length < pageSize) {
-      break;
-    }
-  }
-
-  const alertStats = summarizeGptYunyingAlertRows(rows, logger);
-  return {
-    total,
-    ...alertStats
-  };
-}
-
-async function fetchAlertThreatClassTablePage(cookieInfo, xdrBaseUrl, options, pageNum, pageSize) {
-  const headers = buildXdrPageHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl, {
-    accept: 'application/json, text/plain, */*',
-    'content-type': 'application/json',
-    origin: `https://${normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL)}`,
-    referer: `https://${normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL)}/`,
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-origin',
-    'x-requested-with': 'XMLHttpRequest'
-  });
-  const url = `https://${normalizeBaseUrl(xdrBaseUrl || DEFAULT_XDR_BASE_URL)}${ALERT_QUERY_ENDPOINT}`;
-  const timeRange = resolveGptYunyingAlertTimeRange(options);
-  const response = await requestJson(url, {
-    headers,
-    body: JSON.stringify(buildAlertThreatClassRequestBody({
-      begin: timeRange.begin,
-      end: timeRange.end,
-      pageNum,
-      pageSize
-    }))
-  });
-  assertXdrApiSuccess(response, 'XDR 告警总览查询接口');
-  return response;
-}
-
-async function fetchAlertThreatClassOverview(cookieInfo, xdrBaseUrl, options = {}) {
-  const logger = options.logger;
-  logInfo(logger, '拉取 告警总览风险项');
-  const pageSize = Number(options.pageSize || 1000);
-  const firstPage = await fetchAlertThreatClassTablePage(cookieInfo, xdrBaseUrl, options, 1, pageSize);
-  const firstData = firstPage && firstPage.data && typeof firstPage.data === 'object' ? firstPage.data : {};
-  const total = Number(firstData.total || 0);
-  const rows = Array.isArray(firstData.data) ? [...firstData.data] : [];
-  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
-
-  for (let pageNum = 2; pageNum <= totalPages; pageNum += 1) {
-    const pageResponse = await fetchAlertThreatClassTablePage(cookieInfo, xdrBaseUrl, options, pageNum, pageSize);
-    const pageData = pageResponse && pageResponse.data && typeof pageResponse.data === 'object' ? pageResponse.data : {};
-    const pageRows = Array.isArray(pageData.data) ? pageData.data : [];
-    rows.push(...pageRows);
-    if (pageRows.length < pageSize) {
-      break;
-    }
-  }
-
-  const alertStats = summarizeAlertThreatClassRows(rows, logger);
-  return {
-    total,
-    ...alertStats
+    threatActorStats: sortedActors,
+    threatTypeRanking
   };
 }
 
@@ -1994,6 +1697,107 @@ async function fetchAssetReadyToOutbound(cookieInfo, xdrBaseUrl) {
   return response;
 }
 
+async function fetchMsswAssetCore(cookieInfo, msswBaseUrl, companyId) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_ASSET_COUNT_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildAssetCountRequestBody({
+      magnitude: { op: '=', val: 'core' }
+    }))
+  });
+  const code = response && response.code;
+  if (code !== 0 && code !== '0' && code !== undefined) {
+    throw new Error(`MSSW 核心资产数量接口返回异常: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+  return response;
+}
+
+async function fetchMsswAssetReadyToOutbound(cookieInfo, msswBaseUrl, companyId) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_ASSET_COUNT_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildAssetCountRequestBody({
+      ready_to_outbound: { op: '=', val: 'last7d' }
+    }))
+  });
+  const code = response && response.code;
+  if (code !== 0 && code !== '0' && code !== undefined) {
+    throw new Error(`MSSW 7天内即将退库资产数量接口返回异常: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+  return response;
+}
+
+function buildMsswIncidentTableRequestBody({ offset, limit, startTimeMs, endTimeMs, customerId }) {
+  return {
+    limit,
+    offset,
+    filters: {
+      status_note: [2],
+      end_time: [startTimeMs, endTimeMs],
+      customer_type: 'single_customer',
+      company_ids: [String(customerId)]
+    },
+    sorts: [{ field: 'sla_deadline', order: 'asc' }]
+  };
+}
+
+async function fetchMsswIncidentTablePage(cookieInfo, msswBaseUrl, companyId, options) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_INCIDENT_TABLE_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildMsswIncidentTableRequestBody(options))
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`MSSW 事件表查询失败: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  return response;
+}
+
+async function fetchMsswFalsePositiveIncidentIds(cookieInfo, msswBaseUrl, companyId, startTimeMs, endTimeMs, logger) {
+  const pageSize = 20;
+  let offset = 0;
+  let allIds = [];
+
+  logInfo(logger, '开始拉取误报事件列表...');
+
+  while (true) {
+    const response = await fetchMsswIncidentTablePage(cookieInfo, msswBaseUrl, companyId, {
+      offset,
+      limit: pageSize,
+      startTimeMs,
+      endTimeMs,
+      customerId: companyId
+    });
+
+    const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+    const list = Array.isArray(data.list) ? data.list : [];
+    const total = Number(data.total || 0);
+
+    for (const item of list) {
+      if (item && item.incident_id) {
+        allIds.push(item.incident_id);
+      }
+    }
+
+    logInfo(logger, `误报事件拉取进度: ${allIds.length}/${total}`);
+
+    if (list.length < pageSize) {
+      break;
+    }
+
+    offset += pageSize;
+  }
+
+  logInfo(logger, `误报事件总数: ${allIds.length}`);
+  return allIds;
+}
+
 async function fetchAssetProtection(cookieInfo, xdrBaseUrl) {
   const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl);
   const url = `https://${xdrBaseUrl}${ASSET_PROTECTION_ENDPOINT}`;
@@ -2127,7 +1931,7 @@ function buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId, overrides = 
 function buildMsswIncidentExportRequestBody({ begin, end, companyId, fields }) {
   return {
     filters: {
-      created_time: [begin, end],
+      end_time: [begin, end],
       customer_type: 'single_customer',
       company_ids: [String(companyId)]
     },
@@ -2273,6 +2077,22 @@ async function exportMsswIncidentList(options) {
   const downloadDir = options.downloadDir || path.dirname(cookieInfo.resolvedPath);
   const downloaded = await downloadMsswIncidentFile(cookieInfo, msswBaseUrl, taskId, downloadDir, fileName, companyId);
   logInfo(logger, `MSSW 事件表: ${downloaded.filePath}`);
+
+  // 误报事件过滤：从事件表中移除已被标记为误报的事件
+  try {
+    const { begin, end } = resolveMsswTimeRange(options);
+    const startTimeMs = begin * 1000;
+    const endTimeMs = end * 1000;
+    const falsePositiveIds = await fetchMsswFalsePositiveIncidentIds(cookieInfo, msswBaseUrl, companyId, startTimeMs, endTimeMs, logger);
+    if (falsePositiveIds.length > 0) {
+      const removeResult = await removeIncidentRows(downloaded.filePath, falsePositiveIds);
+      logInfo(logger, `误报事件过滤完成: ${removeResult.message}`);
+    } else {
+      logInfo(logger, '没有误报事件需要过滤');
+    }
+  } catch (error) {
+    logInfo(logger, `误报事件过滤失败（不影响主流程）: ${error.message}`);
+  }
 
   return {
     msswBaseUrl,
@@ -2845,12 +2665,24 @@ async function exportMsswDeviceList(options) {
 
 async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
   const logger = options.logger;
-  logInfo(logger, '拉取 XDR 资产台账统计');
-  const cookieInfo = cookiePathOrInfo && cookiePathOrInfo.cookieString
-    ? cookiePathOrInfo
-    : await readXdrCookieInfo(cookiePathOrInfo);
-  const resolved = await resolveWorkingXdrBaseUrl(cookieInfo, options.xdrBaseUrl, logger);
-  const xdrBaseUrl = resolved.xdrBaseUrl;
+  const isMssw = !!(options.msswCookiePath || options.msswCookieInfo);
+
+  logInfo(logger, isMssw ? '拉取 MSSW 资产台账统计' : '拉取 XDR 资产台账统计');
+
+  let cookieInfo, xdrBaseUrl, companyId;
+
+  if (isMssw) {
+    cookieInfo = options.msswCookieInfo || await readMsswCookieInfo(options.msswCookiePath);
+    xdrBaseUrl = normalizeBaseUrl(options.msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+    companyId = options.customerId || '';
+  } else {
+    cookieInfo = cookiePathOrInfo && cookiePathOrInfo.cookieString
+      ? cookiePathOrInfo
+      : await readXdrCookieInfo(cookiePathOrInfo);
+    const resolved = await resolveWorkingXdrBaseUrl(cookieInfo, options.xdrBaseUrl, logger);
+    xdrBaseUrl = resolved.xdrBaseUrl;
+  }
+
   const start = options.start || (options.projectBackground && options.projectBackground.startDate) || options.begin;
   const end = options.end || (options.projectBackground && options.projectBackground.endDate);
   const timeOptions = {
@@ -2858,10 +2690,19 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
     start,
     end
   };
-  const [assetCoreResponse, assetReadyToOutboundResponse] = await Promise.all([
-    fetchAssetCore(cookieInfo, xdrBaseUrl),
-    fetchAssetReadyToOutbound(cookieInfo, xdrBaseUrl)
-  ]);
+
+  let assetCoreResponse, assetReadyToOutboundResponse;
+  if (isMssw) {
+    [assetCoreResponse, assetReadyToOutboundResponse] = await Promise.all([
+      fetchMsswAssetCore(cookieInfo, xdrBaseUrl, companyId),
+      fetchMsswAssetReadyToOutbound(cookieInfo, xdrBaseUrl, companyId)
+    ]);
+  } else {
+    [assetCoreResponse, assetReadyToOutboundResponse] = await Promise.all([
+      fetchAssetCore(cookieInfo, xdrBaseUrl),
+      fetchAssetReadyToOutbound(cookieInfo, xdrBaseUrl)
+    ]);
+  }
 
   const assetLedger = {
     ...normalizeAssetCoreResponse(assetCoreResponse),
@@ -2872,53 +2713,54 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
     internetExposureDistribution: []
   };
 
-  let gptYunyingAlertStats = {
+  let incidentGptStats = {
     total: 0,
-    virusFiles: {
-      total: 0,
-      hostIps: [],
-      records: []
+    hostCompromise: {
+      total: 0
     },
-    c2ExternalLink: {
+    virusTrojan: {
       total: 0,
-      hostIps: [],
-      records: []
+      confirmedIncidentIds: []
     },
-    exploitAttacks: {
-      total: 0,
-      hostIps: [],
-      records: []
-    },
-    webAttacks: {
-      total: 0,
-      hostIps: [],
-      records: []
-    }
-  };
-  let alertThreatClassStats = {
-    total: 0,
-    exploitAttacks: {
-      total: 0,
-      hostIps: [],
-      records: []
-    },
-    webAttacks: {
-      total: 0,
-      hostIps: [],
-      records: []
-    }
+    threatActorStats: []
   };
 
-  try {
-    gptYunyingAlertStats = await fetchGptYunyingAlertOverview(cookieInfo, xdrBaseUrl, timeOptions);
-  } catch (error) {
-    logInfo(logger, `获取 GPT 运营告警风险总览失败: ${error.message}，将使用空结果`);
-  }
+  if (isMssw) {
+    try {
+      const timeRange = resolveIncidentTimeRange(timeOptions);
+      const startTimeMs = timeRange.begin * 1000;
+      const endTimeMs = timeRange.end * 1000;
+      incidentGptStats = await fetchMsswIncidentGptStats(cookieInfo, xdrBaseUrl, companyId, startTimeMs, endTimeMs, logger, options.incidentFilePath);
+    } catch (error) {
+      logInfo(logger, `获取事件表 GPT 研判结论统计失败: ${error.message}，将使用空结果`);
+    }
 
-  try {
-    alertThreatClassStats = await fetchAlertThreatClassOverview(cookieInfo, xdrBaseUrl, timeOptions);
-  } catch (error) {
-    logInfo(logger, `获取 告警总览风险项失败: ${error.message}，将使用空结果`);
+    // 从事件表/资产表提取三类资产信息
+    if (options.incidentFilePath) {
+      try {
+        const allIds = [
+          ...(incidentGptStats.hostCompromise?.confirmedIncidentIds || []),
+          ...(incidentGptStats.virusTrojan?.confirmedIncidentIds || [])
+        ];
+        const virusIds = incidentGptStats.virusTrojan?.confirmedIncidentIds || [];
+        if (allIds.length > 0) {
+          const assetInfo = await extractIncidentAssetInfo(
+            options.incidentFilePath,
+            options.assetFilePath || '',
+            allIds,
+            virusIds
+          );
+          incidentGptStats.virusAttackAsset = assetInfo.virusAttackAsset || '';
+          incidentGptStats.nonAesCoveredAssets = assetInfo.nonAesCoveredAssets || [];
+          incidentGptStats.unlabeledAssets = assetInfo.unlabeledAssets || [];
+          logInfo(logger, `提取事件资产信息完成: 病毒攻击资产=${incidentGptStats.virusAttackAsset}, ` +
+            `未被AES覆盖=${incidentGptStats.nonAesCoveredAssets.length}个, ` +
+            `未标注资产=${incidentGptStats.unlabeledAssets.length}个`);
+        }
+      } catch (error) {
+        logInfo(logger, `提取事件资产信息失败（不影响主流程）: ${error.message}`);
+      }
+    }
   }
 
   let securityLogTotal = 0;
@@ -2933,20 +2775,11 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
     logInfo(logger, `获取安全日志量或有效告警统计失败: ${error.message}，将使用空结果`);
   }
 
-  const yunyingAlertStats = {
-    c2VirusTotal: gptYunyingAlertStats.virusFiles.total + gptYunyingAlertStats.c2ExternalLink.total,
-    webVulnTotal: alertThreatClassStats.exploitAttacks.total + alertThreatClassStats.webAttacks.total,
-    virusFiles: gptYunyingAlertStats.virusFiles,
-    c2ExternalLink: gptYunyingAlertStats.c2ExternalLink,
-    exploitAttacks: alertThreatClassStats.exploitAttacks,
-    webAttacks: alertThreatClassStats.webAttacks
-  };
-
   return {
     projectBackground: options.projectBackground || {},
     assetLedger,
     riskOverview: {
-      yunyingAlertStats,
+      incidentGptStats,
       securityLogTotal,
       alertTotal,
       alertReductionRate,
@@ -3276,7 +3109,6 @@ module.exports = {
   buildIncidentExportRequestBody,
   buildIncidentCountRequestBody,
   buildAlertCountRequestBody,
-  buildAlertThreatClassRequestBody,
   mapProtectionTypeLabels,
   mapExposureTypeLabels,
   mapAssetTypeLabels,
@@ -3303,16 +3135,18 @@ module.exports = {
   exportXdrIncidentList,
   exportXdrDeviceList,
   fetchAlertTableCount,
-  buildGptYunyingAlertTableFields,
-  buildGptYunyingAlertSubTableFields,
-  buildGptYunyingAlertTableQuerySection,
-  buildGptYunyingAlertTableQueryRequestBody,
-  summarizeGptYunyingAlertRows,
-  summarizeAlertThreatClassRows,
-  fetchGptYunyingAlertTablePage,
-  fetchGptYunyingAlertOverview,
-  fetchAlertThreatClassTablePage,
-  fetchAlertThreatClassOverview,
+  THREAT_ACTOR_NAMES,
+  buildDisposalTabsRequestBody,
+  fetchDisposalTabs,
+  countMalwareFilesFromDisposalTabs,
+  hasMaliciousEntity,
+  confirmHostCompromiseIncident,
+  queryMsswIncidentBySearchKey,
+  extractGptSubResultFromResponse,
+  matchThreatActor,
+  buildIncidentGptTableRequestBody,
+  fetchMsswIncidentGptTablePage,
+  fetchMsswIncidentGptStats,
   fetchDeviceTypeInfo,
   fetchDeviceList,
   fetchThirdPartyDeviceStats,
@@ -3331,5 +3165,9 @@ module.exports = {
   exportMsswDeviceList,
   fetchMsswDeviceList,
   fetchMsswThirdPartyDeviceStats,
-  collectMsswDeviceCategoryCounts
+  collectMsswDeviceCategoryCounts,
+  MSSW_ASSET_COUNT_ENDPOINT,
+  fetchMsswAssetCore,
+  fetchMsswAssetReadyToOutbound,
+  fetchMsswFalsePositiveIncidentIds
 };
