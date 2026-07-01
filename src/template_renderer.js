@@ -221,7 +221,7 @@ function formatLines(value) {
 
 function renderStatusTag(status) {
   const text = String(status || '');
-  const level = /完成|闭环/.test(text) ? 'success' : (/处置中/.test(text) ? 'warning' : 'info');
+  const level = /处置完成/.test(text) ? 'success' : (/处置中/.test(text) ? 'warning' : 'info');
   return `<span class="sr-tag sr-tag--light sr-tag--${level}">${escapeHtml(text)}</span>`;
 }
 
