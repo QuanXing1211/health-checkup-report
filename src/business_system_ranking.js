@@ -10,6 +10,7 @@ const path = require('path');
  * @param {string} [options.eventsPath]   安全事件表路径
  * @param {string} [options.weakpwdPath]  弱口令清单路径
  * @param {string} [options.vulnPath]     漏洞清单路径
+ * @param {string} [options.exposurePath] 暴露面清单路径
  * @param {string} [options.assetPath]    资产清单路径
  * @param {function} [options.logger]     日志函数
  * @returns {Promise<{top5: Array, fullRanking: Array, summary: object}>}
@@ -19,8 +20,14 @@ async function rankBusinessSystems(options = {}) {
   const logger = options.logger || (() => {});
 
   const args = [];
-  if (options.eventsPath && options.weakpwdPath && options.vulnPath && options.assetPath) {
-    args.push(options.eventsPath, options.weakpwdPath, options.vulnPath, options.assetPath);
+  if (options.eventsPath && options.weakpwdPath && options.vulnPath && options.exposurePath && options.assetPath) {
+    args.push(
+      options.eventsPath,
+      options.weakpwdPath,
+      options.vulnPath,
+      options.exposurePath,
+      options.assetPath
+    );
   }
 
   logger('[业务系统排名] 开始...');

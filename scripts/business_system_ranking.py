@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-业务系统风险排行工具
-读取三张风险表 + 资产表 → JOIN → 聚合 → 字典序排序 → TopN
+核心业务系统风险排行工具
+
+规则：
+1. 核心业务系统排序仅使用：漏洞表 + 事件表 + 弱口令表
+2. 弱口令统一按“中危”处理
+3. 业务归因仅使用资产表中“重要级别 = 核心”的资产，映射字段为：IP地址 -> 所属业务
+4. 暴露面不参与核心业务系统排序，仅参与总风险数统计
 """
 
 import json
@@ -9,17 +14,9 @@ import os
 import re
 import sys
 
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
-
-# ─── 日志全部输出到 stderr（不污染 stdout 的 JSON）───────────────
-
-def log(msg='', **kwargs):
-    kwargs.pop('file', None)
-    print(msg, file=sys.stderr, **kwargs, flush=True)
-
-
-# ─── 配置 ───────────────────────────────────────────────────────
 
 SEVERITY_MAP = {
     '严重': 'critical',
@@ -30,8 +27,18 @@ SEVERITY_MAP = {
     '低危': 'low',
 }
 
+SEVERITY_CN = {
+    'critical': '严重',
+    'high': '高危',
+    'medium': '中危',
+    'low': '低危',
+}
 
-# ─── 工具函数 ───────────────────────────────────────────────────
+
+def log(msg='', **kwargs):
+    kwargs.pop('file', None)
+    print(msg, file=sys.stderr, **kwargs, flush=True)
+
 
 def normalize(val):
     return '' if val is None else str(val).strip()
@@ -40,335 +47,465 @@ def normalize(val):
 def extract_ip(raw):
     if not raw:
         return None
-    m = re.search(r'(\d+\.\d+\.\d+\.\d+)', str(raw))
-    return m.group(1) if m else None
+    match = re.search(r'(\d+\.\d+\.\d+\.\d+)', str(raw))
+    return match.group(1) if match else None
 
 
-def _build_col_map(ws):
-    """读取表头行，返回 列名 → 列索引(0-based) 的映射"""
-    header = [normalize(cell) for cell in next(ws.iter_rows(values_only=True))]
-    return {name: i for i, name in enumerate(header) if name}
+def normalize_asset_key(raw):
+    text = normalize(raw)
+    if not text:
+        return ''
+    return extract_ip(text) or text
 
 
-# ─── 读取风险表 → 统一格式 ──────────────────────────────────────
+def open_sheet(filepath, preferred_sheet=None):
+    wb = load_workbook(filepath, read_only=True, data_only=True)
+    if preferred_sheet and preferred_sheet in wb.sheetnames:
+        return wb[preferred_sheet]
+    return wb.active
+
+
+def build_col_map(ws):
+    header = None
+    header_row = 1
+    for idx, row in enumerate(ws.iter_rows(min_row=1, max_row=5, values_only=True), start=1):
+        values = [normalize(cell) for cell in row]
+        if any(values):
+            header = values
+            header_row = idx
+            break
+    if header is None:
+        return {}, 1
+    return {name: i for i, name in enumerate(header) if name}, header_row
+
 
 def parse_events(filepath):
-    """安全事件表: 等级列, 影响资产列"""
     rows = []
-    wb = load_workbook(filepath, read_only=True, data_only=True)
-    ws = wb.active
-    col_map = _build_col_map(ws)
-    sev_col = col_map.get("等级")
-    ip_col = col_map.get("影响资产")
-    for row in ws.iter_rows(min_row=2, values_only=True):
+    ws = open_sheet(filepath, '事件表')
+    col_map, header_row = build_col_map(ws)
+    sev_col = col_map.get('等级')
+    ip_col = col_map.get('影响资产')
+    name_col = col_map.get('事件名称')
+    id_col = col_map.get('事件ID')
+
+    for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
         severity = normalize(row[sev_col] if sev_col is not None and len(row) > sev_col else None)
         raw_ip = normalize(row[ip_col] if ip_col is not None and len(row) > ip_col else None)
-        ip = extract_ip(raw_ip)
-        if ip and severity in SEVERITY_MAP:
-            rows.append({'asset_ip': ip, 'risk_type': '事件', 'severity': SEVERITY_MAP[severity]})
-    return rows
-
-
-def parse_weakpwds(filepath):
-    """弱口令清单: 风险等级列, 风险资产列"""
-    rows = []
-    wb = load_workbook(filepath, read_only=True, data_only=True)
-    ws = wb.active
-    col_map = _build_col_map(ws)
-    sev_col = col_map.get("风险等级")
-    ip_col = col_map.get("风险资产")
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        severity = normalize(row[sev_col] if sev_col is not None and len(row) > sev_col else None)
-        ip = normalize(row[ip_col] if ip_col is not None and len(row) > ip_col else None)
-        if severity in ('风险等级', '') or ip in ('主机', ''):
-            continue
-        ip = extract_ip(ip)
-        if ip and severity in SEVERITY_MAP:
-            rows.append({'asset_ip': ip, 'risk_type': '弱口令', 'severity': SEVERITY_MAP[severity]})
+        asset_ip = extract_ip(raw_ip)
+        if asset_ip and severity in SEVERITY_MAP:
+            rows.append({
+                'asset_ip': asset_ip,
+                'risk_type': '事件',
+                'severity': SEVERITY_MAP[severity],
+                'name': normalize(row[name_col] if name_col is not None and len(row) > name_col else None),
+                'source_id': normalize(row[id_col] if id_col is not None and len(row) > id_col else None),
+            })
     return rows
 
 
 def parse_vulns(filepath):
-    """漏洞清单: 风险等级列, 风险资产列"""
     rows = []
-    wb = load_workbook(filepath, read_only=True, data_only=True)
-    ws = wb.active
-    col_map = _build_col_map(ws)
-    sev_col = col_map.get("风险等级")
-    ip_col = col_map.get("风险资产")
-    for row in ws.iter_rows(min_row=2, values_only=True):
+    ws = open_sheet(filepath, '漏洞')
+    col_map, header_row = build_col_map(ws)
+    sev_col = col_map.get('风险等级')
+    ip_col = col_map.get('风险资产')
+    name_col = col_map.get('漏洞名称')
+
+    for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
         severity = normalize(row[sev_col] if sev_col is not None and len(row) > sev_col else None)
-        ip = normalize(row[ip_col] if ip_col is not None and len(row) > ip_col else None)
-        if severity in ('风险等级', '') or ip in ('IP/子域名', ''):
-            continue
-        ip = extract_ip(ip)
-        if ip and severity in SEVERITY_MAP:
-            rows.append({'asset_ip': ip, 'risk_type': '漏洞', 'severity': SEVERITY_MAP[severity]})
+        raw_ip = normalize(row[ip_col] if ip_col is not None and len(row) > ip_col else None)
+        asset_ip = extract_ip(raw_ip)
+        if asset_ip and severity in SEVERITY_MAP:
+            rows.append({
+                'asset_ip': asset_ip,
+                'risk_type': '漏洞',
+                'severity': SEVERITY_MAP[severity],
+                'name': normalize(row[name_col] if name_col is not None and len(row) > name_col else None),
+                'source_id': '',
+            })
     return rows
 
 
-# ─── 读取资产表 ─────────────────────────────────────────────────
+def parse_weak_passwords(filepath):
+    rows = []
+    ws = open_sheet(filepath, '弱口令')
+    col_map, header_row = build_col_map(ws)
+    ip_col = col_map.get('风险资产')
+    name_col = col_map.get('弱密码名称')
 
-_IP_TO_SYSTEM_FALLBACK = {
-    '10.18.135.26': '业务系统A', '10.18.135.30': '业务系统A',
-    '10.16.11.65': '业务系统A',  '10.18.154.103': '业务系统A',
-    '10.18.20.115': '业务系统A',
-    '172.16.1.1': '业务系统B',   '172.16.1.2': '业务系统B',
-    '172.16.1.3': '业务系统B',   '172.16.1.7': '业务系统B',
-    '172.16.1.9': '业务系统B',   '172.16.8.161': '业务系统B',
-    '172.18.4.230': '业务系统B',
-    '192.168.11.4': '业务系统C', '192.168.20.40': '业务系统C',
-    '192.168.20.49': '业务系统C', '192.168.216.1': '业务系统C',
-    '10.100.12.1': '业务系统C',
-}
+    for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+        raw_ip = normalize(row[ip_col] if ip_col is not None and len(row) > ip_col else None)
+        asset_ip = extract_ip(raw_ip)
+        if asset_ip:
+            rows.append({
+                'asset_ip': asset_ip,
+                'risk_type': '弱口令',
+                'severity': 'medium',
+                'name': normalize(row[name_col] if name_col is not None and len(row) > name_col else None),
+                'source_id': '',
+            })
+    return rows
 
 
-def parse_assets(filepath):
-    """资产清单: 提取 IP → 资产组名 映射"""
-    mapping = {}
+def count_exposure_rows(filepath):
     wb = load_workbook(filepath, read_only=True, data_only=True)
-    ws = wb.active
-    header = [normalize(cell) for cell in next(ws.iter_rows(values_only=True))]
-
-    ip_col = biz_group_col = None
-    for i, name in enumerate(header):
-        if name in ('IP地址', '风险资产'):
-            ip_col = i
-        if name in ('资产组名',):
-            biz_group_col = i
-
-    if ip_col is None or biz_group_col is None:
-        return _IP_TO_SYSTEM_FALLBACK
-
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        ip = normalize(row[ip_col] if len(row) > ip_col else '')
-        biz = normalize(row[biz_group_col] if len(row) > biz_group_col else '')
-        if ip and biz and ip not in ('未知', '') and biz not in ('未知', '', '未归类组'):
-            mapping[ip] = biz
-
-    return mapping if mapping else _IP_TO_SYSTEM_FALLBACK
+    total = 0
+    for sheet_name in ('Web服务风险分布', '非Web服务风险分布'):
+        if sheet_name not in wb.sheetnames:
+            continue
+        ws = wb[sheet_name]
+        _, header_row = build_col_map(ws)
+        for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+            if any(normalize(cell) for cell in row):
+                total += 1
+    return total
 
 
-# ─── 聚合排序 ───────────────────────────────────────────────────
+def parse_managed_assets(filepath):
+    managed_assets = set()
+    ws = open_sheet(filepath)
+    col_map, header_row = build_col_map(ws)
+    ip_col = col_map.get('IP地址')
+    managed_col = col_map.get('托管状态')
 
-def aggregate_and_sort(risk_rows, asset_map):
-    """JOIN资产表 → groupby业务系统 → pivot → 字典序排序"""
+    if ip_col is None or managed_col is None:
+        return managed_assets
+
+    for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+        asset_key = normalize_asset_key(row[ip_col] if len(row) > ip_col else '')
+        managed_status = normalize(row[managed_col] if len(row) > managed_col else '')
+        if asset_key and managed_status == '已托管':
+            managed_assets.add(asset_key)
+    return managed_assets
+
+
+def parse_core_assets(filepath):
+    asset_map = {}
+    ws = open_sheet(filepath)
+    col_map, header_row = build_col_map(ws)
+    ip_col = col_map.get('IP地址')
+    biz_col = col_map.get('所属业务')
+    level_col = col_map.get('重要级别')
+
+    if ip_col is None or biz_col is None or level_col is None:
+        return asset_map
+
+    for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+        asset_ip = normalize(row[ip_col] if len(row) > ip_col else '')
+        system_name = normalize(row[biz_col] if len(row) > biz_col else '')
+        asset_level = normalize(row[level_col] if len(row) > level_col else '')
+        if asset_ip and system_name and asset_level == '核心':
+            asset_map[asset_ip] = system_name
+    return asset_map
+
+
+def count_managed_risk_rows(risk_rows, managed_assets):
+    return sum(1 for row in risk_rows if normalize_asset_key(row['asset_ip']) in managed_assets)
+
+
+def count_managed_high_and_above_rows(risk_rows, managed_assets):
+    return sum(
+        1 for row in risk_rows
+        if normalize_asset_key(row['asset_ip']) in managed_assets
+        and row['severity'] in ('critical', 'high')
+    )
+
+
+def count_managed_exposure_rows(filepath, managed_assets):
+    wb = load_workbook(filepath, read_only=True, data_only=True)
+    path_to_host = {}
+
+    if '端口表' in wb.sheetnames:
+        port_ws = wb['端口表']
+        col_map, header_row = build_col_map(port_ws)
+        path_col = col_map.get('访问路径')
+        host_col = col_map.get('Host')
+        if path_col is not None and host_col is not None:
+            for row in port_ws.iter_rows(min_row=header_row + 1, values_only=True):
+                access_path = normalize(row[path_col] if len(row) > path_col else '')
+                host = normalize_asset_key(row[host_col] if len(row) > host_col else '')
+                if access_path and host:
+                    path_to_host[access_path] = host
+
+    web_count = 0
+    if 'Web服务风险分布' in wb.sheetnames:
+        web_ws = wb['Web服务风险分布']
+        col_map, header_row = build_col_map(web_ws)
+        path_col = col_map.get('访问路径')
+        if path_col is not None:
+            for row in web_ws.iter_rows(min_row=header_row + 1, values_only=True):
+                access_path = normalize(row[path_col] if len(row) > path_col else '')
+                host = path_to_host.get(access_path, '')
+                if host and host in managed_assets:
+                    web_count += 1
+
+    non_web_count = 0
+    if '非Web服务风险分布' in wb.sheetnames:
+        non_web_ws = wb['非Web服务风险分布']
+        col_map, header_row = build_col_map(non_web_ws)
+        host_col = col_map.get('IP地址/子域名')
+        if host_col is not None:
+            for row in non_web_ws.iter_rows(min_row=header_row + 1, values_only=True):
+                host = normalize_asset_key(row[host_col] if len(row) > host_col else '')
+                if host and host in managed_assets:
+                    non_web_count += 1
+
+    return {
+        'web': web_count,
+        'nonWeb': non_web_count,
+        'total': web_count + non_web_count,
+    }
+
+
+def aggregate_core_risks(risk_rows, asset_map):
     from collections import defaultdict
 
-    system_counts = defaultdict(lambda: {'critical': 0, 'high': 0, 'medium': 0, 'low': 0})
+    system_counts = defaultdict(lambda: {
+        'critical': 0,
+        'high': 0,
+        'medium': 0,
+        'low': 0,
+        'vulnCount': 0,
+        'eventCount': 0,
+        'weakPwdCount': 0,
+    })
 
-    for r in risk_rows:
-        biz = asset_map.get(r['asset_ip'])
-        if not biz:
+    matched_risks = []
+    unmatched_count = 0
+    for risk in risk_rows:
+        system_name = asset_map.get(risk['asset_ip'])
+        if not system_name:
+            unmatched_count += 1
             continue
-        sev = r['severity']
-        if sev in system_counts[biz]:
-            system_counts[biz][sev] += 1
+        system_counts[system_name][risk['severity']] += 1
+        if risk['risk_type'] == '漏洞':
+            system_counts[system_name]['vulnCount'] += 1
+        elif risk['risk_type'] == '事件':
+            system_counts[system_name]['eventCount'] += 1
+        elif risk['risk_type'] == '弱口令':
+            system_counts[system_name]['weakPwdCount'] += 1
 
-    result = []
-    for system, counts in system_counts.items():
-        result.append({
-            'system': system,
+        risk_copy = dict(risk)
+        risk_copy['system'] = system_name
+        matched_risks.append(risk_copy)
+
+    ranking = []
+    for system_name, counts in system_counts.items():
+        ranking.append({
+            'system': system_name,
             'critical': counts['critical'],
             'high': counts['high'],
             'medium': counts['medium'],
             'low': counts['low'],
-            'total': sum(counts.values()),
+            'vulnCount': counts['vulnCount'],
+            'eventCount': counts['eventCount'],
+            'weakPwdCount': counts['weakPwdCount'],
+            'total': counts['vulnCount'] + counts['eventCount'] + counts['weakPwdCount'],
         })
 
-    # 字典序：先比critical↓, 再high↓, 再medium↓, 再low↓
-    result.sort(key=lambda x: (x['critical'], x['high'], x['medium'], x['low']), reverse=True)
-    return result
+    ranking.sort(key=lambda item: (
+        item['critical'],
+        item['high'],
+        item['medium'],
+        item['low'],
+        item['total'],
+    ), reverse=True)
+    return ranking, matched_risks, unmatched_count
 
 
-# ─── 导出并行对照 Excel ─────────────────────────────────────────
-
-_SEV_CN = {
-    'critical': '严重',
-    'high': '高危',
-    'medium': '中危',
-    'low': '低危',
-}
-
-
-def export_comparison_excel(risk_rows, asset_map, ranking, output_path):
-    """
-    生成三列并行对照的风险汇总表：
-    每组 = 业务系统名(合并2列) | IP | 等级
-    组间空2列作为分隔
-    最下方显示汇总统计
-    """
+def export_comparison_excel(matched_risks, ranking, output_path):
     from collections import defaultdict
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 
-    # ── 分组 ──────────────────────────────────────────────────
-    # 按排序好的 ranking 顺序分组；ranking 已排序
-    system_order = [s['system'] for s in ranking]
-
-    # 每个系统的风险列表：(IP, 中文等级)
-    system_risks = defaultdict(list)
-    for r in risk_rows:
-        biz = asset_map.get(r['asset_ip'])
-        if not biz:
-            continue
-        cn = _SEV_CN.get(r['severity'], r['severity'])
-        system_risks[biz].append((r['asset_ip'], cn))
-
-    max_rows = max((len(system_risks[sys]) for sys in system_order), default=0)
-    n_groups = len(system_order)
-
-    # ── 创建 Excel ────────────────────────────────────────────
     wb = Workbook()
     ws = wb.active
-    ws.title = '业务系统风险对照'
+    ws.title = '核心业务系统风险对照'
 
-    # 样式
-    header_font = Font(bold=True, size=12)
-    sub_header_font = Font(bold=True, size=10)
-    summary_font = Font(bold=True, size=10)
+    header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+    sub_header_fill = PatternFill(start_color='D6E4F0', end_color='D6E4F0', fill_type='solid')
+    summary_fill = PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid')
+    white_font = Font(bold=True, size=12, color='FFFFFF')
+    bold_font = Font(bold=True, size=10)
     thin_border = Border(
         left=Side(style='thin'),
         right=Side(style='thin'),
         top=Side(style='thin'),
         bottom=Side(style='thin'),
     )
-    header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-    header_font_white = Font(bold=True, size=12, color='FFFFFF')
-    sub_header_fill = PatternFill(start_color='D6E4F0', end_color='D6E4F0', fill_type='solid')
-    summary_fill = PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid')
 
-    # 列偏移量：每组占2列，组间空2列，所以每组的起始列 = g * 4 (0, 4, 8, ...)
+    system_order = [item['system'] for item in ranking]
+    system_risks = defaultdict(list)
+    for risk in matched_risks:
+        system_risks[risk['system']].append((
+            risk['asset_ip'],
+            SEVERITY_CN[risk['severity']],
+            risk['risk_type'],
+            risk['name'],
+        ))
+
+    max_rows = max((len(system_risks[system_name]) for system_name in system_order), default=0)
+
     def group_start_col(group_idx):
-        return 1 + group_idx * 4  # 1-based excel column
+        return 1 + group_idx * 5
 
-    # ── 第1行：业务系统名（合并2列） ─────────────────────────
-    for g_idx, sys_name in enumerate(system_order):
-        col1 = group_start_col(g_idx)
-        col2 = col1 + 1
-        cell = ws.cell(row=1, column=col1, value=sys_name)
-        cell.font = header_font_white
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal='center')
-        # 合并2列
-        ws.merge_cells(start_row=1, start_column=col1, end_row=1, end_column=col2)
-        # 给合并区域第二个cell也加边框和填充
-        cell2 = ws.cell(row=1, column=col2)
-        cell2.fill = header_fill
-        cell2.border = thin_border
-        cell.border = thin_border
+    for idx, system_name in enumerate(system_order):
+        col = group_start_col(idx)
+        ws.merge_cells(start_row=1, start_column=col, end_row=1, end_column=col + 3)
+        for current_col in range(col, col + 4):
+            ws.cell(row=1, column=current_col).fill = header_fill
+            ws.cell(row=1, column=current_col).border = thin_border
+        title_cell = ws.cell(row=1, column=col, value=system_name)
+        title_cell.font = white_font
+        title_cell.fill = header_fill
+        title_cell.alignment = Alignment(horizontal='center')
 
-    # ── 第2行：IP | 等级 ──────────────────────────────────────
-    for g_idx in range(n_groups):
-        col1 = group_start_col(g_idx)
-        for offset, label in enumerate(['IP', '等级']):
-            c = ws.cell(row=2, column=col1 + offset, value=label)
-            c.font = sub_header_font
-            c.fill = sub_header_fill
-            c.alignment = Alignment(horizontal='center')
-            c.border = thin_border
+    for idx in range(len(system_order)):
+        col = group_start_col(idx)
+        for offset, label in enumerate(['IP', '等级', '类型', '名称']):
+            cell = ws.cell(row=2, column=col + offset, value=label)
+            cell.font = bold_font
+            cell.fill = sub_header_fill
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = thin_border
 
-    # ── 数据行 ──────────────────────────────────────────────────
     for row_offset in range(max_rows):
         excel_row = 3 + row_offset
-        for g_idx, sys_name in enumerate(system_order):
-            col1 = group_start_col(g_idx)
-            risks = system_risks[sys_name]
-            if row_offset < len(risks):
-                ip, cn = risks[row_offset]
-                c_ip = ws.cell(row=excel_row, column=col1, value=ip)
-                c_sev = ws.cell(row=excel_row, column=col1 + 1, value=cn)
-                c_ip.border = thin_border
-                c_sev.border = thin_border
-                c_sev.alignment = Alignment(horizontal='center')
+        for idx, system_name in enumerate(system_order):
+            col = group_start_col(idx)
+            risks = system_risks[system_name]
+            if row_offset >= len(risks):
+                continue
+            for offset, value in enumerate(risks[row_offset]):
+                cell = ws.cell(row=excel_row, column=col + offset, value=value)
+                cell.border = thin_border
+                if offset in (1, 2):
+                    cell.alignment = Alignment(horizontal='center')
 
-    # ── 汇总行 ──────────────────────────────────────────────────
     summary_items = [
         ('总数', 'total'),
         ('严重', 'critical'),
         ('高危', 'high'),
         ('中危', 'medium'),
         ('低危', 'low'),
+        ('漏洞', 'vulnCount'),
+        ('事件', 'eventCount'),
+        ('弱口令', 'weakPwdCount'),
     ]
+    summary_start_row = 4 + max_rows
+    for summary_idx, (label, key) in enumerate(summary_items):
+        row = summary_start_row + summary_idx
+        for idx, _system_name in enumerate(system_order):
+            col = group_start_col(idx)
+            label_cell = ws.cell(row=row, column=col, value=label)
+            value_cell = ws.cell(row=row, column=col + 1, value=ranking[idx][key])
+            label_cell.font = bold_font
+            value_cell.font = bold_font
+            label_cell.fill = summary_fill
+            value_cell.fill = summary_fill
+            label_cell.border = thin_border
+            value_cell.border = thin_border
+            value_cell.alignment = Alignment(horizontal='center')
 
-    summary_start_row = 3 + max_rows + 1  # 空一行再写汇总
-    for s_idx, (label, key) in enumerate(summary_items):
-        row = summary_start_row + s_idx
-        for g_idx, sys_name in enumerate(system_order):
-            col1 = group_start_col(g_idx)
-            # 标签列
-            c_label = ws.cell(row=row, column=col1, value=label)
-            c_label.font = summary_font
-            c_label.fill = summary_fill
-            c_label.border = thin_border
-            # 数值列
-            val = ranking[g_idx]['total'] if key == 'total' else ranking[g_idx].get(key, 0)
-            c_val = ws.cell(row=row, column=col1 + 1, value=val)
-            c_val.font = summary_font
-            c_val.fill = summary_fill
-            c_val.alignment = Alignment(horizontal='center')
-            c_val.border = thin_border
-
-    # ── 列宽 ──────────────────────────────────────────────────
-    for g_idx in range(n_groups):
-        col1 = group_start_col(g_idx)
-        ws.column_dimensions[chr(64 + col1)].width = 16  # IP列
-        ws.column_dimensions[chr(64 + col1 + 1)].width = 8  # 等级列
+    for idx in range(len(system_order)):
+        col = group_start_col(idx)
+        ws.column_dimensions[chr(64 + col)].width = 15
+        ws.column_dimensions[chr(64 + col + 1)].width = 8
+        ws.column_dimensions[chr(64 + col + 2)].width = 10
+        ws.column_dimensions[chr(64 + col + 3)].width = 32
 
     wb.save(output_path)
     log(f'中间表格已导出: {output_path}')
     return output_path
 
 
-# ─── Main ───────────────────────────────────────────────────────
-
 def main():
     download_dir = 'C:/Users/User/Downloads'
-
-    if len(sys.argv) >= 5:
-        events_path, weakpwd_path, vuln_path, asset_path = sys.argv[1:5]
+    if len(sys.argv) >= 6:
+        events_path, weakpwd_path, vuln_path, exposure_path, asset_path = sys.argv[1:6]
     else:
         events_path = os.path.join(download_dir, '安全事件表.xlsx')
         weakpwd_path = os.path.join(download_dir, '弱口令清单.xlsx')
         vuln_path = os.path.join(download_dir, '漏洞清单.xlsx')
+        exposure_path = os.path.join(download_dir, '暴露面清单.xlsx')
         asset_path = os.path.join(download_dir, '资产清单.xlsx')
 
-    # 读取风险表
     event_rows = parse_events(events_path)
-    weakpwd_rows = parse_weakpwds(weakpwd_path)
+    weakpwd_rows = parse_weak_passwords(weakpwd_path)
     vuln_rows = parse_vulns(vuln_path)
-    all_risks = event_rows + weakpwd_rows + vuln_rows
-    log(f'安全事件: {len(event_rows)} 弱口令: {len(weakpwd_rows)} 漏洞: {len(vuln_rows)} 总计: {len(all_risks)}')
+    exposure_total = count_exposure_rows(exposure_path)
+    core_risk_rows = vuln_rows + event_rows + weakpwd_rows
+    total_risk_count = len(core_risk_rows) + exposure_total
 
-    # 读取资产表
-    asset_map = parse_assets(asset_path)
-    log(f'资产映射: {len(asset_map)} 条')
+    log(
+        f'漏洞: {len(vuln_rows)} 事件: {len(event_rows)} '
+        f'弱口令: {len(weakpwd_rows)} 暴露面: {exposure_total} 总风险数: {total_risk_count}'
+    )
 
-    # 聚合排序
-    ranking = aggregate_and_sort(all_risks, asset_map)
+    asset_map = parse_core_assets(asset_path)
+    managed_assets = parse_managed_assets(asset_path)
+    log(f'核心资产映射: {len(asset_map)} 条')
+    log(f'已托管资产: {len(managed_assets)} 条')
+
+    managed_vuln_count = count_managed_risk_rows(vuln_rows, managed_assets)
+    managed_event_count = count_managed_risk_rows(event_rows, managed_assets)
+    managed_weakpwd_count = count_managed_risk_rows(weakpwd_rows, managed_assets)
+    managed_exposure = count_managed_exposure_rows(exposure_path, managed_assets)
+    managed_asset_risk_count = (
+        managed_vuln_count +
+        managed_event_count +
+        managed_weakpwd_count +
+        managed_exposure['total']
+    )
+    managed_high_and_above_vuln_count = count_managed_high_and_above_rows(vuln_rows, managed_assets)
+    managed_high_and_above_event_count = count_managed_high_and_above_rows(event_rows, managed_assets)
+    managed_high_and_above_weakpwd_count = 0
+    managed_high_and_above_exposure = {
+        'web': 0,
+        'nonWeb': 0,
+        'total': 0,
+    }
+    managed_high_and_above_risk_count = (
+        managed_high_and_above_vuln_count +
+        managed_high_and_above_event_count +
+        managed_high_and_above_weakpwd_count +
+        managed_high_and_above_exposure['total']
+    )
+    log(
+        f'已托管资产风险: 漏洞={managed_vuln_count} 事件={managed_event_count} '
+        f'弱口令={managed_weakpwd_count} 暴露面Web={managed_exposure["web"]} '
+        f'暴露面非Web={managed_exposure["nonWeb"]} 总计={managed_asset_risk_count}'
+    )
+    log(
+        f'已托管资产高危及以上风险: 漏洞={managed_high_and_above_vuln_count} '
+        f'事件={managed_high_and_above_event_count} 弱口令=0 暴露面=0 '
+        f'总计={managed_high_and_above_risk_count}'
+    )
+
+    ranking, matched_risks, unmatched_count = aggregate_core_risks(core_risk_rows, asset_map)
     top5 = ranking[:5]
+    ranking_names = [item['system'] for item in top5]
+    max_risk_system = ranking[0]['system'] if ranking else None
+    for idx, item in enumerate(top5, 1):
+        log(
+            f"  #{idx} {item['system']} "
+            f"critical={item['critical']} high={item['high']} "
+            f"medium={item['medium']} low={item['low']} total={item['total']}"
+        )
 
-    for i, item in enumerate(top5, 1):
-        log(f'  #{i} {item["system"]}  critical={item["critical"]} high={item["high"]} medium={item["medium"]} low={item["low"]} total={item["total"]}')
-
-    # 导出中间产物 Excel
     output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'output')
     os.makedirs(output_dir, exist_ok=True)
-    excel_path = os.path.join(output_dir, '业务系统风险对照.xlsx')
-    export_comparison_excel(all_risks, asset_map, ranking, excel_path)
+    excel_path = os.path.join(output_dir, '核心业务系统风险对照.xlsx')
+    try:
+        export_comparison_excel(matched_risks, ranking, excel_path)
+    except PermissionError as exc:
+        log(f'导出对照文件失败（文件可能被占用）: {exc}')
+    except OSError as exc:
+        log(f'导出对照文件失败: {exc}')
 
-    # 输出JSON到stdout
     print(json.dumps({
-        'top5': top5,
-        'fullRanking': ranking,
-        'summary': {
-            'totalRisks': len(all_risks),
-            'totalSystems': len(ranking),
-            'events': len(event_rows),
-            'weakpwds': len(weakpwd_rows),
-            'vulns': len(vuln_rows),
-        },
-        'excelPath': excel_path,
+        'coreBusinessSystemRanking': ranking_names,
+        'maxRiskSystem': max_risk_system,
+        'securityRiskTotal': managed_asset_risk_count,
+        'highAndAboveRiskCount': managed_high_and_above_risk_count,
     }, ensure_ascii=True, indent=2))
 
 

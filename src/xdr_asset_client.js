@@ -1665,6 +1665,18 @@ function parseContentDispositionFilename(value) {
   return plainMatch ? plainMatch[1].trim() : '';
 }
 
+function getTmpExportDir() {
+  return path.join(path.resolve(__dirname, '..'), 'tmp', 'exports');
+}
+
+async function mirrorFileToTmpExports(filename, buffer) {
+  const tmpDir = getTmpExportDir();
+  const tmpFilePath = path.join(tmpDir, filename);
+  await fsp.mkdir(tmpDir, { recursive: true });
+  await fsp.writeFile(tmpFilePath, buffer);
+  return tmpFilePath;
+}
+
 async function fetchExportFields(cookieInfo, xdrBaseUrl) {
   await visitXdrAssetPage(cookieInfo, xdrBaseUrl);
   const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl);
@@ -2063,12 +2075,14 @@ async function downloadMsswIncidentFile(cookieInfo, msswBaseUrl, taskId, downloa
   const targetPath = path.join(downloadDir, filename);
   await fsp.mkdir(downloadDir, { recursive: true });
   await fsp.writeFile(targetPath, downloaded.buffer);
+  const tmpFilePath = await mirrorFileToTmpExports(filename, downloaded.buffer);
 
   return {
     ...downloaded,
     filePath: targetPath,
     filename,
-    downloadUrl
+    downloadUrl,
+    tmpFilePath
   };
 }
 
@@ -2195,9 +2209,11 @@ async function downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, filenam
   const targetPath = path.join(downloadDir, filename);
   await fsp.mkdir(downloadDir, { recursive: true });
   await fsp.writeFile(targetPath, downloaded.buffer);
+  const tmpFilePath = await mirrorFileToTmpExports(filename, downloaded.buffer);
   return {
     ...downloaded,
-    filePath: targetPath
+    filePath: targetPath,
+    tmpFilePath
   };
 }
 
@@ -2492,9 +2508,11 @@ async function downloadAssetFile(cookieInfo, xdrBaseUrl, filename, downloadDir) 
   const targetPath = path.join(downloadDir, filename);
   await fsp.mkdir(downloadDir, { recursive: true });
   await fsp.writeFile(targetPath, downloaded.buffer);
+  const tmpFilePath = await mirrorFileToTmpExports(filename, downloaded.buffer);
   return {
     ...downloaded,
-    filePath: targetPath
+    filePath: targetPath,
+    tmpFilePath
   };
 }
 
@@ -2516,11 +2534,13 @@ async function downloadIncidentFile(cookieInfo, xdrBaseUrl, resultPath, download
   const targetPath = path.join(downloadDir, filename);
   await fsp.mkdir(downloadDir, { recursive: true });
   await fsp.writeFile(targetPath, downloaded.buffer);
+  const tmpFilePath = await mirrorFileToTmpExports(filename, downloaded.buffer);
   return {
     ...downloaded,
     filePath: targetPath,
     filename,
-    downloadUrl: resultUrl.toString()
+    downloadUrl: resultUrl.toString(),
+    tmpFilePath
   };
 }
 

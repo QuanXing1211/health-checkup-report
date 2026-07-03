@@ -48,8 +48,6 @@ node health_report.js `
 
 当前 `output/report-data.json` 的字段约定如下。后续新增取值逻辑必须继续补这张表。
 
-业务系统排名脚本当前只按资产表的 `资产组名` 字段归因到业务系统；如果资产表缺少该列，则回退到脚本内置的 IP 兜底映射。
-
 | 字段 | 语义 | 来源 | 取值逻辑 |
 | --- | --- | --- | --- |
 | `projectBackground.title` | 报告标题 | CLI / 默认值 | 固定为 `首次安全体检报告` |
@@ -108,11 +106,26 @@ node health_report.js `
 | `riskDetails.sip` | SIP 设备数 | 深信服设备列表接口 | 遍历设备列表中 `devType` 等于 `9` 的记录计数 |
 | `riskDetails.sta` | STA 设备数 | 深信服设备列表接口 | 遍历设备列表中 `devType` 等于 `25` 的记录计数 |
 | `riskDetails.other_sf` | 其它深信服设备数 | 深信服设备列表接口 | 遍历设备列表中未命中上述映射的记录计数 |
+| `appendix.businessSystemRanking.coreBusinessSystemRanking` | 核心业务系统排序 | 漏洞表 Excel + 事件表 Excel + 弱口令表 Excel + 资产表 Excel | 读取漏洞的 `风险资产/风险等级`、事件的 `影响资产/等级`、弱口令的 `风险资产`；其中弱口令统一按 `中危`。资产表先筛 `重要级别 = 核心`，再用 `IP地址 -> 所属业务` 建立映射，仅统计命中核心资产映射的风险；按 `严重 > 高危 > 中危 > 低危` 的字典序降序排序，输出业务系统名称数组 |
+| `appendix.businessSystemRanking.maxRiskSystem` | 最大风险系统 | 同上 | 直接取 `coreBusinessSystemRanking` 排序结果的第 1 个业务系统；若无结果则为 `null` |
+| `appendix.businessSystemRanking.securityRiskTotal` | 安全风险总数 | 漏洞表 Excel + 事件表 Excel + 弱口令表 Excel + 暴露面 Excel + 资产表 Excel | 资产表先筛 `托管状态 = 已托管`，仅统计已托管资产相关风险。漏洞取 `风险资产`，事件取 `影响资产`，弱口令取 `风险资产`；暴露面中 `非Web服务风险分布` 直接取 `IP地址/子域名`，`Web服务风险分布` 先按 `访问路径` 关联 `端口表` 的 `访问路径`，再取对应 `Host` 作为资产。四类命中已托管资产的风险直接求和 |
+| `appendix.businessSystemRanking.highAndAboveRiskCount` | 高危及以上风险数 | 漏洞表 Excel + 事件表 Excel + 弱口令表 Excel + 暴露面 Excel + 资产表 Excel | 与 `securityRiskTotal` 使用同一批已托管资产过滤后的风险集合，但只统计 `高危 + 严重`。弱口令统一视为 `中危`，暴露面统一视为 `中危`，因此两者在该指标中固定不计入 |
 
 说明：
 
 - 真实模式下，结构化 JSON 以 `projectBackground`、`assetLedger`、`riskDetails`、`riskOverview`、`appendix` 为主。
 - `riskOverview` 当前主要给模板里的风险总览章节预留，后续新增真实取值时必须继续补上来源和逻辑。
+
+## Business System Ranking Script
+
+`scripts/business_system_ranking.py` 当前只返回 4 个字段：
+
+- `coreBusinessSystemRanking`
+- `maxRiskSystem`
+- `securityRiskTotal`
+- `highAndAboveRiskCount`
+
+运行时会额外尝试导出对照文件到 `output/核心业务系统风险对照.xlsx`。如果该文件正被 Excel 占用，脚本会打印告警，但仍继续返回 JSON 结果。
 
 ## Template Strategy
 
