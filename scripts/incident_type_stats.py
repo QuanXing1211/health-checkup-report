@@ -4,6 +4,9 @@ from collections import Counter
 
 from openpyxl import load_workbook
 
+from _path_helper import decode_argv
+decode_argv()
+
 # 确保 stdout 使用 UTF-8 编码（Windows 兼容）
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')

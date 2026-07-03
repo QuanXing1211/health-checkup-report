@@ -2,15 +2,16 @@
 
 const { execFile } = require('child_process');
 const path = require('path');
+const { encodePath } = require('./path_helper');
 
 async function calculatePreventionData(options = {}) {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'prevention_data.py');
   const args = [
-    options.assetPath || '',
-    options.incidentPath || '',
-    options.weakpwdPath || '',
-    options.vulnPath || '',
-    options.exposurePath || ''
+    encodePath(options.assetPath || ''),
+    encodePath(options.incidentPath || ''),
+    encodePath(options.weakpwdPath || ''),
+    encodePath(options.vulnPath || ''),
+    encodePath(options.exposurePath || '')
   ];
 
   const stdout = await execPython(scriptPath, args, '威胁预防数据计算失败');

@@ -26,6 +26,9 @@ import sys
 
 from openpyxl import load_workbook
 
+from _path_helper import decode_argv
+decode_argv()
+
 
 SEVERE_LABEL = "严重"
 

@@ -2,6 +2,7 @@
 
 const { execFile } = require('child_process');
 const path = require('path');
+const { encodePath } = require('./path_helper');
 
 async function summarizeIncidentStatus(excelPath) {
   if (!excelPath) {
@@ -9,7 +10,7 @@ async function summarizeIncidentStatus(excelPath) {
   }
 
   const scriptPath = path.join(__dirname, '..', 'scripts', 'incident_status_stats.py');
-  const stdout = await execPython(scriptPath, excelPath);
+  const stdout = await execPython(scriptPath, encodePath(excelPath));
   const parsed = JSON.parse(stdout);
 
   return {
@@ -54,7 +55,7 @@ async function removeIncidentRows(excelPath, incidentIds) {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'remove_incident_rows.py');
   const idsJson = JSON.stringify(incidentIds);
   // 在 Windows 上传递长 JSON 参数时需要用双引号包裹
-  const stdout = await execPythonWithArgs(scriptPath, [excelPath, idsJson], '移除误报事件失败');
+  const stdout = await execPythonWithArgs(scriptPath, [encodePath(excelPath), idsJson], '移除误报事件失败');
   const parsed = JSON.parse(stdout);
 
   return {
@@ -71,7 +72,7 @@ async function parseIncidentGptStats(excelPath) {
   }
 
   const scriptPath = path.join(__dirname, '..', 'scripts', 'incident_gpt_stats.py');
-  const stdout = await execPythonWithArgs(scriptPath, [excelPath], '事件表 GPT 研判结论读取失败');
+  const stdout = await execPythonWithArgs(scriptPath, [encodePath(excelPath)], '事件表 GPT 研判结论读取失败');
   const parsed = JSON.parse(stdout);
 
   return {
@@ -92,8 +93,8 @@ async function extractIncidentAssetInfo(incidentExcelPath, assetExcelPath, confi
 
   const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_incident_asset_info.py');
   const args = [
-    incidentExcelPath,
-    assetExcelPath || '',
+    encodePath(incidentExcelPath),
+    encodePath(assetExcelPath || ''),
     JSON.stringify(confirmedIds),
     JSON.stringify(virusIds)
   ];
@@ -111,7 +112,7 @@ async function extractC2ConnectionExamples(incidentExcelPath, confirmedIds) {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_c2_connection_examples.py');
   const stdout = await execPythonWithArgs(
     scriptPath,
-    [incidentExcelPath, JSON.stringify(confirmedIds)],
+    [encodePath(incidentExcelPath), JSON.stringify(confirmedIds)],
     '提取 C2 外联事件举例失败'
   );
   return JSON.parse(stdout);
@@ -127,7 +128,7 @@ async function extractVirusTrojanExamples(incidentExcelPath, confirmedIds) {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_virus_trojan_examples.py');
   const stdout = await execPythonWithArgs(
     scriptPath,
-    [incidentExcelPath, JSON.stringify(confirmedIds)],
+    [encodePath(incidentExcelPath), JSON.stringify(confirmedIds)],
     '提取病毒木马事件举例失败'
   );
   return JSON.parse(stdout);
@@ -143,7 +144,7 @@ async function extractVulnExploitExamples(incidentExcelPath, incidentIds) {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_vuln_exploit_examples.py');
   const stdout = await execPythonWithArgs(
     scriptPath,
-    [incidentExcelPath, JSON.stringify(incidentIds)],
+    [encodePath(incidentExcelPath), JSON.stringify(incidentIds)],
     '提取漏洞利用事件举例失败'
   );
   return JSON.parse(stdout);
@@ -165,7 +166,7 @@ async function summarizeManagedAssetIncidents(assetExcelPath, incidentExcelPath)
   }
 
   const scriptPath = path.join(__dirname, '..', 'scripts', 'managed_asset_incident_stats.py');
-  const stdout = await execPythonWithArgs(scriptPath, [assetExcelPath, incidentExcelPath], '托管资产事件统计失败');
+  const stdout = await execPythonWithArgs(scriptPath, [encodePath(assetExcelPath), encodePath(incidentExcelPath)], '托管资产事件统计失败');
   const parsed = JSON.parse(stdout);
 
   return {
@@ -192,7 +193,7 @@ async function extractExploitStats(incidentExcelPath) {
   }
 
   const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_exploit_stats.py');
-  const stdout = await execPythonWithArgs(scriptPath, [incidentExcelPath], '提取漏洞利用统计失败');
+  const stdout = await execPythonWithArgs(scriptPath, [encodePath(incidentExcelPath)], '提取漏洞利用统计失败');
   const parsed = JSON.parse(stdout);
 
   if (parsed.error) {
@@ -216,7 +217,7 @@ async function extractIncidentTypeStats(incidentExcelPath) {
   }
 
   const scriptPath = path.join(__dirname, '..', 'scripts', 'incident_type_stats.py');
-  const stdout = await execPythonWithArgs(scriptPath, [incidentExcelPath], '提取事件类型分布失败');
+  const stdout = await execPythonWithArgs(scriptPath, [encodePath(incidentExcelPath)], '提取事件类型分布失败');
   const parsed = JSON.parse(stdout);
 
   if (parsed.error) {

@@ -19,6 +19,9 @@ import sys
 
 from openpyxl import load_workbook
 
+from _path_helper import decode_argv
+decode_argv()
+
 
 HEADER_INCIDENT_ID = "事件ID"
 HEADER_GPT_RESULT = "GPT研判结论"

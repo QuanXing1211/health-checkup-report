@@ -2,6 +2,7 @@
 
 const { execFile } = require('child_process');
 const path = require('path');
+const { encodePath } = require('./path_helper');
 
 async function summarizeAssetTable(excelPath) {
   if (!excelPath) {
@@ -9,7 +10,7 @@ async function summarizeAssetTable(excelPath) {
   }
 
   const scriptPath = path.join(__dirname, '..', 'scripts', 'asset_table_stats.py');
-  const stdout = await execPython(scriptPath, excelPath);
+  const stdout = await execPython(scriptPath, encodePath(excelPath));
   const parsed = JSON.parse(stdout);
   const assetTotal = Number(parsed.assetTotal || 0);
 

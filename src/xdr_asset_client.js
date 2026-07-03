@@ -1,5 +1,6 @@
 'use strict';
 
+const { execFile } = require('child_process');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const https = require('https');
@@ -7,6 +8,7 @@ const http = require('http');
 const path = require('path');
 
 const { removeIncidentRows, parseIncidentGptStats, extractIncidentAssetInfo, extractC2ConnectionExamples, extractVirusTrojanExamples } = require('./incident_excel_stats');
+const { encodePath } = require('./path_helper');
 
 const DEFAULT_XDR_BASE_URL = normalizeBaseUrl(process.env.SANGFOR_XDR_BASE_URL || 'xdr.sangfor.com.cn');
 const DEFAULT_MSSW_BASE_URL = normalizeBaseUrl('pre.soar.sangfor.com');
@@ -1678,6 +1680,55 @@ async function mirrorFileToTmpExports(filename, buffer) {
   return tmpFilePath;
 }
 
+function getRiskListDir() {
+  return path.join(path.resolve(__dirname, '..'), '安全体检报告', '风险清单');
+}
+
+function getRiskListAssetPath() {
+  return path.join(getRiskListDir(), '资产清单.xlsx');
+}
+
+function getRiskListIncidentPath() {
+  return path.join(getRiskListDir(), '安全事件表.xlsx');
+}
+
+/**
+ * 调用 Python 脚本后处理资产/事件表并保存到风险清单目录。
+ * @param {'asset'|'incident'} tableType
+ * @param {string} inputPath 已下载并处理完成的 xlsx 文件路径
+ * @returns {Promise<{filePath: string}>} 处理后的文件路径
+ */
+async function processRiskListTable(tableType, inputPath) {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'process_risk_list_table.py');
+  const outputDir = getRiskListDir();
+  await fsp.mkdir(outputDir, { recursive: true });
+
+  return new Promise((resolve, reject) => {
+    execFile('python3', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { timeout: 60000 }, (error, stdout, stderr) => {
+      if (error) {
+        // Fallback: try python instead of python3
+        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { timeout: 60000 }, (err2, stdout2) => {
+          if (err2) {
+            reject(new Error(`处理风险清单表失败 (python3: ${error.message}, python: ${err2.message})`));
+            return;
+          }
+          try {
+            resolve(JSON.parse(stdout2));
+          } catch (e) {
+            reject(new Error(`解析处理结果失败: ${stdout2.slice(0, 500)}`));
+          }
+        });
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch (e) {
+        reject(new Error(`解析处理结果失败: ${stdout.slice(0, 500)}`));
+      }
+    });
+  });
+}
+
 async function fetchExportFields(cookieInfo, xdrBaseUrl) {
   await visitXdrAssetPage(cookieInfo, xdrBaseUrl);
   const headers = buildXdrHeaders(cookieInfo.cookieString, cookieInfo.csrfToken, xdrBaseUrl);
@@ -2156,11 +2207,21 @@ async function exportMsswIncidentList(options) {
     logInfo(logger, `误报事件过滤失败（不影响主流程）: ${error.message}`);
   }
 
+  // 后处理：保存到风险清单目录
+  let riskListPath = downloaded.tmpFilePath;
+  try {
+    const processedResult = await processRiskListTable('incident', downloaded.filePath);
+    riskListPath = processedResult.filePath;
+    logInfo(logger, `事件表已同步到风险清单: ${riskListPath}`);
+  } catch (error) {
+    logInfo(logger, `事件表同步到风险清单失败（不影响主流程）: ${error.message}`);
+  }
+
   return {
     msswBaseUrl,
     downloadDir,
-    filePath: downloaded.filePath,
-    tmpFilePath: downloaded.tmpFilePath,
+    filePath: riskListPath,
+    tmpFilePath: riskListPath,
     filename: downloaded.filename,
     taskId,
     fileUrl,
@@ -2270,11 +2331,21 @@ async function exportMsswAssetList(options) {
   const downloaded = await downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, filename, downloadDir);
   logInfo(logger, `MSSW 资产表: ${downloaded.filePath}`);
 
+  // 后处理：删除指定列、重命名，保存到风险清单目录
+  let riskListPath = downloaded.tmpFilePath;
+  try {
+    const processedResult = await processRiskListTable('asset', downloaded.filePath);
+    riskListPath = processedResult.filePath;
+    logInfo(logger, `资产表已同步到风险清单: ${riskListPath}（已删除 zdy、责任人电话、责任人(设备上报)、实时认证用户名）`);
+  } catch (error) {
+    logInfo(logger, `资产表同步到风险清单失败（不影响主流程）: ${error.message}`);
+  }
+
   return {
     msswBaseUrl,
     downloadDir,
-    filePath: downloaded.filePath,
-    tmpFilePath: downloaded.tmpFilePath,
+    filePath: riskListPath,
+    tmpFilePath: riskListPath,
     filename,
     exportFields: exportFieldsResponse.data,
     exportResponse,
@@ -2601,11 +2672,21 @@ async function exportXdrAssetList(options) {
   const downloaded = await downloadAssetFile(cookieInfo, xdrBaseUrl, filename, downloadDir);
   logInfo(logger, `XDR 资产表: ${downloaded.filePath}`);
 
+  // 后处理：删除指定列、重命名，保存到风险清单目录
+  let riskListPath = downloaded.tmpFilePath;
+  try {
+    const processedResult = await processRiskListTable('asset', downloaded.filePath);
+    riskListPath = processedResult.filePath;
+    logInfo(logger, `资产表已同步到风险清单: ${riskListPath}（已处理）`);
+  } catch (error) {
+    logInfo(logger, `资产表同步到风险清单失败（不影响主流程）: ${error.message}`);
+  }
+
   return {
     xdrBaseUrl,
     downloadDir,
-    filePath: downloaded.filePath,
-    tmpFilePath: downloaded.tmpFilePath,
+    filePath: riskListPath,
+    tmpFilePath: riskListPath,
     filename,
     exportFields: exportFieldsResponse.data,
     exportResponse,
@@ -2643,11 +2724,21 @@ async function exportXdrIncidentList(options) {
   const downloaded = await downloadIncidentFile(cookieInfo, xdrBaseUrl, resultPath, downloadDir, fallbackFilename);
   logInfo(logger, `XDR 事件表: ${downloaded.filePath}`);
 
+  // 后处理：保存到风险清单目录
+  let riskListPath = downloaded.tmpFilePath;
+  try {
+    const processedResult = await processRiskListTable('incident', downloaded.filePath);
+    riskListPath = processedResult.filePath;
+    logInfo(logger, `事件表已同步到风险清单: ${riskListPath}`);
+  } catch (error) {
+    logInfo(logger, `事件表同步到风险清单失败（不影响主流程）: ${error.message}`);
+  }
+
   return {
     xdrBaseUrl,
     downloadDir,
-    filePath: downloaded.filePath,
-    tmpFilePath: downloaded.tmpFilePath,
+    filePath: riskListPath,
+    tmpFilePath: riskListPath,
     filename: downloaded.filename,
     taskId,
     totalEvents: incidentCount.total,
@@ -3391,5 +3482,9 @@ module.exports = {
   MSSW_ASSET_COUNT_ENDPOINT,
   fetchMsswAssetCore,
   fetchMsswAssetReadyToOutbound,
-  fetchMsswFalsePositiveIncidentIds
+  fetchMsswFalsePositiveIncidentIds,
+  getRiskListDir,
+  getRiskListAssetPath,
+  getRiskListIncidentPath,
+  processRiskListTable
 };

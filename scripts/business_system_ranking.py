@@ -17,6 +17,9 @@ import sys
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
+from _path_helper import decode_argv
+decode_argv()
+
 
 SEVERITY_MAP = {
     '严重': 'critical',

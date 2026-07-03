@@ -2,6 +2,7 @@
 
 const { execFile } = require('child_process');
 const path = require('path');
+const { encodePath } = require('./path_helper');
 
 /**
  * 调用 Python 脚本执行业务系统风险排名
@@ -22,11 +23,11 @@ async function rankBusinessSystems(options = {}) {
   const args = [];
   if (options.eventsPath && options.weakpwdPath && options.vulnPath && options.exposurePath && options.assetPath) {
     args.push(
-      options.eventsPath,
-      options.weakpwdPath,
-      options.vulnPath,
-      options.exposurePath,
-      options.assetPath
+      encodePath(options.eventsPath),
+      encodePath(options.weakpwdPath),
+      encodePath(options.vulnPath),
+      encodePath(options.exposurePath),
+      encodePath(options.assetPath)
     );
   }
 

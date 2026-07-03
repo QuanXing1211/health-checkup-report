@@ -28,6 +28,9 @@ import sys
 from openpyxl import load_workbook
 from collections import Counter
 
+from _path_helper import decode_argv
+decode_argv()
+
 
 IP_PATTERN = re.compile(r'(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)')
 SEVERITY_MAP = {

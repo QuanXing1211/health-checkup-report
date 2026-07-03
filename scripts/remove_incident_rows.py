@@ -8,6 +8,9 @@ import sys
 
 from openpyxl import load_workbook
 
+from _path_helper import decode_argv
+decode_argv()
+
 
 def normalize(value):
     return "" if value is None else str(value).strip()

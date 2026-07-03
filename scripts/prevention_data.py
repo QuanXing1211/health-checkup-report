@@ -8,6 +8,9 @@ import sys
 
 import openpyxl
 
+from _path_helper import decode_argv
+decode_argv()
+
 
 def load_branch2_module():
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,10 +26,10 @@ def load_wb(filepath):
 
 
 def choose_asset_sheet(workbook):
-    try:
-        return workbook['资产表']
-    except KeyError:
-        return workbook.worksheets[0]
+    for sheet_name in ('资产清单', '资产表'):
+        if sheet_name in workbook.sheetnames:
+            return workbook[sheet_name]
+    return workbook.worksheets[0]
 
 
 def main():
@@ -52,7 +55,7 @@ def main():
         'rows_port': branch2.get_rows(wb_exp['端口表']),
         'rows_vuln': branch2.get_rows(wb_vuln['漏洞']),
         'rows_weak': branch2.get_rows(wb_weak['弱口令']),
-        'rows_event': branch2.get_rows(wb_event['事件表']),
+        'rows_event': branch2.get_rows(wb_event.active),
         'rows_asset': branch2.get_rows(ws_asset),
     }
 

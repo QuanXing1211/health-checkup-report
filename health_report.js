@@ -7,7 +7,7 @@ const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/xdr_asset_client');
+const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate, getRiskListDir } = require('./src/xdr_asset_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
 const { rankBusinessSystems } = require('./src/business_system_ranking');
@@ -332,7 +332,7 @@ async function main() {
       throw new Error('威胁预防数据计算失败: 缺少事件表，请检查本次事件表导出结果');
     }
     if (!resolvedAssetFilePath) {
-      throw new Error('威胁预防数据计算失败: 缺少资产表，请先准备 tmp/exports 中可用的资产表');
+      throw new Error('威胁预防数据计算失败: 缺少资产表，请先准备安全体检报告/风险清单 中可用的资产表');
     }
 
     logger('开始准备威胁预防所需表格...');
@@ -680,6 +680,14 @@ async function resolveAssetFilePath({ options, xdrExports, logger }) {
     return exportedPath;
   }
 
+  // 优先搜索风险清单目录
+  const riskListDiscovered = await findLatestAssetWorkbook(getRiskListDir());
+  if (riskListDiscovered) {
+    logger(`已从风险清单目录自动使用资产表: ${riskListDiscovered}`);
+    return riskListDiscovered;
+  }
+
+  // 降级：从 tmp/exports 搜索
   const discovered = await findLatestAssetWorkbook(getTmpExportDir());
   if (discovered) {
     logger(`已自动使用资产表: ${discovered}`);
