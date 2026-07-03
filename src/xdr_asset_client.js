@@ -10,6 +10,7 @@ const { removeIncidentRows, parseIncidentGptStats, extractIncidentAssetInfo, ext
 
 const DEFAULT_XDR_BASE_URL = normalizeBaseUrl(process.env.SANGFOR_XDR_BASE_URL || 'xdr.sangfor.com.cn');
 const DEFAULT_MSSW_BASE_URL = normalizeBaseUrl('pre.soar.sangfor.com');
+const DEFAULT_SOAR_BASE_URL = normalizeBaseUrl(process.env.SANGFOR_SOAR_BASE_URL || 'soar.sangfor.com.cn');
 const XDR_ASSET_PAGE_PATH = '/xdr/asset/host-asset';
 const ASSET_COUNT_ENDPOINT = '/apps/asset/view/asset/asset_view/count?_method=GET&viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
 const ASSET_PROTECTION_ENDPOINT = '/apps/asset/view/overview/asset_protection?_method=GET&viewRegionId=ffffffffffffffffffffffff&onlySelfPlatform=false';
@@ -1923,6 +1924,30 @@ async function readMsswCookieInfo(cookiePath) {
   };
 }
 
+async function readSoarCookieInfo(cookiePath) {
+  if (!cookiePath) {
+    throw new Error('SOAR mode requires --cookie-path');
+  }
+
+  const resolvedPath = await resolveCookiePath(cookiePath);
+  const rawContent = await fsp.readFile(resolvedPath, 'utf8');
+  const normalized = normalizeCookieContent(rawContent);
+  const cookieString = String(normalized.cookieString || '').trim();
+
+  if (!cookieString) {
+    throw new Error(`SOAR Cookie 文件内容为空: ${resolvedPath}`);
+  }
+
+  return {
+    resolvedPath,
+    rawContent,
+    cookieString,
+    csrfToken: normalized.csrfToken || extractCsrfToken(cookieString),
+    soarBaseUrl: normalizeBaseUrl(normalized.baseUrl || normalized.soarBaseUrl || normalized.domain || DEFAULT_SOAR_BASE_URL),
+    cookies: parseCookieString(cookieString)
+  };
+}
+
 function buildMsswHeaders(cookieString, baseUrl, overrides = {}) {
   const msswBaseUrl = normalizeBaseUrl(baseUrl || DEFAULT_MSSW_BASE_URL);
   return {
@@ -2135,6 +2160,7 @@ async function exportMsswIncidentList(options) {
     msswBaseUrl,
     downloadDir,
     filePath: downloaded.filePath,
+    tmpFilePath: downloaded.tmpFilePath,
     filename: downloaded.filename,
     taskId,
     fileUrl,
@@ -2240,6 +2266,7 @@ async function exportMsswAssetList(options) {
     msswBaseUrl,
     downloadDir,
     filePath: downloaded.filePath,
+    tmpFilePath: downloaded.tmpFilePath,
     filename,
     exportFields: exportFieldsResponse.data,
     exportResponse,
@@ -2570,6 +2597,7 @@ async function exportXdrAssetList(options) {
     xdrBaseUrl,
     downloadDir,
     filePath: downloaded.filePath,
+    tmpFilePath: downloaded.tmpFilePath,
     filename,
     exportFields: exportFieldsResponse.data,
     exportResponse,
@@ -2611,6 +2639,7 @@ async function exportXdrIncidentList(options) {
     xdrBaseUrl,
     downloadDir,
     filePath: downloaded.filePath,
+    tmpFilePath: downloaded.tmpFilePath,
     filename: downloaded.filename,
     taskId,
     totalEvents: incidentCount.total,
@@ -3254,6 +3283,7 @@ async function fetchAlertReductionRate(cookieInfo, xdrBaseUrl, options) {
 module.exports = {
   DEFAULT_XDR_BASE_URL,
   DEFAULT_MSSW_BASE_URL,
+  DEFAULT_SOAR_BASE_URL,
   ASSET_COUNT_ENDPOINT,
   ASSET_STATISTICS_ENDPOINT: ASSET_COUNT_ENDPOINT,
   ASSET_PROTECTION_ENDPOINT,
@@ -3265,6 +3295,7 @@ module.exports = {
   normalizeCookieContent,
   readXdrCookieInfo,
   readMsswCookieInfo,
+  readSoarCookieInfo,
   buildMsswHeaders,
   buildMsswExportHeaders,
   buildMsswIncidentExportRequestBody,

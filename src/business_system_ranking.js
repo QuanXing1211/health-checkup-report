@@ -33,8 +33,9 @@ async function rankBusinessSystems(options = {}) {
   logger('[业务系统排名] 开始...');
   const stdout = await execPython(scriptPath, args, logger);
   const parsed = JSON.parse(stdout);
-
-  logger(`[业务系统排名] 完成: ${parsed.summary.totalSystems} 个系统, ${parsed.summary.totalRisks} 条风险`);
+  const systemCount = Array.isArray(parsed.coreBusinessSystemRanking) ? parsed.coreBusinessSystemRanking.length : 0;
+  const totalRisks = Number(parsed.securityRiskTotal || 0);
+  logger(`[业务系统排名] 完成: ${systemCount} 个系统, ${totalRisks} 条风险`);
   return parsed;
 }
 

@@ -8,6 +8,9 @@ const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats } = require('./src/incident_excel_stats');
 const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/xdr_asset_client');
+const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
+const { calculatePreventionData } = require('./src/prevention_data');
+const { rankBusinessSystems } = require('./src/business_system_ranking');
 const { renderReportToFile } = require('./src/template_renderer');
 
 async function main() {
@@ -151,7 +154,7 @@ async function main() {
   // 从事件表提取漏洞利用统计（不阻断主流程）
   let exploitStats = null;
   let vulnExploitExamples = [];
-  const incidentFilePath = xdrExports && xdrExports.incident ? xdrExports.incident.filePath : '';
+  const incidentFilePath = resolveIncidentFilePath(options, xdrExports);
   if (incidentFilePath) {
     try {
       exploitStats = await extractExploitStats(incidentFilePath);
@@ -170,7 +173,12 @@ async function main() {
   }
 
   // 从资产表和事件表提取托管资产安全事件统计（不阻断主流程）
-  const assetFilePath = xdrExports && xdrExports.asset ? xdrExports.asset.filePath : '';
+  const resolvedAssetFilePath = await resolveAssetFilePath({
+    options,
+    xdrExports,
+    logger
+  });
+  const assetFilePath = resolvedAssetFilePath;
   let managedAssetIncidentStats = null;
   if (assetFilePath && incidentFilePath) {
     try {
@@ -191,8 +199,8 @@ async function main() {
     msswBaseUrl: options['mssw-base-url'],
     assetStatusStats,
     incidentStatusStats,
-    incidentFilePath: xdrExports.incident ? xdrExports.incident.filePath : undefined,
-    assetFilePath: xdrExports.asset ? xdrExports.asset.filePath : undefined,
+    incidentFilePath: incidentFilePath || undefined,
+    assetFilePath: resolvedAssetFilePath || undefined,
     logger
   });
 
@@ -309,6 +317,60 @@ async function main() {
     }
   }
 
+  const preventionEnabled = shouldRunPreventionStage(options, xdrExports);
+  if (preventionEnabled) {
+    if (!incidentFilePath) {
+      throw new Error('威胁预防数据计算失败: 缺少事件表，请检查本次事件表导出结果');
+    }
+    if (!resolvedAssetFilePath) {
+      throw new Error('威胁预防数据计算失败: 缺少资产表，请先准备 tmp/exports 中可用的资产表');
+    }
+
+    logger('开始准备威胁预防所需表格...');
+    const preventionTables = await collectPreventionTableExports({
+      customer: options.customer,
+      start: effectiveTimeRange.start,
+      end: effectiveTimeRange.end,
+      soarCookiePath: options['cookie-path'],
+      msswCookiePath: options['mssw-cookie-path'],
+      outputDir: getTmpExportDir(),
+      logger
+    });
+    logger(`威胁预防表格已就绪: weakpwd=${preventionTables.weakpwd.filePath}, vuln=${preventionTables.vuln.filePath}, exposure=${preventionTables.exposure.filePath}`);
+
+    const preventionData = await calculatePreventionData({
+      assetPath: resolvedAssetFilePath,
+      incidentPath: incidentFilePath,
+      weakpwdPath: preventionTables.weakpwd.filePath,
+      vulnPath: preventionTables.vuln.filePath,
+      exposurePath: preventionTables.exposure.filePath
+    });
+    Object.assign(reportData, preventionData);
+    logger('威胁预防 JSON 已合并到 report-data');
+
+    const businessSystemRanking = await rankBusinessSystems({
+      eventsPath: incidentFilePath,
+      weakpwdPath: preventionTables.weakpwd.filePath,
+      vulnPath: preventionTables.vuln.filePath,
+      exposurePath: preventionTables.exposure.filePath,
+      assetPath: resolvedAssetFilePath,
+      logger
+    });
+    reportData.appendix = Object.assign({}, reportData.appendix || {}, {
+      businessSystemRanking: {
+        coreBusinessSystemRanking: Array.isArray(businessSystemRanking.coreBusinessSystemRanking)
+          ? businessSystemRanking.coreBusinessSystemRanking
+          : [],
+        maxRiskSystem: businessSystemRanking.maxRiskSystem || null,
+        securityRiskTotal: Number(businessSystemRanking.securityRiskTotal || 0),
+        highAndAboveRiskCount: Number(businessSystemRanking.highAndAboveRiskCount || 0)
+      }
+    });
+    logger('业务系统排序数据已合并到 appendix.businessSystemRanking');
+  } else {
+    logger('跳过威胁预防数据准备: 未提供相关运行上下文');
+  }
+
   const reportDataJsonPath = options['output-json'] || path.join(outputDir, 'report-data.json');
   await writeJsonFile(reportDataJsonPath, reportData);
   logger(`数据已写入: ${reportDataJsonPath}`);
@@ -334,6 +396,7 @@ Options:
   --customer <name>              Customer name (用于自动查询 company_id)
   --start <YYYY-MM-DD>           Optional report start date
   --end <YYYY-MM-DD>             Optional report end date
+  --cookie-path <path>           SOAR cookie file path (soar.sangfor.com.cn)
   --xdr-cookie-path <path>       XDR cookie file path
   --mssw-cookie-path <path>      MSSW cookie file path (pre.soar.sangfor.com)
   --xdr-tables <names>           Optional XDR export tables, default asset,incident
@@ -589,6 +652,59 @@ function deepMerge(base, patch) {
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function shouldRunPreventionStage(options, xdrExports) {
+  return Boolean(
+    options['cookie-path']
+    || (options['mssw-cookie-path'] && resolveIncidentFilePath(options, xdrExports))
+  );
+}
+
+function resolveIncidentFilePath(options, xdrExports) {
+  return (xdrExports && xdrExports.incident && xdrExports.incident.filePath)
+    || '';
+}
+
+async function resolveAssetFilePath({ options, xdrExports, logger }) {
+  const exportedPath = xdrExports && xdrExports.asset ? xdrExports.asset.filePath : '';
+  if (exportedPath) {
+    return exportedPath;
+  }
+
+  const discovered = await findLatestAssetWorkbook(getTmpExportDir());
+  if (discovered) {
+    logger(`已自动使用资产表: ${discovered}`);
+    return discovered;
+  }
+
+  return '';
+}
+
+async function findLatestAssetWorkbook(directory) {
+  try {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    const candidates = entries
+      .filter((entry) => entry.isFile() && /\.xlsx$/i.test(entry.name))
+      .filter((entry) => /asset|资产/i.test(entry.name))
+      .map((entry) => path.join(directory, entry.name));
+
+    if (!candidates.length) {
+      return '';
+    }
+
+    const withStat = await Promise.all(candidates.map(async (filePath) => ({
+      filePath,
+      stat: await fs.stat(filePath)
+    })));
+    withStat.sort((a, b) => b.stat.mtimeMs - a.stat.mtimeMs);
+    return withStat[0].filePath;
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      return '';
+    }
+    throw error;
+  }
 }
 
 main().catch((error) => {
