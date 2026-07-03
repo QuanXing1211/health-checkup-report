@@ -8,7 +8,8 @@
       "Bash(node c:/Users/User/Desktop/health-checkup-report/tmp/test_mssw_incident_debug.js)",
       "Bash(node c:/Users/User/Desktop/health-checkup-report/tmp/test_mssw_incident_count2.js)",
       "Bash(node tmp/test_mssw_security_log_count.js)",
-      "Bash(node tests/xdr_asset_client.test.js)"
+      "Bash(node tests/xdr_asset_client.test.js)",
+      "Bash(node health_report.js mssw-asset-export --mssw-cookie-path \"%USERPROFILE%\\Downloads\\mssw_cookies.txt\" --customer-id \"67262236\" --mssw-base-url \"pre.soar.sangfor.com\" --json)"
     ],
     "deny": [],
     "ask": []

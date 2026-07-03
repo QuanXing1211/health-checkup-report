@@ -2174,13 +2174,13 @@ async function exportMsswIncidentList(options) {
   };
 }
 
-function buildMsswAssetExportRequestBody(exportFields) {
+function buildMsswAssetExportRequestBody(exportFields, ids = []) {
   return {
     branch_id: 'all',
     search_type: 'current',
     platform_ids: [],
     is_all: false,
-    ids: [],
+    ids: Array.isArray(ids) ? ids : [],
     exclude_ids: [],
     export_fields: exportFields
   };
@@ -2202,17 +2202,18 @@ async function fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId) {
   return response;
 }
 
-async function triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFields) {
+async function triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFields, ids = []) {
   const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
   const headers = buildMsswExportHeaders(cookieInfo, msswHost, companyId);
   const url = `https://${msswHost}${MSSW_ASSET_EXPORT_ENDPOINT}`;
   const response = await requestJson(url, {
     headers,
-    body: JSON.stringify(buildMsswAssetExportRequestBody(exportFields))
+    body: JSON.stringify(buildMsswAssetExportRequestBody(exportFields, ids))
   });
 
   const code = response && response.code;
-  if (code !== 0 && code !== '0') {
+  const apiSuccess = response && (response.success === true || response.success === 'true');
+  if (code !== 0 && code !== '0' && !apiSuccess) {
     throw new Error(`MSSW 资产导出接口返回异常: ${JSON.stringify(response).slice(0, 500)}`);
   }
 
@@ -2249,10 +2250,17 @@ async function exportMsswAssetList(options) {
   const cookieInfo = await readMsswCookieInfo(options.msswCookiePath);
   const msswBaseUrl = normalizeBaseUrl(options.msswBaseUrl || DEFAULT_MSSW_BASE_URL);
   const companyId = options.customerId || options.companyId || '';
+  const assetIds = options.assetIds || [];
+
+  if (assetIds.length) {
+    logInfo(logger, `使用 ${assetIds.length} 个指定资产 ID 导出`);
+  } else {
+    logInfo(logger, '未指定资产 ID，将尝试导出全部资产（可能超时）');
+  }
 
   const exportFieldsResponse = await fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId);
 
-  const exportResponse = await triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFieldsResponse.data);
+  const exportResponse = await triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFieldsResponse.data, assetIds);
   const filename = String(exportResponse && exportResponse.data ? exportResponse.data : exportResponse && exportResponse.filename ? exportResponse.filename : '');
   if (!filename) {
     throw new Error(`MSSW 资产导出接口返回缺少文件名: ${JSON.stringify(exportResponse).slice(0, 500)}`);

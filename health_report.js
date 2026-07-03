@@ -130,6 +130,14 @@ async function main() {
 
   logger(`开始生成: ${options.customer} ${effectiveTimeRange.start} ~ ${effectiveTimeRange.end}`);
 
+  const ASSET_IDS_FOR_EXPORT = [
+    1228081,1228082,1228083,1228084,1228090,1228091,1228092,1228093,1228094,1228095,
+    1228096,1228097,1227746,1228001,1308803,1308804,1227699,1227706,1328428,1328437,
+    1228087,1228089,1224218,1224210,1225943,1328359,1206677,1206678,1328358,1328320,
+    1328326,1328327,1328328,1328329,1328330,1328331,1328332,1328333,1328334,1328335,
+    1328336,1328337,1328338,1328339,1328340,1328341,1328355,1328356,1328357,1228049
+  ];
+
   const xdrExports = await exportConfiguredXdrTables({
     xdrCookiePath: options['xdr-cookie-path'],
     msswCookiePath: options['mssw-cookie-path'],
@@ -138,6 +146,7 @@ async function main() {
     end: effectiveTimeRange.end,
     xdrTables: options['xdr-tables'],
     customerId,
+    assetIds: ASSET_IDS_FOR_EXPORT,
     timeoutMs: options['timeout-ms'] ? Number(options['timeout-ms']) : undefined,
     pollIntervalMs: options['poll-interval-ms'] ? Number(options['poll-interval-ms']) : undefined,
     logger
@@ -420,28 +429,27 @@ async function exportConfiguredXdrTables(options) {
   const results = {};
   for (const table of tables) {
     if (table === 'asset') {
-      // TODO: 资产表接口暂不通，恢复时取消下面注释即可
-      // if (options.msswCookiePath) {
-      //   logWith(options.logger, '开始处理表格: asset (MSSW)');
-      //   results.asset = await exportMsswAssetList({
-      //     msswCookiePath: options.msswCookiePath,
-      //     msswBaseUrl: options.msswBaseUrl,
-      //     downloadDir: options.downloadDir,
-      //     customerId: options.customerId,
-      //     logger: options.logger
-      //   });
-      // } else if (options.xdrCookiePath) {
-      //   logWith(options.logger, '开始处理表格: asset (XDR)');
-      //   results.asset = await exportXdrAssetList({
-      //     xdrCookiePath: options.xdrCookiePath,
-      //     downloadDir: options.downloadDir,
-      //     timeoutMs: options.timeoutMs,
-      //     logger: options.logger
-      //   });
-      // } else {
-      //   logWith(options.logger, '跳过 asset 导出: 需要 --mssw-cookie-path 或 --xdr-cookie-path');
-      // }
-      logWith(options.logger, '跳过 asset 导出: 资产表接口暂不通');
+      if (options.msswCookiePath) {
+        logWith(options.logger, '开始处理表格: asset (MSSW)');
+        results.asset = await exportMsswAssetList({
+          msswCookiePath: options.msswCookiePath,
+          msswBaseUrl: options.msswBaseUrl,
+          downloadDir: options.downloadDir,
+          customerId: options.customerId,
+          assetIds: options.assetIds || [],
+          logger: options.logger
+        });
+      } else if (options.xdrCookiePath) {
+        logWith(options.logger, '开始处理表格: asset (XDR)');
+        results.asset = await exportXdrAssetList({
+          xdrCookiePath: options.xdrCookiePath,
+          downloadDir: options.downloadDir,
+          timeoutMs: options.timeoutMs,
+          logger: options.logger
+        });
+      } else {
+        logWith(options.logger, '跳过 asset 导出: 需要 --mssw-cookie-path 或 --xdr-cookie-path');
+      }
       continue;
     }
 
