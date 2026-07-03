@@ -1,10 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node tests/data_client.test.js)",
-      "Bash(node tests/incident_excel_stats.test.js)",
-      "Bash(node tests/renderer.test.js)",
-      "Bash(node tests/asset_excel_stats.test.js)"
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\Users\\User\\AppData\\Local\\Temp\\test_event.ps1\")",
+      "Bash(node tmp/test_mssw_api.js)",
+      "Bash(node tmp/test_mssw_alert_count.js)",
+      "Bash(node c:/Users/User/Desktop/health-checkup-report/tmp/test_mssw_incident_count.js)",
+      "Bash(node c:/Users/User/Desktop/health-checkup-report/tmp/test_mssw_incident_debug.js)",
+      "Bash(node c:/Users/User/Desktop/health-checkup-report/tmp/test_mssw_incident_count2.js)",
+      "Bash(node tmp/test_mssw_security_log_count.js)",
+      "Bash(node tests/xdr_asset_client.test.js)"
     ],
     "deny": [],
     "ask": []

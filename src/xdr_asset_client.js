@@ -56,6 +56,7 @@ const MSSW_ASSET_EXPORT_ENDPOINT = '/apps/asset/view/asset/export';
 const MSSW_ASSET_DOWNLOAD_ENDPOINT = '/apps/asset/view/asset/download_file';
 const MSSW_ASSET_COUNT_ENDPOINT = '/apps/asset/view/asset/asset_view/count?_method=GET';
 const MSSW_INCIDENT_TABLE_ENDPOINT = '/gateway/mss-mdr/web/api/mssw/mss-mdr/v1/incident_table';
+const MSSW_LOG_SEARCH_COUNT_ENDPOINT = '/gateway/log-search-center-service/datalake/v1/ckCount';
 
 // devType 到分类名称的映射
 const DEVICE_TYPE_CATEGORIES = {
@@ -1489,6 +1490,28 @@ async function fetchAlertTableCount(cookieInfo, xdrBaseUrl, options) {
   };
 }
 
+async function fetchMsswAlertTableCount(cookieInfo, msswBaseUrl, companyId, options) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const url = 'https://' + msswHost + ALERT_QUERY_ENDPOINT;
+  const timeRange = resolveIncidentTimeRange(options);
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildAlertCountRequestBody(timeRange))
+  });
+
+  assertXdrApiSuccess(response, 'MSSW 告警数量接口');
+
+  const total = Number(response && response.data ? response.data.total : 0);
+  if (!Number.isFinite(total)) {
+    throw new Error('MSSW 告警数量接口返回缺少 total: ' + JSON.stringify(response).slice(0, 500));
+  }
+  return {
+    total,
+    response
+  };
+}
+
 function mapProtectionTypeLabels(typeData) {
   const type = typeData && typeof typeData === 'object' ? typeData : {};
   const items = [
@@ -2783,10 +2806,17 @@ async function fetchXdrAssetOverview(cookiePathOrInfo, options = {}) {
   let alertTotal = 0;
   let alertReductionRate = 0;
   try {
-    [securityLogTotal, { alertTotal, reductionRate: alertReductionRate }] = await Promise.all([
-      fetchSecurityLogCount(cookieInfo, xdrBaseUrl, timeOptions),
-      fetchAlertReductionRate(cookieInfo, xdrBaseUrl, timeOptions)
-    ]);
+    if (isMssw) {
+      [securityLogTotal, alertTotal] = await Promise.all([
+        fetchMsswSecurityLogCount(cookieInfo, xdrBaseUrl, companyId, timeOptions).catch(() => 0),
+        fetchMsswAlertTableCount(cookieInfo, xdrBaseUrl, companyId, timeOptions).then((r) => r.total).catch(() => 0)
+      ]);
+    } else {
+      [securityLogTotal, { alertTotal, reductionRate: alertReductionRate }] = await Promise.all([
+        fetchSecurityLogCount(cookieInfo, xdrBaseUrl, timeOptions),
+        fetchAlertReductionRate(cookieInfo, xdrBaseUrl, timeOptions)
+      ]);
+    }
   } catch (error) {
     logInfo(logger, `获取安全日志量或有效告警统计失败: ${error.message}，将使用空结果`);
   }
@@ -3060,6 +3090,109 @@ async function fetchSecurityLogCount(cookieInfo, xdrBaseUrl, options) {
   return count;
 }
 
+// ========== MSSW 安全日志量查询（数据湖 ckCount 接口）==========
+
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function formatTimestampToDateTime(seconds) {
+  const date = new Date(Number(seconds) * 1000);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`无效时间戳: ${seconds}`);
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  const sec = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hour}:${min}:${sec}`;
+}
+
+function buildMsswLogSearchCountRequestBody({ tableId, fromDate, toDate, companyId }) {
+  return {
+    fromDate,
+    toDate,
+    tableId: [tableId],
+    searchString: '',
+    constrains: [
+      {
+        fieldAlias: '客户',
+        fieldName: 'customer',
+        fieldOperater: '=',
+        fieldValue: String(companyId)
+      }
+    ],
+    quickSearch: {},
+    datalakeClusterName: ''
+  };
+}
+
+function buildMsswLogSearchCountHeaders(cookieInfo, msswBaseUrl) {
+  const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const csrfToken = cookieInfo.cookies && cookieInfo.cookies['csrf_token'] || '';
+  return {
+    host: msswHost,
+    accept: 'application/json, text/plain, */*',
+    'accept-language': 'zh-CN,zh;q=0.9',
+    'content-type': 'application/json',
+    cookie: cookieInfo.cookieString,
+    origin: `https://${msswHost}`,
+    referer: `https://${msswHost}/ui-analyze/index.html`,
+    'sec-ch-ua': '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
+    traceid: generateUUID(),
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'x-csrftoken': csrfToken,
+    'x-requested-with': 'XMLHttpRequest'
+  };
+}
+
+async function fetchMsswLogCountByTable(cookieInfo, msswBaseUrl, companyId, tableId, fromDate, toDate) {
+  const url = 'https://' + normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL) + MSSW_LOG_SEARCH_COUNT_ENDPOINT;
+  const headers = buildMsswLogSearchCountHeaders(cookieInfo, msswBaseUrl);
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildMsswLogSearchCountRequestBody({ tableId, fromDate, toDate, companyId })),
+    timeout: 90000
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`MSSW 数据湖日志数量查询接口(tableId=${tableId})返回异常: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+  const total = Number(data.total || 0);
+  if (!Number.isFinite(total)) {
+    throw new Error(`MSSW 数据湖日志数量接口(tableId=${tableId})返回 data.total 无效: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+  return total;
+}
+
+async function fetchMsswSecurityLogCount(cookieInfo, msswBaseUrl, companyId, options) {
+  // 分两次查: tableId=62(网络安全日志) + tableId=26(终端安全日志)，求和
+  const { begin, end } = resolveIncidentTimeRange(options);
+  const fromDate = formatTimestampToDateTime(begin);
+  const toDate = formatTimestampToDateTime(end);
+
+  const [networkLogTotal, endpointLogTotal] = await Promise.all([
+    fetchMsswLogCountByTable(cookieInfo, msswBaseUrl, companyId, 62, fromDate, toDate),
+    fetchMsswLogCountByTable(cookieInfo, msswBaseUrl, companyId, 26, fromDate, toDate)
+  ]);
+
+  return networkLogTotal + endpointLogTotal;
+}
+
 function buildOverviewCountRequestBody({ begin, end }) {
   return {
     timeField: 'startTime',
@@ -3158,6 +3291,13 @@ module.exports = {
   exportXdrIncidentList,
   exportXdrDeviceList,
   fetchAlertTableCount,
+  fetchMsswAlertTableCount,
+  fetchMsswSecurityLogCount,
+  MSSW_LOG_SEARCH_COUNT_ENDPOINT,
+  buildMsswLogSearchCountRequestBody,
+  buildMsswLogSearchCountHeaders,
+  fetchMsswLogCountByTable,
+  formatTimestampToDateTime,
   THREAT_ACTOR_NAMES,
   buildDisposalTabsRequestBody,
   fetchDisposalTabs,

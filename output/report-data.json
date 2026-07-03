@@ -3,186 +3,106 @@
     "title": "首次安全体检报告",
     "customerName": "测试001",
     "customerId": "67262236",
-    "startDate": "2025-06-31",
+    "startDate": "2026-05-31",
     "endDate": "2026-06-29",
-    "generatedAt": "2026-06-29T07:57:22.684Z"
+    "generatedAt": "2026-07-02T08:01:55.381Z"
   },
   "assetLedger": {
-    "core_asset": 22,
-    "core_managed_asset": 8,
     "ready_to_outbound": 0,
     "manage_asset": 0,
-    "assetTotal": 195,
-    "typeDistribution": [
-      { "name": "服务器", "value": 45 },
-      { "name": "终端", "value": 148 },
-      { "name": "其他", "value": 2 }
-    ],
-    "protectionDistribution": [
-      { "name": "在线", "value": 400 },
-      { "name": "离线", "value": 100 },
-      { "name": "已禁用", "value": 20 },
-      { "name": "已降级", "value": 10 },
-      { "name": "未防护", "value": 25 }
-    ],
-    "internetExposureTotal": 18,
-    "internetExposureDistribution": [
-      { "name": "服务器", "value": 12 },
-      { "name": "终端", "value": 5 },
-      { "name": "其他", "value": 1 }]
+    "typeDistribution": [],
+    "protectionDistribution": [],
+    "internetExposureDistribution": [],
+    "core_asset": 0
   },
   "riskOverview": {
     "incidentGptStats": {
-      "total": 8,
+      "total": 0,
       "hostCompromise": {
-        "total": 8,
-        "confirmedIncidentIds": [
-          "incident-276f8e1f-68c3-41c1-beff-8cfc53ded17e",
-          "incident-238c4c85-854b-42e4-abed-4411561a4a3d",
-          "incident-7de32116-da1f-49ea-bc26-9f65a12ffff1",
-          "incident-359b1ecf-b3b9-4d43-9fac-e1edba7716e4",
-          "incident-45b13141-fa01-4bcb-a85d-0a68961c51f9",
-          "incident-ee017945-7559-417d-87c8-96fce8c5e73b",
-          "incident-4adec58c-85fe-4682-b2a1-fcc9352ea027",
-          "incident-571bda15-8d13-4f23-af29-8f6013f95ca7"
-        ]
+        "total": 0,
+        "confirmedIncidentIds": []
       },
       "virusTrojan": {
-        "total": 2,
-        "confirmedIncidentIds": [
-          "incident-571bda15-8d13-4f23-af29-8f6013f95ca7",
-          "incident-1d8a6010-0d13-47d1-9983-7b91c2321001"
-      ]
+        "total": 0,
+        "confirmedIncidentIds": []
       },
-      "threatActorStats": [
-         {
-          "name": "银狐",
-          "count": 6
-        },
-        {
-          "name": "金眼狗",
-          "count": 3
-        }
-      ],
-      "threatTypeRanking": [
-        "木马攻击",
-        "C2外联"
-      ],
-      "virusAttackAsset": "192.168.76.20",
-      "nonAesCoveredAssets": [
-        "192.168.76.20",
-        "192.168.132.123"
-      ],
-      "unlabeledAssets": [
-        "192.168.76.20",
-        "192.168.132.123"
+      "threatActorStats": [],
+      "c2ConnectionExamples": [],
+      "virusTrojanExamples": []
+    },
+    "securityLogTotal": 12290,
+    "alertTotal": 4145,
+    "alertReductionRate": 0.9,
+    "closeRate": 0,
+    "closedEvents": 0,
+    "containedEvents": 0,
+    "totalEvents": 383,
+    "affectedAssetCount": 0,
+    "exploitStats": {
+      "total": 22,
+      "highRiskAsset": "10.248.38.136",
+      "attackSuccessCount": 0,
+      "incidentIds": [
+        "incident-56969481-3659-4612-a0f0-2bd6206842cd",
+        "incident-14de6a1d-7d87-44ce-9de3-ea08b96386a0",
+        "incident-2d93355e-0fa1-42e9-a43b-424cd7f0269a",
+        "incident-7203e380-e1e7-4257-82b0-890165a6595e",
+        "incident-de2f6595-65a8-4d82-9f7e-4ac57c58b0cd",
+        "incident-73a9bac9-8922-4ad2-a890-3ea4a4b50800",
+        "incident-03d17ba0-7537-4204-8a5c-7560c6077dbb",
+        "incident-4612e47d-e4f6-4158-9cd5-5db684dacf92",
+        "incident-4ea570b1-8f63-416d-8b95-d1ba614ef1ef",
+        "incident-5fe8d764-3933-4d5c-a4b3-e257cae2fb34",
+        "incident-03061041-0496-40c7-8997-4ef1b21158dd",
+        "incident-91f0ede0-46f6-4fbd-9110-11b8f74cc0fa",
+        "incident-1d3c6883-bf07-4390-917b-3926ebb253ae",
+        "incident-ab8beac5-179b-4815-982a-88fe6298c980",
+        "incident-619430e8-b1bd-4da2-8cc5-8621a1ab28bf",
+        "incident-e026d05a-d729-4067-9582-7be8f2aaf29b",
+        "incident-a1f8b187-6954-429d-827f-816e26613fe1",
+        "incident-c2c485ea-0046-49f6-ab40-dc05cff4eaa5",
+        "incident-4bc524ae-05ac-4c9e-932e-e747c5f39db6",
+        "incident-e96cd248-f179-4328-ab04-b796f0f9840a",
+        "incident-9c091a80-053b-4d9b-9ebc-8913a8dfa250",
+        "incident-9fb1568b-6a3e-43e8-b3df-25f279876928"
       ]
     },
-    "securityLogTotal": 0,
-    "alertTotal": 0,
-    "alertReductionRate": 0,
-    "closeRate": 52,
-    "closedEvents": 2058,
-    "containedEvents": 117,
-    "totalEvents": 3988,
-    "affectedAssetCount": 2137,
-    "exploitStats": {
-      "total": 52,
-      "highRiskAsset": "172.20.81.107",
-      "attackSuccessCount": 2
-    },
-    "devices": 192
+    "devices": 191
   },
   "riskDetails": {
-    "securityLogTotal": 0,
-    "alertTotal": 0,
-    "alertReductionRate": 0,
-    "closeRate": 52,
-    "totalEvents": 3988,
-    "severeEvents": 213,
-    "highEvents": 271,
-    "closedEvents": 2058,
-    "containedEvents": 117,
-    "processingEvents": 52,
-    "uniqueAssetCount": 2157,
+    "securityLogTotal": 12290,
+    "alertTotal": 4145,
+    "alertReductionRate": 0.9,
+    "closeRate": 0,
     "highRiskIncidentExamples": {
-      "vulnExploits": [
-        {
-          "incidentId": "incident-vuln-demo-001",
-          "eventName": "Web 服务漏洞利用尝试",
-          "affectedAsset": "172.20.81.107",
-          "lastOccurredAt": "2026-06-28 14:20:00",
-          "disposalStatus": "处置完成"
-        }
-      ],
-      "viruses": [
-        {
-          "incidentId": "incident-571bda15-8d13-4f23-af29-8f6013f95ca7",
-          "md5": "44d88612fea8a8f36de82e1278abb02f",
-          "affectedAsset": "192.168.76.20",
-          "lastOccurredAt": "2026-06-27 09:30:00",
-          "disposalStatus": "已遏制"
-        }
-      ],
-      "c2Connections": [
-        {
-          "incidentId": "incident-276f8e1f-68c3-41c1-beff-8cfc53ded17e",
-          "ioc": "45.77.12.34、update-check.example.net",
-          "affectedAsset": "192.168.132.123",
-          "lastOccurredAt": "2026-06-26 19:10:00",
-          "disposalStatus": "处置中"
-        }
-      ]
+      "viruses": [],
+      "c2Connections": [],
+      "vulnExploits": []
     },
+    "totalEvents": 383,
+    "severeEvents": 0,
+    "highEvents": 0,
+    "closedEvents": 0,
+    "containedEvents": 0,
+    "processingEvents": 0,
+    "uniqueAssetCount": 0,
     "managedAssetEvents": 0,
     "managedAssetContainedEvents": 0,
     "managedAssetDisposedEvents": 0,
     "managedEventCloseRate": 0,
     "managedAssetCount": 0,
     "managedAvgResponseTime": 0,
-    "topEventType": "后门攻击事件",
-    "top3BusinessSystems": "OA系统、ERP系统、VPN系统",
-    "eventTypeDistribution": [
-      {
-        "name": "后门攻击事件",
-        "value": 3623
-      },
-      {
-        "name": "-",
-        "value": 136
-      },
-      {
-        "name": "其他网络攻击事件",
-        "value": 53
-      },
-      {
-        "name": "漏洞利用",
-        "value": 52
-      },
-      {
-        "name": "挖矿病毒事件",
-        "value": 43
-      },
-      {
-        "name": "其他",
-        "value": 12
-      }
-    ],
-    "businessSystemEventDistribution": [
-      { "name": "OA系统",   "value": 2 },
-      { "name": "ERP系统",  "value": 1 },
-      { "name": "VPN系统",  "value": 1 },
-      { "name": "邮件系统", "value": 1 },
-      { "name": "OB系统", "value": 3 },
-      { "name": "其他", "value": 1 }
-  ],
-    "devices": 192,
-    "sangfor": 86,
-    "af": 33,
+    "topEventType": "",
+    "top3BusinessSystems": "",
+    "businessSystemEventDistribution": [],
+    "eventTypeDistribution": [],
+    "devices": 191,
+    "sangfor": 85,
+    "af": 34,
     "aes": 45,
     "sip": 2,
     "sta": 1,
-    "other_sf": 5,
+    "other_sf": 3,
     "third": 106
   }
-  }
+}

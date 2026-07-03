@@ -50,6 +50,22 @@ function logInfo(logger, message) {
 
 function applyIncidentStatusStats(reportData, stats) {
   const existingRiskDetails = reportData && reportData.riskDetails ? reportData.riskDetails : {};
+
+  // 如果 stats 没有显式提供消减率，但有事件总数和告警总数，则自动计算
+  const hasExplicitAlertReduction = stats && stats.alertReductionRate !== undefined && stats.alertReductionRate !== null;
+  let computedAlertReductionRate;
+  if (hasExplicitAlertReduction) {
+    computedAlertReductionRate = Number(stats.alertReductionRate);
+  } else {
+    const totalEvts = Number(stats && stats.totalEvents || 0);
+    const alertTot = Number(existingRiskDetails.alertTotal || 0);
+    if (alertTot > 0 && totalEvts > 0) {
+      computedAlertReductionRate = Math.round((alertTot - totalEvts) / alertTot * 10) / 10;
+    } else {
+      computedAlertReductionRate = existingRiskDetails.alertReductionRate || 0;
+    }
+  }
+
   const merged = stats ? deepMerge(reportData, {
     riskDetails: {
       totalEvents: Number(stats.totalEvents || 0),
@@ -59,11 +75,7 @@ function applyIncidentStatusStats(reportData, stats) {
       containedEvents: Number(stats.containedEvents || 0),
       processingEvents: Number(stats.processingEvents || 0),
       closeRate: Number(stats.closeRate || 0),
-      alertReductionRate: Number(
-        stats.alertReductionRate !== undefined && stats.alertReductionRate !== null
-          ? stats.alertReductionRate
-          : existingRiskDetails.alertReductionRate || 0
-      ),
+      alertReductionRate: computedAlertReductionRate,
       uniqueAssetCount: Number(stats.uniqueAssetCount || 0)
     }
   }) : reportData;
@@ -107,12 +119,9 @@ function applyAssetStatusStats(reportData, stats) {
 function buildBaseReportData(input) {
   return {
     projectBackground: {
-      title: '首次安全体检报告',
       customerName: input.customer,
-      customerId: input.customerId || null,
       startDate: input.start,
-      endDate: input.end,
-      generatedAt: new Date().toISOString()
+      endDate: input.end
     },
     assetLedger: {},
     riskOverview: {},

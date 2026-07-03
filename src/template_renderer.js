@@ -64,7 +64,9 @@ function renderTemplate(template, reportData) {
 function replaceHandlebarsTokens(html, data) {
   return html.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (match, keyPath) => {
     const value = getPath(data, keyPath);
-    return value === undefined || value === null ? '' : escapeHtml(String(value));
+    if (value === undefined || value === null) return '';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return escapeHtml(String(value));
   });
 }
 
@@ -221,7 +223,7 @@ function formatLines(value) {
 
 function renderStatusTag(status) {
   const text = String(status || '');
-  const level = /完成|闭环/.test(text) ? 'success' : (/处置中/.test(text) ? 'warning' : 'info');
+  const level = /处置完成/.test(text) ? 'success' : (/处置中/.test(text) ? 'warning' : 'info');
   return `<span class="sr-tag sr-tag--light sr-tag--${level}">${escapeHtml(text)}</span>`;
 }
 
