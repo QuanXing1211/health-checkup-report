@@ -21,7 +21,11 @@
       "Bash(node -c \"c:/Users/User/Desktop/health-checkup-report/src/incident_excel_stats.js\")",
       "Bash(node -c \"c:/Users/User/Desktop/health-checkup-report/src/prevention_data.js\")",
       "Bash(node -c \"c:/Users/User/Desktop/health-checkup-report/src/business_system_ranking.js\")",
-      "Bash(node -c \"c:/Users/User/Desktop/health-checkup-report/src/path_helper.js\")"
+      "Bash(node -c \"c:/Users/User/Desktop/health-checkup-report/src/path_helper.js\")",
+      "Bash(python -c \"import py_compile; py_compile.compile(''c:/Users/User/Desktop/health-checkup-report/scripts/process_risk_list_table.py'', doraise=True); print(''OK'')\")",
+      "Bash(node -c \"c:\\Users\\User\\Desktop\\health-checkup-report\\src\\xdr_asset_client.js\")",
+      "Bash(node -c \"c:\\Users\\User\\Desktop\\health-checkup-report\\src\\risk_asset_count.js\")",
+      "Bash(node -c \"c:\\Users\\User\\Desktop\\health-checkup-report\\health_report.js\")"
     ],
     "deny": [],
     "ask": []

@@ -27,12 +27,15 @@ const REPEAT_RENDERERS = {
   'riskOverview.keyRisks': renderKeyRiskRows,
   'riskDetails.highRiskIncidentExamples.vulnExploits': renderVulnExploitRows,
   'riskDetails.highRiskIncidentExamples.viruses': renderVirusRows,
-  'riskDetails.highRiskIncidentExamples.c2Connections': renderC2Rows
+  'riskDetails.highRiskIncidentExamples.c2Connections': renderC2Rows,
+  'protection_effectiveness.policy_stats.by_device': renderPolicyByDeviceRows,
+  'protection_effectiveness.policy_stats.policy_check_example': renderPolicyCheckExampleRows
 };
 
 async function renderReportToFile({ templatePath, outputDir, reportData }) {
   const template = await fs.readFile(templatePath, 'utf8');
-  const html = renderTemplate(template, reportData);
+  const gradeAssets = extractGradeAssets(template);
+  const html = renderTemplate(template, reportData, gradeAssets);
   await fs.mkdir(outputDir, { recursive: true });
 
   const filename = buildOutputFilename(reportData);
@@ -48,7 +51,17 @@ async function renderReportToFile({ templatePath, outputDir, reportData }) {
   };
 }
 
-function renderTemplate(template, reportData) {
+function extractGradeAssets(template) {
+  const assets = {};
+  const re = /'([优劣中差])':\s*'(data:image\/png;base64,[^']+)'/g;
+  let m;
+  while ((m = re.exec(template)) !== null) {
+    assets[m[1]] = m[2];
+  }
+  return assets;
+}
+
+function renderTemplate(template, reportData, gradeAssets) {
   let html = template;
 
   html = replaceHandlebarsTokens(html, reportData);
@@ -56,7 +69,41 @@ function renderTemplate(template, reportData) {
   html = renderRepeats(html, reportData);
   html = patchKnownText(html, reportData);
   html = patchDataFields(html, reportData);
+  html = patchGrade(html, reportData, gradeAssets);
   html = injectReportData(html, reportData);
+
+  return html;
+}
+
+function patchGrade(html, data, gradeAssets) {
+  const grade = getPath(data, 'scoring.grade');
+  if (!grade) return html;
+
+  const gradeText = String(grade).trim();
+  if (!['优', '良', '中', '差'].includes(gradeText)) return html;
+
+  html = html.replace(
+    /(<html[^>]*\sdata-report-grade=")([^"]*)(")/,
+    (match, before, _old, after) => `${before}${gradeText}${after}`
+  );
+
+  html = html.replace(
+    /(<span[^>]*class="[^"]*sr-grade--)(优|良|中|差)([^"]*"[^>]*data-field="sections\.riskOverview\.grade"[^>]*>)([^<]*)(<\/span>)/,
+    (match, prefix, _oldGrade, mid, _oldText, close) => `${prefix}${gradeText}${mid}${gradeText}${close}`
+  );
+
+  html = html.replace(
+    /(<div[^>]*id="ro5-gauge-card"[^>]*\sdata-grade=")([^"]*)(")/,
+    (match, before, _old, after) => `${before}${gradeText}${after}`
+  );
+
+  if (gradeAssets && gradeAssets[gradeText]) {
+    const newSrc = gradeAssets[gradeText];
+    html = html.replace(
+      /(<img[^>]*id="ro5-gauge-img"[^>]*\ssrc=")([^"]*)(")/,
+      (match, before, _old, after) => `${before}${newSrc}${after}`
+    );
+  }
 
   return html;
 }
@@ -196,6 +243,69 @@ function renderC2Rows(rows) {
   ].join('')).join('');
 }
 
+function renderPolicyByDeviceRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    return '<tr><td colspan="4">暂无策略检查数据</td></tr>';
+  }
+
+  return rows.map((row, index) => {
+    const checkCount = Number(row && row.check_count) || 0;
+    const abnormalCount = Number(row && row.abnormal_count) || 0;
+    const riskSpan = abnormalCount > 0
+      ? `<span class="sr-stat-risk">（<span class="sr-text-danger"><strong>${abnormalCount}</strong></span>）</span>`
+      : '';
+    return [
+      '<tr>',
+      `<td>${index + 1}</td>`,
+      `<td>${escapeHtml(row.dev_type || '')}</td>`,
+      `<td>${escapeHtml(row.dev_name || '')}</td>`,
+      `<td><strong>${checkCount}</strong>${riskSpan}</td>`,
+      '</tr>'
+    ].join('');
+  }).join('');
+}
+
+function renderPolicyCheckExampleRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    return '<tr><td colspan="6">暂无策略检查异常项</td></tr>';
+  }
+
+  return rows.map((row, index) => {
+    const devTypeTag = renderDevTypeTag(row.dev_type);
+    const statusTag = renderPolicyStatusTag(row.policy_status);
+    return [
+      '<tr>',
+      `<td>${index + 1}</td>`,
+      `<td><div class="sr-component-name-row"><span class="sr-component-name">${escapeHtml(row.dev_name || '')}</span>${devTypeTag}</div></td>`,
+      `<td>${escapeHtml(row.name || '')}</td>`,
+      `<td>${statusTag}</td>`,
+      `<td>${escapeHtml(row.description || '')}</td>`,
+      `<td>${escapeHtml(row.risk_desc || '')}</td>`,
+      '</tr>'
+    ].join('');
+  }).join('');
+}
+
+function renderDevTypeTag(devType) {
+  const text = String(devType || '').trim();
+  if (!text || text === '未知') return '';
+  return `<span class="sr-tag sr-tag--light sr-tag--blue">${escapeHtml(text)}</span>`;
+}
+
+function renderPolicyStatusTag(status) {
+  const text = String(status || '').trim();
+  if (!text) return '';
+  const level = policyStatusLevel(text);
+  return `<span class="sr-tag sr-tag--light sr-tag--${level}">${escapeHtml(text)}</span>`;
+}
+
+function policyStatusLevel(text) {
+  if (/异常|失败|过期|未开通|未启用/.test(text)) return 'high';
+  if (/仅上报|不处置|未处置|待处置/.test(text)) return 'medium';
+  if (/正常|生效|已处置|完成/.test(text)) return 'success';
+  return 'medium';
+}
+
 function paragraph(text) {
   return `<p class="sr-p">${text}</p>`;
 }
@@ -223,7 +333,7 @@ function formatLines(value) {
 
 function renderStatusTag(status) {
   const text = String(status || '');
-  const level = /(处置完成|已闭环|已遏制)/.test(text) ? 'success' : (/处置中/.test(text) ? 'warning' : 'info');
+  const level = /处置完成/.test(text) ? 'success' : (/处置中/.test(text) ? 'warning' : 'info');
   return `<span class="sr-tag sr-tag--light sr-tag--${level}">${escapeHtml(text)}</span>`;
 }
 

@@ -7,7 +7,7 @@ const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate, getRiskListDir } = require('./src/xdr_asset_client');
+const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/xdr_asset_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
 const { rankBusinessSystems } = require('./src/business_system_ranking');
@@ -130,14 +130,6 @@ async function main() {
 
   logger(`开始生成: ${options.customer} ${effectiveTimeRange.start} ~ ${effectiveTimeRange.end}`);
 
-  const ASSET_IDS_FOR_EXPORT = [
-    1228081,1228082,1228083,1228084,1228090,1228091,1228092,1228093,1228094,1228095,
-    1228096,1228097,1227746,1228001,1308803,1308804,1227699,1227706,1328428,1328437,
-    1228087,1228089,1224218,1224210,1225943,1328359,1206677,1206678,1328358,1328320,
-    1328326,1328327,1328328,1328329,1328330,1328331,1328332,1328333,1328334,1328335,
-    1328336,1328337,1328338,1328339,1328340,1328341,1328355,1328356,1328357,1228049
-  ];
-
   const xdrExports = await exportConfiguredXdrTables({
     xdrCookiePath: options['xdr-cookie-path'],
     msswCookiePath: options['mssw-cookie-path'],
@@ -146,7 +138,7 @@ async function main() {
     end: effectiveTimeRange.end,
     xdrTables: options['xdr-tables'],
     customerId,
-    assetIds: ASSET_IDS_FOR_EXPORT,
+    assetIds: [],
     timeoutMs: options['timeout-ms'] ? Number(options['timeout-ms']) : undefined,
     pollIntervalMs: options['poll-interval-ms'] ? Number(options['poll-interval-ms']) : undefined,
     logger
@@ -332,7 +324,7 @@ async function main() {
       throw new Error('威胁预防数据计算失败: 缺少事件表，请检查本次事件表导出结果');
     }
     if (!resolvedAssetFilePath) {
-      throw new Error('威胁预防数据计算失败: 缺少资产表，请先准备安全体检报告/风险清单 中可用的资产表');
+      throw new Error('威胁预防数据计算失败: 缺少资产表，请检查本次资产表导出结果');
     }
 
     logger('开始准备威胁预防所需表格...');
@@ -680,14 +672,7 @@ async function resolveAssetFilePath({ options, xdrExports, logger }) {
     return exportedPath;
   }
 
-  // 优先搜索风险清单目录
-  const riskListDiscovered = await findLatestAssetWorkbook(getRiskListDir());
-  if (riskListDiscovered) {
-    logger(`已从风险清单目录自动使用资产表: ${riskListDiscovered}`);
-    return riskListDiscovered;
-  }
-
-  // 降级：从 tmp/exports 搜索
+  // 搜索 tmp/exports
   const discovered = await findLatestAssetWorkbook(getTmpExportDir());
   if (discovered) {
     logger(`已自动使用资产表: ${discovered}`);
