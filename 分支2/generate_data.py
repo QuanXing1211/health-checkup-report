@@ -1,8 +1,9 @@
 import openpyxl
 import json
+import os
 from collections import defaultdict
 
-BASE_DIR = "数据清单"
+BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tmp", "exports")
 RISK_LEVEL_ORDER = {"严重": 4, "高危": 3, "中危": 2, "低危": 1}
 
 
@@ -10,9 +11,32 @@ RISK_LEVEL_ORDER = {"严重": 4, "高危": 3, "中危": 2, "低危": 1}
 # 层1：工具函数
 # ════════════════════════════════════════════════════════════════
 
-def load_wb(filename):
+def find_latest_workbook(keywords):
+    candidates = []
+    if not os.path.isdir(BASE_DIR):
+        raise FileNotFoundError(f"目录不存在: {BASE_DIR}")
+
+    for entry in os.scandir(BASE_DIR):
+        if not entry.is_file() or not entry.name.lower().endswith(".xlsx"):
+            continue
+        lowered = entry.name.lower()
+        if any(keyword.lower() in lowered for keyword in keywords):
+            candidates.append((entry.path, entry.stat().st_mtime))
+
+    if not candidates:
+        raise FileNotFoundError(f"未找到匹配文件: {keywords}")
+
+    candidates.sort(key=lambda item: item[1], reverse=True)
+    return candidates[0][0]
+
+
+def load_wb(filename_or_keywords):
     """加载 Excel 工作簿（data_only 模式，读取公式计算结果）"""
-    return openpyxl.load_workbook(f"{BASE_DIR}/{filename}", data_only=True)
+    if isinstance(filename_or_keywords, (list, tuple)):
+        filepath = find_latest_workbook(filename_or_keywords)
+    else:
+        filepath = os.path.join(BASE_DIR, filename_or_keywords)
+    return openpyxl.load_workbook(filepath, data_only=True)
 
 
 def get_rows(ws):
@@ -122,11 +146,11 @@ def fill_forward(rows, field):
 
 def load_all_data():
     """加载所有 Excel 工作簿，返回原始 rows 字典"""
-    wb_exp = load_wb("暴露面清单.xlsx")
-    wb_vuln = load_wb("漏洞清单.xlsx")
-    wb_weak = load_wb("弱口令清单.xlsx")
-    wb_event = load_wb("安全事件表.xlsx")
-    wb_asset = load_wb("资产表.xlsx")
+    wb_exp = load_wb(["exposure", "暴露面"])
+    wb_vuln = load_wb(["vuln", "漏洞"])
+    wb_weak = load_wb(["weakpwd", "弱口令"])
+    wb_event = load_wb(["incident", "事件"])
+    wb_asset = load_wb(["asset", "资产"])
 
     try:
         ws_asset_sheet = wb_asset["资产表"]

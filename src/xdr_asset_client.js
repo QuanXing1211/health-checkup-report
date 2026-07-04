@@ -1670,12 +1670,41 @@ function getTmpExportDir() {
   return path.join(path.resolve(__dirname, '..'), 'tmp', 'exports');
 }
 
-async function mirrorFileToTmpExports(filename, buffer) {
-  const tmpDir = getTmpExportDir();
-  const tmpFilePath = path.join(tmpDir, filename);
-  await fsp.mkdir(tmpDir, { recursive: true });
-  await fsp.writeFile(tmpFilePath, buffer);
-  return tmpFilePath;
+/**
+ * 调用 Python 脚本后处理资产/事件表并保存到 tmp/exports。
+ * @param {'asset'|'incident'} tableType
+ * @param {string} inputPath 已下载并处理完成的 xlsx 文件路径
+ * @returns {Promise<{filePath: string}>} 处理后的文件路径
+ */
+async function processRiskListTable(tableType, inputPath) {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'process_risk_list_table.py');
+  const outputDir = getTmpExportDir();
+  await fsp.mkdir(outputDir, { recursive: true });
+
+  return new Promise((resolve, reject) => {
+    execFile('python3', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { timeout: 60000 }, (error, stdout, stderr) => {
+      if (error) {
+        // Fallback: try python instead of python3
+        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { timeout: 60000 }, (err2, stdout2) => {
+          if (err2) {
+            reject(new Error(`处理风险清单表失败 (python3: ${error.message}, python: ${err2.message})`));
+            return;
+          }
+          try {
+            resolve(JSON.parse(stdout2));
+          } catch (e) {
+            reject(new Error(`解析处理结果失败: ${stdout2.slice(0, 500)}`));
+          }
+        });
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch (e) {
+        reject(new Error(`解析处理结果失败: ${stdout.slice(0, 500)}`));
+      }
+    });
+  });
 }
 
 async function fetchExportFields(cookieInfo, xdrBaseUrl) {
@@ -2100,14 +2129,12 @@ async function downloadMsswIncidentFile(cookieInfo, msswBaseUrl, taskId, downloa
   const targetPath = path.join(downloadDir, filename);
   await fsp.mkdir(downloadDir, { recursive: true });
   await fsp.writeFile(targetPath, downloaded.buffer);
-  const tmpFilePath = await mirrorFileToTmpExports(filename, downloaded.buffer);
 
   return {
     ...downloaded,
     filePath: targetPath,
     filename,
-    downloadUrl,
-    tmpFilePath
+    downloadUrl
   };
 }
 
@@ -2156,11 +2183,21 @@ async function exportMsswIncidentList(options) {
     logInfo(logger, `误报事件过滤失败（不影响主流程）: ${error.message}`);
   }
 
+  // 后处理：保存到 tmp/exports
+  let processedPath = '';
+  try {
+    const processedResult = await processRiskListTable('incident', downloaded.filePath);
+    processedPath = processedResult.filePath;
+    logInfo(logger, `事件表已写入 tmp/exports: ${processedPath}`);
+  } catch (error) {
+    throw new Error(`事件表写入 tmp/exports 失败: ${error.message}`);
+  }
+
   return {
     msswBaseUrl,
     downloadDir,
-    filePath: downloaded.tmpFilePath,
-    tmpFilePath: downloaded.tmpFilePath,
+    filePath: processedPath,
+    tmpFilePath: processedPath,
     filename: downloaded.filename,
     taskId,
     fileUrl,
@@ -2237,11 +2274,9 @@ async function downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, filenam
   const targetPath = path.join(downloadDir, filename);
   await fsp.mkdir(downloadDir, { recursive: true });
   await fsp.writeFile(targetPath, downloaded.buffer);
-  const tmpFilePath = await mirrorFileToTmpExports(filename, downloaded.buffer);
   return {
     ...downloaded,
-    filePath: targetPath,
-    tmpFilePath
+    filePath: targetPath
   };
 }
 
@@ -2271,11 +2306,21 @@ async function exportMsswAssetList(options) {
   const downloaded = await downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, filename, downloadDir);
   logInfo(logger, `MSSW 资产表: ${downloaded.filePath}`);
 
+  // 后处理：删除指定列、重命名，保存到 tmp/exports
+  let processedPath = '';
+  try {
+    const processedResult = await processRiskListTable('asset', downloaded.filePath);
+    processedPath = processedResult.filePath;
+    logInfo(logger, `资产表已写入 tmp/exports: ${processedPath}（已删除 zdy、责任人电话、责任人(设备上报)、实时认证用户名）`);
+  } catch (error) {
+    throw new Error(`资产表写入 tmp/exports 失败: ${error.message}`);
+  }
+
   return {
     msswBaseUrl,
     downloadDir,
-    filePath: downloaded.tmpFilePath,
-    tmpFilePath: downloaded.tmpFilePath,
+    filePath: processedPath,
+    tmpFilePath: processedPath,
     filename,
     exportFields: exportFieldsResponse.data,
     exportResponse,
@@ -2544,11 +2589,9 @@ async function downloadAssetFile(cookieInfo, xdrBaseUrl, filename, downloadDir) 
   const targetPath = path.join(downloadDir, filename);
   await fsp.mkdir(downloadDir, { recursive: true });
   await fsp.writeFile(targetPath, downloaded.buffer);
-  const tmpFilePath = await mirrorFileToTmpExports(filename, downloaded.buffer);
   return {
     ...downloaded,
-    filePath: targetPath,
-    tmpFilePath
+    filePath: targetPath
   };
 }
 
@@ -2570,13 +2613,11 @@ async function downloadIncidentFile(cookieInfo, xdrBaseUrl, resultPath, download
   const targetPath = path.join(downloadDir, filename);
   await fsp.mkdir(downloadDir, { recursive: true });
   await fsp.writeFile(targetPath, downloaded.buffer);
-  const tmpFilePath = await mirrorFileToTmpExports(filename, downloaded.buffer);
   return {
     ...downloaded,
     filePath: targetPath,
     filename,
-    downloadUrl: resultUrl.toString(),
-    tmpFilePath
+    downloadUrl: resultUrl.toString()
   };
 }
 
@@ -2602,11 +2643,21 @@ async function exportXdrAssetList(options) {
   const downloaded = await downloadAssetFile(cookieInfo, xdrBaseUrl, filename, downloadDir);
   logInfo(logger, `XDR 资产表: ${downloaded.filePath}`);
 
+  // 后处理：删除指定列、重命名，保存到 tmp/exports
+  let processedPath = '';
+  try {
+    const processedResult = await processRiskListTable('asset', downloaded.filePath);
+    processedPath = processedResult.filePath;
+    logInfo(logger, `资产表已写入 tmp/exports: ${processedPath}（已处理）`);
+  } catch (error) {
+    throw new Error(`资产表写入 tmp/exports 失败: ${error.message}`);
+  }
+
   return {
     xdrBaseUrl,
     downloadDir,
-    filePath: downloaded.tmpFilePath,
-    tmpFilePath: downloaded.tmpFilePath,
+    filePath: processedPath,
+    tmpFilePath: processedPath,
     filename,
     exportFields: exportFieldsResponse.data,
     exportResponse,
@@ -2644,11 +2695,21 @@ async function exportXdrIncidentList(options) {
   const downloaded = await downloadIncidentFile(cookieInfo, xdrBaseUrl, resultPath, downloadDir, fallbackFilename);
   logInfo(logger, `XDR 事件表: ${downloaded.filePath}`);
 
+  // 后处理：保存到 tmp/exports
+  let processedPath = '';
+  try {
+    const processedResult = await processRiskListTable('incident', downloaded.filePath);
+    processedPath = processedResult.filePath;
+    logInfo(logger, `事件表已写入 tmp/exports: ${processedPath}`);
+  } catch (error) {
+    throw new Error(`事件表写入 tmp/exports 失败: ${error.message}`);
+  }
+
   return {
     xdrBaseUrl,
     downloadDir,
-    filePath: downloaded.tmpFilePath,
-    tmpFilePath: downloaded.tmpFilePath,
+    filePath: processedPath,
+    tmpFilePath: processedPath,
     filename: downloaded.filename,
     taskId,
     totalEvents: incidentCount.total,
@@ -3392,5 +3453,6 @@ module.exports = {
   MSSW_ASSET_COUNT_ENDPOINT,
   fetchMsswAssetCore,
   fetchMsswAssetReadyToOutbound,
-  fetchMsswFalsePositiveIncidentIds
+  fetchMsswFalsePositiveIncidentIds,
+  processRiskListTable
 };

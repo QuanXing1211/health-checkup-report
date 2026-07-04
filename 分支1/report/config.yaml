@@ -4,28 +4,28 @@
 # Excel/JSON 数据源配置
 data_source:
   # 基础路径（Excel 文件的根目录，JSON 文件可用绝对路径）
-  base_path: "D:/Users/User/Desktop/协同运营报告"
+  base_path: "../../tmp/exports"
   # 各数据文件配置
   files:
     asset:
-      filename: "安全体检报告/风险清单/资产清单.xlsx"
+      latest_match: "asset|资产"
       sheet: "Sheet1"
       header_row: 2
       data_start_row: 3
     event:
-      filename: "安全体检报告/风险清单/安全事件表.xlsx"
+      latest_match: "incident|事件"
       sheet: "安全事件"
     vuln:
-      filename: "安全体检报告/风险清单/漏洞清单.xlsx"
+      latest_match: "vuln|漏洞"
       sheet: "漏洞"
     weak_pwd:
-      filename: "安全体检报告/风险清单/弱口令清单.xlsx"
+      latest_match: "weakpwd|弱口令"
       sheet: "弱密码"
     expose:
-      filename: "安全体检报告/风险清单/暴露面清单.xlsx"
+      latest_match: "exposure|暴露面"
       sheet: "端口表"
     policy:
-      filename: "安全体检报告/风险清单/策略检查清单.xlsx"
+      latest_match: "策略检查|policy"
       sheet: "策略检查"
     # 策略检查 JSON 数据源（由 report/policy_check_export.py 的 _save_json 写入 tmp/policy_check.json）
     # protection_effectiveness.py 读取此 JSON 进行统计；Excel 仍由其他流程使用

@@ -25,7 +25,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from scoring import ScoringEngine, load_config  # noqa: E402
-from data_reader import load_data_sources, read_excel, read_json  # noqa: E402
+from data_reader import load_data_sources, read_excel, read_json, resolve_data_file  # noqa: E402
 from protection_effectiveness import (  # noqa: E402
     stat_core_assets_without_aes,
     stat_policy_check,
@@ -48,9 +48,7 @@ def run_data_stats(config_path: str) -> dict:
 
     # 资产清单
     asset_cfg = files["asset"]
-    asset_path = asset_cfg["filename"]
-    if not os.path.isabs(asset_path):
-        asset_path = os.path.join(base_path, asset_path)
+    asset_path = resolve_data_file(base_path, asset_cfg)
     if os.path.exists(asset_path):
         asset_data = read_excel(
             asset_path,
@@ -62,9 +60,7 @@ def run_data_stats(config_path: str) -> dict:
 
     # 策略检查 JSON
     policy_json_cfg = files.get("policy_json", {})
-    policy_path = policy_json_cfg.get("filename", "tmp/policy_check.json")
-    if not os.path.isabs(policy_path):
-        policy_path = os.path.join(base_path, policy_path)
+    policy_path = resolve_data_file(base_path, policy_json_cfg) or os.path.join(base_path, "tmp/policy_check.json")
     if os.path.exists(policy_path):
         policy_data = read_json(policy_path, data_path=None)
     else:

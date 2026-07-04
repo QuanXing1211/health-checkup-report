@@ -68,6 +68,25 @@ def open_sheet(filepath, preferred_sheet=None):
     return wb.active
 
 
+def find_latest_matching_file(directory, keywords):
+    if not os.path.isdir(directory):
+        raise FileNotFoundError(f'目录不存在: {directory}')
+
+    candidates = []
+    for entry in os.scandir(directory):
+        if not entry.is_file() or not entry.name.lower().endswith('.xlsx'):
+            continue
+        lowered = entry.name.lower()
+        if any(keyword.lower() in lowered for keyword in keywords):
+            candidates.append((entry.path, entry.stat().st_mtime))
+
+    if not candidates:
+        raise FileNotFoundError(f'未找到匹配文件: {directory} keywords={keywords}')
+
+    candidates.sort(key=lambda item: item[1], reverse=True)
+    return candidates[0][0]
+
+
 def build_col_map(ws):
     header = None
     header_row = 1
@@ -421,15 +440,15 @@ def export_comparison_excel(matched_risks, ranking, output_path):
 
 
 def main():
-    download_dir = 'C:/Users/User/Downloads'
+    download_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'tmp', 'exports')
     if len(sys.argv) >= 6:
         events_path, weakpwd_path, vuln_path, exposure_path, asset_path = sys.argv[1:6]
     else:
-        events_path = os.path.join(download_dir, '安全事件表.xlsx')
-        weakpwd_path = os.path.join(download_dir, '弱口令清单.xlsx')
-        vuln_path = os.path.join(download_dir, '漏洞清单.xlsx')
-        exposure_path = os.path.join(download_dir, '暴露面清单.xlsx')
-        asset_path = os.path.join(download_dir, '资产清单.xlsx')
+        events_path = find_latest_matching_file(download_dir, ['incident', '事件'])
+        weakpwd_path = find_latest_matching_file(download_dir, ['weakpwd', '弱口令'])
+        vuln_path = find_latest_matching_file(download_dir, ['vuln', '漏洞'])
+        exposure_path = find_latest_matching_file(download_dir, ['exposure', '暴露面'])
+        asset_path = find_latest_matching_file(download_dir, ['asset', '资产'])
 
     event_rows = parse_events(events_path)
     weakpwd_rows = parse_weak_passwords(weakpwd_path)

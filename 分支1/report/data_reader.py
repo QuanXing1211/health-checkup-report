@@ -7,6 +7,7 @@ Excel/JSON 读取模块
 import json
 import os
 import openpyxl
+import re
 from typing import Optional
 
 
@@ -205,6 +206,39 @@ def count_by_field(data: list[dict], field: str) -> dict[str, int]:
     return result
 
 
+def resolve_data_file(base_path: str, file_cfg: dict) -> str:
+    """
+    解析数据源文件路径。
+
+    支持两种方式：
+      1. filename: 固定文件名/路径
+      2. latest_match: 在 base_path 下按正则匹配最新文件
+    """
+    latest_match = file_cfg.get("latest_match")
+    if latest_match:
+        pattern = re.compile(latest_match, re.IGNORECASE)
+        if not os.path.isdir(base_path):
+            return ""
+
+        candidates = []
+        for entry in os.scandir(base_path):
+            if entry.is_file() and pattern.search(entry.name):
+                candidates.append((entry.path, entry.stat().st_mtime))
+
+        if not candidates:
+            return ""
+
+        candidates.sort(key=lambda item: item[1], reverse=True)
+        return candidates[0][0]
+
+    filename = file_cfg.get("filename", "")
+    if not filename:
+        return ""
+    if os.path.isabs(filename):
+        return filename
+    return os.path.join(base_path, filename)
+
+
 def load_data_sources(config: dict) -> dict[str, list[dict]]:
     """
     根据配置文件加载所有数据源，返回 {数据源名称: 数据行列表}。
@@ -225,7 +259,7 @@ def load_data_sources(config: dict) -> dict[str, list[dict]]:
 
     for name, file_cfg in ds_cfg["files"].items():
         source_type = file_cfg.get("type", "excel")
-        filepath = os.path.join(base_path, file_cfg["filename"])
+        filepath = resolve_data_file(base_path, file_cfg)
 
         if not os.path.exists(filepath):
             print(f"[WARNING] 文件不存在: {filepath}")

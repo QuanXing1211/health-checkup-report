@@ -31,7 +31,7 @@ import yaml
 # 复用 report.scoring 模块中的数据源解析函数
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scoring import _parse_dev_types_from_datasource  # noqa: E402
-from data_reader import read_excel, read_json  # noqa: E402
+from data_reader import read_excel, read_json, resolve_data_file  # noqa: E402
 
 
 # 配置文件路径（相对脚本所在目录）
@@ -252,13 +252,6 @@ def _load_config() -> dict:
         return yaml.safe_load(f)
 
 
-def _resolve_path(base_path: str, filename: str) -> str:
-    """根据 base_path 和配置中的 filename 拼接实际路径；filename 为绝对路径时直接使用。"""
-    if os.path.isabs(filename):
-        return filename
-    return os.path.join(base_path, filename)
-
-
 def main():
     parser = argparse.ArgumentParser(description="数据统计：资产与策略检查")
     parser.add_argument("--asset", default=None,
@@ -274,13 +267,13 @@ def main():
     ds_cfg = config["data_source"]
     base_path = ds_cfg["base_path"]
 
-    asset_path = args.asset or _resolve_path(
-        base_path, ds_cfg["files"]["asset"]["filename"])
+    asset_path = args.asset or resolve_data_file(
+        base_path, ds_cfg["files"]["asset"])
     # 策略检查改为读取 JSON（config.yaml 中的 policy_json），路径与格式参考
     # report/policy_check_export.py 的 _save_json（JSON 顶层为记录列表，无需 data_path）
     policy_json_cfg = ds_cfg["files"].get("policy_json", {})
-    policy_path = args.policy or _resolve_path(
-        base_path, policy_json_cfg.get("filename", "tmp/policy_check.json"))
+    policy_path = args.policy or resolve_data_file(
+        base_path, policy_json_cfg) or os.path.join(base_path, "tmp/policy_check.json")
     output_path = args.output or os.path.join(script_dir, "protection_effectiveness.json")
 
     print("=" * 60)

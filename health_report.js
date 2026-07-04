@@ -155,7 +155,7 @@ async function main() {
   // 从事件表提取漏洞利用统计（不阻断主流程）
   let exploitStats = null;
   let vulnExploitExamples = [];
-  const incidentFilePath = resolveIncidentFilePath(options, xdrExports);
+  const incidentFilePath = await resolveIncidentFilePath(options, xdrExports);
   if (incidentFilePath) {
     try {
       exploitStats = await extractExploitStats(incidentFilePath);
@@ -318,13 +318,13 @@ async function main() {
     }
   }
 
-  const preventionEnabled = shouldRunPreventionStage(options, xdrExports);
+  const preventionEnabled = await shouldRunPreventionStage(options, xdrExports);
   if (preventionEnabled) {
     if (!incidentFilePath) {
       throw new Error('威胁预防数据计算失败: 缺少事件表，请检查本次事件表导出结果');
     }
     if (!resolvedAssetFilePath) {
-      throw new Error('威胁预防数据计算失败: 缺少资产表，请检查本次资产表导出结果');
+      throw new Error('威胁预防数据计算失败: 缺少资产表，请先准备 tmp/exports 中可用的资产表');
     }
 
     logger('开始准备威胁预防所需表格...');
@@ -654,16 +654,20 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function shouldRunPreventionStage(options, xdrExports) {
+async function shouldRunPreventionStage(options, xdrExports) {
   return Boolean(
     options['cookie-path']
-    || (options['mssw-cookie-path'] && resolveIncidentFilePath(options, xdrExports))
+    || (options['mssw-cookie-path'] && await resolveIncidentFilePath(options, xdrExports))
   );
 }
 
-function resolveIncidentFilePath(options, xdrExports) {
-  return (xdrExports && xdrExports.incident && xdrExports.incident.filePath)
-    || '';
+async function resolveIncidentFilePath(options, xdrExports) {
+  const exportedPath = xdrExports && xdrExports.incident ? xdrExports.incident.filePath : '';
+  if (exportedPath) {
+    return exportedPath;
+  }
+
+  return findLatestWorkbook(getTmpExportDir(), /incident|事件/i);
 }
 
 async function resolveAssetFilePath({ options, xdrExports, logger }) {
@@ -672,22 +676,21 @@ async function resolveAssetFilePath({ options, xdrExports, logger }) {
     return exportedPath;
   }
 
-  // 搜索 tmp/exports
-  const discovered = await findLatestAssetWorkbook(getTmpExportDir());
+  const discovered = await findLatestWorkbook(getTmpExportDir(), /asset|资产/i);
   if (discovered) {
-    logger(`已自动使用资产表: ${discovered}`);
+    logger(`已从 tmp/exports 自动使用资产表: ${discovered}`);
     return discovered;
   }
 
   return '';
 }
 
-async function findLatestAssetWorkbook(directory) {
+async function findLatestWorkbook(directory, pattern) {
   try {
     const entries = await fs.readdir(directory, { withFileTypes: true });
     const candidates = entries
       .filter((entry) => entry.isFile() && /\.xlsx$/i.test(entry.name))
-      .filter((entry) => /asset|资产/i.test(entry.name))
+      .filter((entry) => pattern.test(entry.name))
       .map((entry) => path.join(directory, entry.name));
 
     if (!candidates.length) {
