@@ -99,7 +99,9 @@ class PolicyCheckExporter:
         end_time,
         status="",
         cookie=None,
+        cookie_path=None,
         output_path=None,
+        json_output_path=None,
     ):
         self.company_id = company_id
         self.start_time = _parse_datetime(start_time)
@@ -108,23 +110,36 @@ class PolicyCheckExporter:
         if self.end_time.hour == 0 and self.end_time.minute == 0 and self.end_time.second == 0:
             self.end_time = self.end_time.replace(hour=23, minute=59, second=59)
         self.status = status
-        self.cookie = cookie if cookie is not None else self._load_cookie()
+        self.cookie_path = cookie_path
+        self.cookie = cookie if cookie is not None else self._load_cookie(cookie_path)
         self.output_path = output_path or DEFAULT_OUTPUT_PATH
+        self.json_output_path = json_output_path
 
     # ── 第一步：获取数据 ──
 
-    def _load_cookie(self):
+    def _load_cookie(self, cookie_path=None):
         """
         从固定路径文件读取并提取 cookie 内容。
 
         文件格式为 JSON，需提取 cookieString 字段作为请求 cookie。
         """
-        if not os.path.exists(COOKIE_FILE_PATH):
-            print(f"[WARNING] Cookie 文件不存在: {COOKIE_FILE_PATH}")
+        resolved_path = cookie_path or COOKIE_FILE_PATH
+        if not os.path.exists(resolved_path):
+            print(f"[WARNING] Cookie 文件不存在: {resolved_path}")
             return ""
-        with open(COOKIE_FILE_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("cookieString", "")
+        with open(resolved_path, "r", encoding="utf-8") as f:
+            raw = f.read()
+
+        stripped = raw.strip()
+        if not stripped:
+            return ""
+
+        if stripped.startswith("{") or stripped.startswith("["):
+            data = json.loads(stripped)
+            if isinstance(data, dict):
+                return data.get("cookieString", "") or data.get("cookie", "")
+
+        return stripped
 
     def fetch_data(self):
         """
@@ -264,11 +279,16 @@ class PolicyCheckExporter:
 
     def _save_json(self, records):
         """将原始数据保存为 JSON 文件到 tmp 目录。"""
-        os.makedirs(TMP_DIR, exist_ok=True)
-        json_path = os.path.join(TMP_DIR, "policy_check.json")
+        json_path = self.json_output_path
+        if not json_path:
+            os.makedirs(TMP_DIR, exist_ok=True)
+            json_path = os.path.join(TMP_DIR, "policy_check.json")
+        else:
+            os.makedirs(os.path.dirname(os.path.abspath(json_path)), exist_ok=True)
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(records, f, ensure_ascii=False, indent=2)
         print(f"[INFO] 已保存 JSON: {json_path} ({len(records)} 条记录)")
+        return json_path
 
     def run(self):
         """执行获取数据 → 保存JSON → 格式转换 → 写入 Excel 完整流程。"""
@@ -279,20 +299,31 @@ class PolicyCheckExporter:
         print(f"  时间范围:  {self.start_time} ~ {self.end_time}")
         print(f"  状态过滤:  {self.status or '(不过滤)'}")
         print(f"  输出文件:  {self.output_path}")
+        if self.json_output_path:
+            print(f"  JSON输出:  {self.json_output_path}")
         print(f"  Cookie:    {'已加载' if self.cookie else '未加载'}")
         print()
 
         records = self.fetch_data()
         if not records:
             print("[WARNING] 未获取到符合条件的数据，Excel 不会生成")
-            return
+            return {
+                "recordCount": 0,
+                "excelPath": self.output_path,
+                "jsonPath": self.json_output_path or os.path.join(TMP_DIR, "policy_check.json"),
+            }
 
-        self._save_json(records)
+        json_path = self._save_json(records)
         rows = self.transform(records)
         self.write_excel(rows)
 
         print("\n完成!")
         print("=" * 50)
+        return {
+            "recordCount": len(records),
+            "excelPath": self.output_path,
+            "jsonPath": json_path,
+        }
 
 
 # ──────────────────────────────────────────────
@@ -305,7 +336,9 @@ def parse_args():
     parser.add_argument("--start", required=True, help="时间范围起始，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS")
     parser.add_argument("--end", required=True, help="时间范围结束，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS")
     parser.add_argument("--status", default="", help="策略状态过滤，如 at_risk、no_risk，默认不过滤")
+    parser.add_argument("--cookie-path", default=None, help="Cookie 文件路径，支持纯文本或含 cookieString 的 JSON")
     parser.add_argument("--output", default=None, help="输出 Excel 路径，默认为当前目录下 策略检查.xlsx")
+    parser.add_argument("--json-output", default=None, help="输出 JSON 路径，默认为 tmp/policy_check.json")
     return parser.parse_args()
 
 
@@ -316,9 +349,13 @@ def main():
         start_time=args.start,
         end_time=args.end,
         status=args.status,
+        cookie_path=args.cookie_path,
         output_path=args.output,
+        json_output_path=args.json_output,
     )
-    exporter.run()
+    result = exporter.run()
+    if result:
+        print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == "__main__":

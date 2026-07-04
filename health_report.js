@@ -11,6 +11,7 @@ const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMs
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
 const { rankBusinessSystems } = require('./src/business_system_ranking');
+const { runBranch1ReportStage, mergeBranch1ReportPatch, exportBranch1Word, getDefaultDeviceJsonPath } = require('./src/branch1_adapter');
 const { renderReportToFile } = require('./src/template_renderer');
 
 async function main() {
@@ -127,6 +128,8 @@ async function main() {
   const root = __dirname;
   const templatePath = options.template || path.join(root, 'security-report-preview.html');
   const outputDir = options['output-dir'] || path.join(root, 'output');
+  let branch1Result = null;
+  let preventionTables = null;
 
   logger(`开始生成: ${options.customer} ${effectiveTimeRange.start} ~ ${effectiveTimeRange.end}`);
 
@@ -190,7 +193,7 @@ async function main() {
     }
   }
 
-  const reportData = await collectReportData({
+  let reportData = await collectReportData({
     customer: options.customer,
     customerId,
     start: effectiveTimeRange.start,
@@ -328,7 +331,7 @@ async function main() {
     }
 
     logger('开始准备威胁预防所需表格...');
-    const preventionTables = await collectPreventionTableExports({
+    preventionTables = await collectPreventionTableExports({
       customer: options.customer,
       start: effectiveTimeRange.start,
       end: effectiveTimeRange.end,
@@ -368,6 +371,42 @@ async function main() {
       }
     });
     logger('业务系统排序数据已合并到 appendix.businessSystemRanking');
+
+    branch1Result = await runBranch1ReportStage({
+      customer: options.customer,
+      companyId: customerId,
+      start: effectiveTimeRange.start,
+      end: effectiveTimeRange.end,
+      assetPath: resolvedAssetFilePath,
+      incidentPath: incidentFilePath,
+      weakpwdPath: preventionTables.weakpwd.filePath,
+      vulnPath: preventionTables.vuln.filePath,
+      exposurePath: preventionTables.exposure.filePath,
+      devicePath: getDefaultDeviceJsonPath(),
+      soarCookiePath: options['cookie-path'],
+      outputDir: path.join(root, 'tmp', 'branch1')
+    });
+    reportData = mergeBranch1ReportPatch(reportData, branch1Result.reportPatch);
+    logger('分支1 JSON 已合并到 report-data');
+
+    const archivedFiles = await archiveRiskListFiles({
+      root,
+      incidentPath: incidentFilePath,
+      assetPath: resolvedAssetFilePath,
+      exposurePath: preventionTables.exposure.filePath,
+      weakpwdPath: preventionTables.weakpwd.filePath,
+      vulnPath: preventionTables.vuln.filePath,
+      logger
+    });
+    if (xdrExports.incident) {
+      xdrExports.incident.filePath = archivedFiles.incidentPath;
+    }
+    if (xdrExports.asset) {
+      xdrExports.asset.filePath = archivedFiles.assetPath;
+    }
+    preventionTables.exposure.filePath = archivedFiles.exposurePath;
+    preventionTables.weakpwd.filePath = archivedFiles.weakpwdPath;
+    preventionTables.vuln.filePath = archivedFiles.vulnPath;
   } else {
     logger('跳过威胁预防数据准备: 未提供相关运行上下文');
   }
@@ -383,9 +422,25 @@ async function main() {
   });
   logger(`HTML 已生成: ${result.html_path || result.filePath || ''}`);
 
+  let wordExport = null;
+  if (branch1Result) {
+    wordExport = await exportBranch1Word({
+      htmlPath: result.html_path || result.filePath || '',
+      wordPath: replaceExtension(result.html_path || result.filePath || '', '.docx')
+    });
+    logger(`Word 已生成: ${wordExport.wordPath}`);
+  }
+
   outputResult({
     ...result,
-    xdrExports
+    xdrExports,
+    word_path: wordExport ? wordExport.wordPath : null,
+    branch1Artifacts: branch1Result
+      ? {
+        ...branch1Result.artifacts,
+        wordPath: wordExport ? wordExport.wordPath : null
+      }
+      : null
   }, emitJson, logger, `完成: ${result.html_path || result.filePath || ''}`);
 }
 
@@ -559,11 +614,74 @@ async function writeJsonFile(filePath, data) {
   await fs.writeFile(resolvedPath, JSON.stringify(data, null, 2), 'utf8');
 }
 
+async function archiveRiskListFiles(options) {
+  const riskListDir = path.join(options.root, '安全体检报告', '风险清单');
+  await fs.mkdir(riskListDir, { recursive: true });
+
+  const mappings = [
+    ['incidentPath', '安全事件表.xlsx'],
+    ['assetPath', '资产清单.xlsx'],
+    ['exposurePath', '暴露面清单.xlsx'],
+    ['weakpwdPath', '弱口令清单.xlsx'],
+    ['vulnPath', '漏洞清单.xlsx']
+  ];
+  const archived = {};
+
+  for (const [key, filename] of mappings) {
+    const sourcePath = options[key];
+    if (!sourcePath) {
+      throw new Error(`归档风险清单失败: 缺少 ${key}`);
+    }
+
+    const targetPath = path.join(riskListDir, filename);
+    archived[key] = await moveOrReplaceFile(sourcePath, targetPath);
+    logWith(options.logger, `风险清单已归档: ${archived[key]}`);
+  }
+
+  return archived;
+}
+
+async function moveOrReplaceFile(sourcePath, targetPath) {
+  const resolvedSource = path.resolve(sourcePath);
+  const resolvedTarget = path.resolve(targetPath);
+  if (samePath(resolvedSource, resolvedTarget)) {
+    return resolvedTarget;
+  }
+
+  await fs.mkdir(path.dirname(resolvedTarget), { recursive: true });
+  await fs.rm(resolvedTarget, { force: true });
+
+  try {
+    await fs.rename(resolvedSource, resolvedTarget);
+  } catch (error) {
+    if (!isCrossDeviceError(error)) {
+      throw error;
+    }
+    await fs.copyFile(resolvedSource, resolvedTarget);
+    await fs.rm(resolvedSource, { force: true });
+  }
+
+  return resolvedTarget;
+}
+
+function samePath(left, right) {
+  return path.resolve(left).toLowerCase() === path.resolve(right).toLowerCase();
+}
+
+function isCrossDeviceError(error) {
+  return Boolean(error) && (error.code === 'EXDEV' || error.code === 'EPERM');
+}
+
 function formatLocalDate(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function replaceExtension(filePath, extension) {
+  const parsed = path.parse(filePath);
+  return path.join(parsed.dir, `${parsed.name}${extension}`);
 }
 
 async function resolveEffectiveTimeRange({ options, customerId, msswCookie, reportGeneratedAt, logger }) {
