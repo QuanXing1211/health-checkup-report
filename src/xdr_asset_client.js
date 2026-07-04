@@ -7,6 +7,7 @@ const https = require('https');
 const http = require('http');
 const path = require('path');
 
+const { encodePath } = require('./path_helper');
 const { removeIncidentRows, parseIncidentGptStats, extractIncidentAssetInfo, extractC2ConnectionExamples, extractVirusTrojanExamples } = require('./incident_excel_stats');
 
 const DEFAULT_XDR_BASE_URL = normalizeBaseUrl(process.env.SANGFOR_XDR_BASE_URL || 'xdr.sangfor.com.cn');
@@ -1683,10 +1684,10 @@ async function processRiskListTable(tableType, inputPath) {
   await fsp.mkdir(outputDir, { recursive: true });
 
   return new Promise((resolve, reject) => {
-    execFile('python3', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { timeout: 60000 }, (error, stdout, stderr) => {
+    execFile('python3', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (error, stdout, stderr) => {
       if (error) {
         // Fallback: try python instead of python3
-        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { timeout: 60000 }, (err2, stdout2) => {
+        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2) => {
           if (err2) {
             reject(new Error(`处理风险清单表失败 (python3: ${error.message}, python: ${err2.message})`));
             return;

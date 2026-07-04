@@ -1,0 +1,162 @@
+{
+  "reportPatch": {
+    "scoring": {
+      "total_score": 42.08,
+      "grade": "差",
+      "grade_color": "红色",
+      "L1": {
+        "资产防护得分": 16.79,
+        "日常运营得分": 80.0
+      },
+      "L2": {
+        "托管资产得分": 37.3,
+        "组件检测得分": 3.12,
+        "事件得分": 100.0,
+        "勒索风险得分": 50.0
+      },
+      "L3": {
+        "服务器得分": 32.75,
+        "终端得分": 50.94,
+        "服务器权重": 0.75,
+        "终端权重": 0.25,
+        "设备离线得分": 6.25,
+        "策略隐患得分": 0.0,
+        "漏洞得分": 0,
+        "端口得分": 100,
+        "弱密码基础分": 100,
+        "脆弱性事件分": 0.0,
+        "弱密码得分": 100.0
+      },
+      "data_summary": {
+        "asset": {
+          "server": {
+            "both_coverage": 6,
+            "client_only": 83,
+            "net_only": 4,
+            "no_coverage": 191,
+            "total": 284
+          },
+          "pc": {
+            "both_coverage": 8,
+            "client_only": 45,
+            "net_only": 1,
+            "no_coverage": 52,
+            "total": 106
+          },
+          "all_assets": 5167,
+          "device": {
+            "activated_count": 96,
+            "offline_count": 90,
+            "total": 171
+          }
+        },
+        "event": {
+          "server_events": {
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "pc_events": {
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "total_events": 0
+        },
+        "weak_pwd_event": {
+          "server_events": {
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "pc_events": {
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "total_events": 0
+        },
+        "vuln": {
+          "urgent_count": 0,
+          "fast_count": 2978,
+          "suggest_count": 666,
+          "total_vulns": 3644
+        },
+        "weak_pwd": {
+          "high_count": 0,
+          "middle_count": 0,
+          "low_count": 0,
+          "unknown_count": 0,
+          "total_weak_pwd": 0
+        },
+        "port": {
+          "risk_port_count": 0,
+          "total_ports": 0
+        },
+        "policy": {
+          "check_cnt": 0,
+          "risk_cnt": 0,
+          "policy_status_summary": {},
+          "risk_status_summary": {}
+        }
+      },
+      "weights_used": {
+        "DEFAULT_ASSETS_RATIO": 0.6,
+        "ASSETS_RATIO": 0.4,
+        "COMPONENTS_RATIO": 0.6,
+        "EVENTS_RATIO": 0.6,
+        "VULNERABILITIES_RATIO": 0.4,
+        "SERVER_RATIO": 0.75,
+        "PC_SCORE": 0.25,
+        "DEVICE_K": 0.5,
+        "POLICY_K": 0.5,
+        "VULNERABILITY_K": 0.5,
+        "WEAK_PASSWORD_K": 0.25,
+        "PORT_K": 0.25,
+        "WEAK_PASSWORD_BASE_K": 1,
+        "SERVER_MAJOR_EVENT_K": 10,
+        "SERVER_GENERAL_EVENT_K": 7.5,
+        "SERVER_OTHER_EVENT_K": 5,
+        "SERVER_MAJOR_THREAT_K": 2.5,
+        "PC_MAJOR_EVENT_K": 5,
+        "PC_GENERAL_EVENT_K": 3.75,
+        "PC_OTHER_EVENT_K": 2.5,
+        "PC_MAJOR_THREAT_K": 1.25,
+        "AGENT_FIX_VULN_K": 15,
+        "FAST_FIX_VULN_K": 7.5,
+        "SUGGEST_FIX_VULN_K": 1,
+        "RISK_PORT_K": 20,
+        "HIGH_LEVEL_WEAKPWD_K": 20,
+        "MIDDLE_LEVEL_WEAKPWD_K": 10,
+        "LOW_LEVEL_WEAKPWD_K": 5,
+        "UNKNOWN_LEVEL_WEAKPWD_K": 2
+      }
+    },
+    "protection_effectiveness": {
+      "without_aes_asset_stats": {
+        "ips": "10.128.160.200、10.128.165.10",
+        "total": 3,
+        "hide_hint": false
+      },
+      "policy_stats": {
+        "total": 0,
+        "abnormal_count": 0,
+        "abnormal_by_dev_type": {},
+        "abnormal_by_dev_type_text": "",
+        "abnormal_by_dev_type_bracket": "",
+        "abnormal_component_count": 0,
+        "total_component_count": 0,
+        "by_device": [],
+        "policy_check_example": []
+      }
+    }
+  },
+  "artifacts": {
+    "policyJsonPath": "C:\\Users\\User\\Desktop\\health-checkup-report\\分支1\\report\\tmp\\policy_check.json",
+    "policyExcelPath": "C:\\Users\\User\\Desktop\\health-checkup-report\\分支1\\report\\策略检查清单.xlsx"
+  }
+}

@@ -7,7 +7,7 @@
   },
   "assetLedger": {
     "ready_to_outbound": 11,
-    "manage_asset": 5164,
+    "manage_asset": 5167,
     "typeDistribution": [
       {
         "name": "服务器",
@@ -19,7 +19,7 @@
       },
       {
         "name": "其他",
-        "value": 4774
+        "value": 4777
       }
     ],
     "protectionDistribution": [
@@ -61,7 +61,7 @@
     "core_asset": 8,
     "core_managed_asset": 1,
     "internetExposureTotal": 954,
-    "assetTotal": 5164
+    "assetTotal": 5167
   },
   "riskOverview": {
     "incidentGptStats": {
@@ -138,7 +138,7 @@
     "managedAssetContainedEvents": 0,
     "managedAssetDisposedEvents": 0,
     "managedEventCloseRate": 0,
-    "managedAssetCount": 201,
+    "managedAssetCount": 200,
     "managedAvgResponseTime": 0,
     "topEventType": "",
     "top3BusinessSystems": "",
@@ -173,8 +173,8 @@
     "intranet": {
       "vuln": {
         "priority_urgent": 0,
-        "total": 486,
-        "risk_assets": 22
+        "total": 3644,
+        "risk_assets": 81
       },
       "weak_pwd": {
         "risk_assets": 10,
@@ -185,13 +185,13 @@
   "key_risks": {
     "vuln": {
       "biz_example": "",
-      "high_count": 486
+      "high_count": 1534
     },
     "weak_pwd": {
       "biz_example": "",
       "total": 16,
       "example_asset": "（如192.168.30.190、10.128.165.150、10.128.165.151）",
-      "priority_assets": "建议优先修改资产：10.128.165.26、192.168.30.190、10.128.165.100的弱口令，并添加多因素认证。",
+      "priority_assets": "建议优先修改资产：10.128.165.26、192.168.30.190、10.128.165.28的弱口令，并添加多因素认证。",
       "priority_assets_reason": "因为这些资产属于核心业务。"
     },
     "exposure": {
@@ -211,10 +211,10 @@
       "high_above": 0
     },
     "intranet": {
-      "vuln": 486,
+      "vuln": 3644,
       "weak_pwd": 16,
-      "total": 502,
-      "high": 486
+      "total": 3660,
+      "high": 1534
     }
   },
   "internet": {
@@ -304,47 +304,47 @@
   },
   "intranet": {
     "vuln": {
-      "total": 486,
+      "total": 3644,
       "critical": 486,
-      "high": 0,
-      "medium": 0,
-      "low": 0,
+      "high": 1048,
+      "medium": 1444,
+      "low": 666,
       "related_biz": 0,
-      "related_assets": 22,
+      "related_assets": 81,
       "priority_urgent": 0,
-      "priority_soon": 486,
-      "priority_suggest": 0,
+      "priority_soon": 2978,
+      "priority_suggest": 666,
       "biz_top_rows": [],
       "asset_top_rows": [
         {
           "asset": "10.128.165.151",
           "urgent": 0,
-          "soon": 336,
-          "suggest": 0
+          "soon": 1117,
+          "suggest": 62
         },
         {
           "asset": "10.128.165.53",
           "urgent": 0,
-          "soon": 103,
-          "suggest": 0
+          "soon": 760,
+          "suggest": 54
         },
         {
           "asset": "10.128.160.200",
           "urgent": 0,
-          "soon": 22,
-          "suggest": 0
+          "soon": 183,
+          "suggest": 52
         },
         {
           "asset": "10.128.160.241",
           "urgent": 0,
-          "soon": 6,
-          "suggest": 0
+          "soon": 60,
+          "suggest": 9
         },
         {
-          "asset": "192.168.50.98",
+          "asset": "10.128.160.83",
           "urgent": 0,
-          "soon": 2,
-          "suggest": 0
+          "soon": 58,
+          "suggest": 14
         }
       ]
     },
@@ -391,8 +391,162 @@
     "businessSystemRanking": {
       "coreBusinessSystemRanking": [],
       "maxRiskSystem": null,
-      "securityRiskTotal": 465,
-      "highAndAboveRiskCount": 464
+      "securityRiskTotal": 1422,
+      "highAndAboveRiskCount": 850
+    }
+  },
+  "scoring": {
+    "total_score": 42.08,
+    "grade": "差",
+    "grade_color": "红色",
+    "L1": {
+      "资产防护得分": 16.79,
+      "日常运营得分": 80
+    },
+    "L2": {
+      "托管资产得分": 37.3,
+      "组件检测得分": 3.12,
+      "事件得分": 100,
+      "勒索风险得分": 50
+    },
+    "L3": {
+      "服务器得分": 32.75,
+      "终端得分": 50.94,
+      "服务器权重": 0.75,
+      "终端权重": 0.25,
+      "设备离线得分": 6.25,
+      "策略隐患得分": 0,
+      "漏洞得分": 0,
+      "端口得分": 100,
+      "弱密码基础分": 100,
+      "脆弱性事件分": 0,
+      "弱密码得分": 100
+    },
+    "data_summary": {
+      "asset": {
+        "server": {
+          "both_coverage": 6,
+          "client_only": 83,
+          "net_only": 4,
+          "no_coverage": 191,
+          "total": 284
+        },
+        "pc": {
+          "both_coverage": 8,
+          "client_only": 45,
+          "net_only": 1,
+          "no_coverage": 52,
+          "total": 106
+        },
+        "all_assets": 5167,
+        "device": {
+          "activated_count": 96,
+          "offline_count": 90,
+          "total": 171
+        }
+      },
+      "event": {
+        "server_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "pc_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "total_events": 0
+      },
+      "weak_pwd_event": {
+        "server_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "pc_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "total_events": 0
+      },
+      "vuln": {
+        "urgent_count": 0,
+        "fast_count": 2978,
+        "suggest_count": 666,
+        "total_vulns": 3644
+      },
+      "weak_pwd": {
+        "high_count": 0,
+        "middle_count": 0,
+        "low_count": 0,
+        "unknown_count": 0,
+        "total_weak_pwd": 0
+      },
+      "port": {
+        "risk_port_count": 0,
+        "total_ports": 0
+      },
+      "policy": {
+        "check_cnt": 0,
+        "risk_cnt": 0,
+        "policy_status_summary": {},
+        "risk_status_summary": {}
+      }
+    },
+    "weights_used": {
+      "DEFAULT_ASSETS_RATIO": 0.6,
+      "ASSETS_RATIO": 0.4,
+      "COMPONENTS_RATIO": 0.6,
+      "EVENTS_RATIO": 0.6,
+      "VULNERABILITIES_RATIO": 0.4,
+      "SERVER_RATIO": 0.75,
+      "PC_SCORE": 0.25,
+      "DEVICE_K": 0.5,
+      "POLICY_K": 0.5,
+      "VULNERABILITY_K": 0.5,
+      "WEAK_PASSWORD_K": 0.25,
+      "PORT_K": 0.25,
+      "WEAK_PASSWORD_BASE_K": 1,
+      "SERVER_MAJOR_EVENT_K": 10,
+      "SERVER_GENERAL_EVENT_K": 7.5,
+      "SERVER_OTHER_EVENT_K": 5,
+      "SERVER_MAJOR_THREAT_K": 2.5,
+      "PC_MAJOR_EVENT_K": 5,
+      "PC_GENERAL_EVENT_K": 3.75,
+      "PC_OTHER_EVENT_K": 2.5,
+      "PC_MAJOR_THREAT_K": 1.25,
+      "AGENT_FIX_VULN_K": 15,
+      "FAST_FIX_VULN_K": 7.5,
+      "SUGGEST_FIX_VULN_K": 1,
+      "RISK_PORT_K": 20,
+      "HIGH_LEVEL_WEAKPWD_K": 20,
+      "MIDDLE_LEVEL_WEAKPWD_K": 10,
+      "LOW_LEVEL_WEAKPWD_K": 5,
+      "UNKNOWN_LEVEL_WEAKPWD_K": 2
+    }
+  },
+  "protection_effectiveness": {
+    "without_aes_asset_stats": {
+      "ips": "10.128.160.200、10.128.165.10",
+      "total": 3,
+      "hide_hint": false
+    },
+    "policy_stats": {
+      "total": 0,
+      "abnormal_count": 0,
+      "abnormal_by_dev_type": {},
+      "abnormal_by_dev_type_text": "",
+      "abnormal_by_dev_type_bracket": "",
+      "abnormal_component_count": 0,
+      "total_component_count": 0,
+      "by_device": [],
+      "policy_check_example": []
     }
   }
 }
