@@ -101,7 +101,7 @@ DEFAULT_HEADERS: Dict[str, str] = {
 
 
 def request_with_retry(method: str, url: str, headers: Optional[Dict] = None,
-                       timeout: int = 30, **kwargs) -> Optional[requests.Response]:
+                       timeout: int = 60, **kwargs) -> Optional[requests.Response]:
     if headers is None:
         headers = DEFAULT_HEADERS.copy()
 

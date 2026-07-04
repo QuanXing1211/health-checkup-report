@@ -81,6 +81,19 @@ def extract_cookie_value(cookie_str: str, name: str) -> Optional[str]:
     return None
 
 
+def _fmt_minute(val) -> str:
+    """
+    将时间值统一格式化到分钟精度（YYYY-MM-DD HH:MM）。
+    支持 datetime 对象和字符串，空值返回空字符串。
+    """
+    if val is None or val == "":
+        return ""
+    if isinstance(val, datetime):
+        return val.strftime("%Y-%m-%d %H:%M")
+    s = str(val).strip()
+    return s[:16] if len(s) >= 16 else s
+
+
 # ---------- Cookie 读取 ----------
 
 def read_cookies_as_string(filepath: str) -> str:
@@ -125,7 +138,7 @@ def _build_default_headers(base_url: str) -> Dict[str, str]:
 
 def request_with_retry(method: str, url: str, base_url: str,
                        cookie_str: str = "",
-                       timeout: int = 30,
+                       timeout: int = 60,
                        extra_headers: Optional[Dict] = None,
                        **kwargs) -> Optional[requests.Response]:
     headers = _build_default_headers(base_url)
@@ -435,7 +448,7 @@ def mssw_api8_export_vuln(cookie_str: str, company_id: str, latest_time_range: l
         "attack_type": "",
         "cve": {"op": "=", "val": ""},
         "data_type": ["loophole"],
-        "risk_level": [3],
+        "risk_level": [],
         "scan_type": [],
         "threat_tag": [],
         "custom_headers": {
@@ -484,7 +497,7 @@ def mssw_api8_export_vuln(cookie_str: str, company_id: str, latest_time_range: l
     }
     extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
     resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str,
-                               json=payload, extra_headers=extra_hdrs)
+                               json=payload, extra_headers=extra_hdrs, timeout=660)
     data = _parse_json(resp, "接口8（MSSW漏洞导出）")
     if data.get('code') != 0:
         raise RuntimeError(f"接口8失败: {data.get('msg')}")
@@ -739,7 +752,10 @@ def process_mssw_file(file_b_path: str) -> List[dict]:
                 src_col = col_map.get(source)
                 if src_col is not None:
                     val = ws.cell(row=row_idx, column=src_col).value
-                    row_data[c_col] = val if val is not None else ""
+                    val = val if val is not None else ""
+                    if c_col in ("最近发现时间", "首次发现时间"):
+                        val = _fmt_minute(val)
+                    row_data[c_col] = val
                 else:
                     log(f"  第{row_idx}行: 列「{source}」不存在，赋空值", "WARNING")
                     row_data[c_col] = ""

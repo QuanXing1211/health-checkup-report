@@ -95,6 +95,19 @@ def extract_cookie_value(cookie_str: str, name: str) -> Optional[str]:
     return None
 
 
+def _fmt_minute(val) -> str:
+    """
+    将时间值统一格式化到分钟精度（YYYY-MM-DD HH:MM）。
+    支持 datetime 对象和字符串，空值返回空字符串。
+    """
+    if val is None or val == "":
+        return ""
+    if isinstance(val, datetime):
+        return val.strftime("%Y-%m-%d %H:%M")
+    s = str(val).strip()
+    return s[:16] if len(s) >= 16 else s
+
+
 # ---------- Cookie 读取 ----------
 
 def read_cookies_as_string(filepath: str) -> str:
@@ -139,7 +152,7 @@ def _build_default_headers(base_url: str) -> Dict[str, str]:
 
 def request_with_retry(method: str, url: str, base_url: str,
                        cookie_str: str = "",
-                       timeout: int = 30,
+                       timeout: int = 60,
                        extra_headers: Optional[Dict] = None,
                        **kwargs) -> Optional[requests.Response]:
     headers = _build_default_headers(base_url)
@@ -503,7 +516,7 @@ def mssw_api9_export_weak_pwd(cookie_str: str, company_id: str, latest_time_rang
     }
     extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
     resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str,
-                               json=payload, timeout=120, extra_headers=extra_hdrs)
+                               json=payload, timeout=660, extra_headers=extra_hdrs)
     data = _parse_json(resp, "接口9（MSSW弱口令导出）")
     if data.get('code') != 0:
         raise RuntimeError(f"接口9失败: {data.get('message') or data.get('msg')}")
@@ -683,6 +696,9 @@ def process_mssw_file(file_b_path: str) -> List[dict]:
                 else:
                     row_data[header] = ""
             row_data["数据来源"] = "内网"  # MSSW 固定为内网
+            # 时间字段统一到分钟精度
+            for time_col in ("最近发现时间", "首次发现时间"):
+                row_data[time_col] = _fmt_minute(row_data.get(time_col))
             rows_out.append(row_data)
     finally:
         wb.close()
