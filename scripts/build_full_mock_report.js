@@ -13,6 +13,10 @@ async function main() {
   const reportDataSample = await readJsonIfExists(path.join(OUTPUT_DIR, 'report-data.json'));
   const existingMockSample = await readJsonIfExists(path.join(OUTPUT_DIR, 'mock-full-report-data.json'));
   const branch1Report = await readJsonIfExists(path.join(ROOT, 'tmp', 'branch1', 'branch1-report.json'));
+  const branch1Data = await readJsonIfExists(path.join(ROOT, '分支1', 'report', 'data.json'));
+  const scoringResult = await readJsonIfExists(path.join(ROOT, '分支1', 'report', 'scoring_result.json'));
+  const protectionEffectiveness = await readJsonIfExists(path.join(ROOT, '分支1', 'report', 'protection_effectiveness.json'));
+  const policyCheck = await readJsonIfExists(path.join(ROOT, '分支1', 'report', 'tmp', 'policy_check.json'));
   const xdrAssetSummary = await readJsonIfExists(path.join(OUTPUT_DIR, 'xdr-asset-summary.json'));
   const deviceSnapshot = await readJsonIfExists(path.join(ROOT, 'tmp', 'device.json'));
 
@@ -20,12 +24,19 @@ async function main() {
     existingMockSample,
     reportDataSample,
     branch1Report,
+    branch1Data,
+    scoringResult,
+    protectionEffectiveness,
     xdrAssetSummary
   });
 
   const auditPayload = buildAuditPayload({
     reportData,
     branch1Report,
+    branch1Data,
+    scoringResult,
+    protectionEffectiveness,
+    policyCheck,
     xdrAssetSummary,
     deviceSnapshot,
     existingMockSample,
@@ -55,6 +66,7 @@ async function main() {
 function buildRichReportData(input) {
   let reportData = deepMerge({}, input.existingMockSample || {});
   reportData = deepMerge(reportData, input.reportDataSample || {});
+  reportData = deepMerge(reportData, input.branch1Data || {});
 
   if (input.xdrAssetSummary) {
     reportData = deepMerge(reportData, {
@@ -69,6 +81,18 @@ function buildRichReportData(input) {
     reportData = deepMerge(reportData, {
       scoring: input.branch1Report.reportPatch.scoring || {},
       protection_effectiveness: input.branch1Report.reportPatch.protection_effectiveness || {}
+    });
+  }
+
+  if (input.scoringResult) {
+    reportData = deepMerge(reportData, {
+      scoring: input.scoringResult
+    });
+  }
+
+  if (input.protectionEffectiveness) {
+    reportData = deepMerge(reportData, {
+      protection_effectiveness: input.protectionEffectiveness
     });
   }
 
@@ -467,6 +491,16 @@ function enrichReportData(reportData) {
 }
 
 function buildAuditPayload(input) {
+  const scoringResult = input.scoringResult || buildMockScoringResult(input.reportData);
+  const protectionEffectiveness = input.protectionEffectiveness || buildMockProtectionEffectiveness(input.reportData);
+  const branch1Data = input.branch1Data || buildMockBranch1Data({
+    reportData: input.reportData,
+    scoringResult,
+    protectionEffectiveness
+  });
+  const policyCheck = input.policyCheck || buildMockPolicyCheck(protectionEffectiveness);
+  const xdrAssetSummary = input.xdrAssetSummary || buildMockXdrAssetSummary(input.reportData);
+  const deviceSnapshot = input.deviceSnapshot || buildMockDeviceSnapshot(input.reportData);
   const branch1Report = input.branch1Report || {
     reportPatch: {
       scoring: input.reportData.scoring,
@@ -477,6 +511,17 @@ function buildAuditPayload(input) {
       policyExcelPath: path.join(ROOT, '分支1', 'report', '策略检查清单.xlsx')
     }
   };
+  const sourceJsonExamples = {
+    reportData: input.reportData,
+    xdrAssetSummary,
+    branch1Report,
+    branch1Data,
+    scoringResult,
+    protectionEffectiveness,
+    policyCheck,
+    deviceSnapshot
+  };
+  const fieldCoverage = buildFieldCoverage(sourceJsonExamples, input.reportData);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -509,49 +554,242 @@ function buildAuditPayload(input) {
         logicalName: 'policy-check',
         defaultPath: path.join(ROOT, '分支1', 'report', 'tmp', 'policy_check.json'),
         role: '策略检查原始 JSON',
-        presentInWorkspace: false
+        presentInWorkspace: Boolean(input.policyCheck)
       },
       {
         logicalName: 'scoring-result',
         defaultPath: path.join(ROOT, '分支1', 'report', 'scoring_result.json'),
         role: '评分脚本输出',
-        presentInWorkspace: false
+        presentInWorkspace: Boolean(input.scoringResult)
       },
       {
         logicalName: 'protection-effectiveness',
         defaultPath: path.join(ROOT, '分支1', 'report', 'protection_effectiveness.json'),
         role: '防护成效脚本输出',
-        presentInWorkspace: false
+        presentInWorkspace: Boolean(input.protectionEffectiveness)
+      },
+      {
+        logicalName: 'branch1-data',
+        defaultPath: path.join(ROOT, '分支1', 'report', 'data.json'),
+        role: '分支1聚合数据样例',
+        presentInWorkspace: Boolean(input.branch1Data)
       }
     ],
+    fieldCoverage,
     reportData: input.reportData,
-    xdrAssetSummary: input.xdrAssetSummary || {
-      projectBackground: input.reportData.projectBackground,
-      assetLedger: input.reportData.assetLedger,
-      riskOverview: {
-        incidentGptStats: input.reportData.riskOverview.incidentGptStats,
-        securityLogTotal: input.reportData.riskOverview.securityLogTotal,
-        alertTotal: input.reportData.riskOverview.alertTotal,
-        alertReductionRate: input.reportData.riskOverview.alertReductionRate,
-        closeRate: input.reportData.riskOverview.closeRate
-      },
-      riskDetails: {
-        securityLogTotal: input.reportData.riskDetails.securityLogTotal,
-        alertTotal: input.reportData.riskDetails.alertTotal,
-        alertReductionRate: input.reportData.riskDetails.alertReductionRate,
-        closeRate: input.reportData.riskDetails.closeRate,
-        highRiskIncidentExamples: input.reportData.riskDetails.highRiskIncidentExamples
-      }
-    },
+    xdrAssetSummary,
     branch1Report,
-    deviceSnapshot: input.deviceSnapshot || buildMockDeviceSnapshot(input.reportData),
+    branch1Data,
+    scoringResult,
+    protectionEffectiveness,
+    policyCheck,
+    deviceSnapshot,
+    sourceJsonExamples,
     sourceFiles: {
       existingMockSample: Boolean(input.existingMockSample),
       reportDataSample: Boolean(input.reportDataSample),
       branch1ReportSample: Boolean(input.branch1Report),
+      branch1DataSample: Boolean(input.branch1Data),
+      scoringResultSample: Boolean(input.scoringResult),
+      protectionEffectivenessSample: Boolean(input.protectionEffectiveness),
+      policyCheckSample: Boolean(input.policyCheck),
       xdrAssetSummarySample: Boolean(input.xdrAssetSummary),
       deviceSnapshotSample: Boolean(input.deviceSnapshot)
     }
+  };
+}
+
+function buildMockXdrAssetSummary(reportData) {
+  return {
+    projectBackground: reportData.projectBackground,
+    assetLedger: reportData.assetLedger,
+    riskOverview: {
+      incidentGptStats: reportData.riskOverview.incidentGptStats,
+      securityLogTotal: reportData.riskOverview.securityLogTotal,
+      alertTotal: reportData.riskOverview.alertTotal,
+      alertReductionRate: reportData.riskOverview.alertReductionRate,
+      closeRate: reportData.riskOverview.closeRate
+    },
+    riskDetails: {
+      securityLogTotal: reportData.riskDetails.securityLogTotal,
+      alertTotal: reportData.riskDetails.alertTotal,
+      alertReductionRate: reportData.riskDetails.alertReductionRate,
+      closeRate: reportData.riskDetails.closeRate,
+      highRiskIncidentExamples: reportData.riskDetails.highRiskIncidentExamples
+    }
+  };
+}
+
+function buildMockScoringResult(reportData) {
+  const scoring = reportData.scoring || {};
+  return {
+    total_score: numberOr(scoring.total_score, 72.4),
+    L1: ensureObject(scoring.L1, {
+      '资产防护得分': 74.2,
+      '日常运营得分': 70.6
+    }),
+    L2: ensureObject(scoring.L2, {
+      '托管资产得分': 88.5,
+      '组件检测得分': 69.4,
+      '事件得分': 76.8,
+      '勒索风险得分': 54.1
+    }),
+    L3: ensureObject(scoring.L3, {
+      '服务器得分': 81.3,
+      '终端得分': 65.7,
+      '服务器权重': 0.6,
+      '终端权重': 0.4,
+      '设备离线得分': 72.0,
+      '策略隐患得分': 61.0,
+      '漏洞得分': 68.0,
+      '端口得分': 63.0,
+      '弱密码基础分': 70.0,
+      '脆弱性事件分': 75.0,
+      '弱密码得分': 58.0
+    }),
+    data_summary: ensureObject(scoring.data_summary, {
+      asset: {
+        server: { both_coverage: 42, client_only: 8, net_only: 5, no_coverage: 3, total: 58 },
+        pc: { both_coverage: 86, client_only: 12, net_only: 7, no_coverage: 9, total: 114 },
+        all_assets: 172,
+        device: { activated_count: 171, offline_count: 12, total: 183 }
+      },
+      event: {
+        server_events: { critical: 3, high: 8, medium: 19, low: 12 },
+        pc_events: { critical: 5, high: 14, medium: 21, low: 9 },
+        total_events: 91
+      },
+      weak_pwd_event: {
+        weak_pwd_server_events: { critical: 0, high: 2, medium: 4, low: 1 },
+        weak_pwd_pc_events: { critical: 1, high: 3, medium: 5, low: 2 },
+        total_weak_pwd_events: 18
+      },
+      vuln: { urgent_count: 24, fast_count: 61, suggest_count: 37, total_vulns: 122 },
+      weak_pwd: { high_count: 11, middle_count: 9, low_count: 7, unknown_count: 4, total_weak_pwd: 31 },
+      port: { risk_port_count: 128, total_ports: 416 },
+      policy: {
+        check_cnt: 12,
+        risk_cnt: 4,
+        policy_status_summary: { '策略获取失败': 2, '正常': 7, '异常': 3 },
+        risk_status_summary: { '存在风险': 4, '无风险': 8 }
+      }
+    }),
+    weights_used: ensureObject(scoring.weights_used, {
+      DEFAULT_ASSETS_RATIO: 0.6,
+      ASSETS_RATIO: 0.4,
+      COMPONENTS_RATIO: 0.6,
+      EVENTS_RATIO: 0.6,
+      VULNERABILITIES_RATIO: 0.4,
+      SERVER_RATIO: 0.75,
+      PC_SCORE: 0.25,
+      DEVICE_K: 0.5,
+      POLICY_K: 0.5,
+      VULNERABILITY_K: 0.5,
+      WEAK_PASSWORD_K: 0.25,
+      PORT_K: 0.25,
+      WEAK_PASSWORD_BASE_K: 1,
+      SERVER_MAJOR_EVENT_K: 10,
+      SERVER_GENERAL_EVENT_K: 7.5,
+      SERVER_OTHER_EVENT_K: 5,
+      SERVER_MAJOR_THREAT_K: 2.5,
+      PC_MAJOR_EVENT_K: 5,
+      PC_GENERAL_EVENT_K: 3.75,
+      PC_OTHER_EVENT_K: 2.5,
+      PC_MAJOR_THREAT_K: 1.25,
+      AGENT_FIX_VULN_K: 15,
+      FAST_FIX_VULN_K: 7.5,
+      SUGGEST_FIX_VULN_K: 1,
+      RISK_PORT_K: 20,
+      HIGH_LEVEL_WEAKPWD_K: 20,
+      MIDDLE_LEVEL_WEAKPWD_K: 10,
+      LOW_LEVEL_WEAKPWD_K: 5,
+      UNKNOWN_LEVEL_WEAKPWD_K: 2
+    })
+  };
+}
+
+function buildMockProtectionEffectiveness(reportData) {
+  return ensureObject(reportData.protection_effectiveness, {
+    without_aes_asset_stats: {
+      ips: '10.128.160.200、10.128.165.10、192.168.30.190',
+      total: 3,
+      hide_hint: false
+    },
+    policy_stats: {
+      total: 12,
+      abnormal_count: 4,
+      abnormal_by_dev_type: {
+        EDR: 2,
+        AF: 1,
+        SIP: 1
+      },
+      abnormal_by_dev_type_text: 'EDR 2 个，AF 1 个，SIP 1 个',
+      abnormal_by_dev_type_bracket: '（EDR 2 个，AF 1 个，SIP 1 个）',
+      abnormal_component_count: 3,
+      total_component_count: 9,
+      by_device: [
+        { dev_name: 'EDR-核心区-01', dev_type: 'EDR', check_count: 5, abnormal_count: 2 },
+        { dev_name: 'AF-出口边界-01', dev_type: 'AF', check_count: 4, abnormal_count: 1 },
+        { dev_name: 'SIP-汇聚-01', dev_type: 'SIP', check_count: 3, abnormal_count: 1 }
+      ],
+      policy_check_example: [
+        {
+          dev_id: 154258,
+          dev_name: 'EDR-核心区-01',
+          name: 'Linux SSH暴力破解检测-处置方式',
+          policy_type: 'EDR_LINUX_ANTI_BFA_SSH_HANDLE',
+          policy_status: '策略获取失败',
+          description: '当前策略获取失败，请人工检查该设备策略情况。',
+          latest_time: ['2026-06-20 10:00:00'],
+          event_time: ['2026-05-25 15:18:50'],
+          risk_desc: '风险描述举例',
+          dev_type: 'EDR',
+          risk_status: 'at_risk',
+          handle_status: 'generated'
+        }
+      ]
+    }
+  });
+}
+
+function buildMockPolicyCheck(protectionEffectiveness) {
+  const examples = Array.isArray(
+    protectionEffectiveness
+    && protectionEffectiveness.policy_stats
+    && protectionEffectiveness.policy_stats.policy_check_example
+  )
+    ? protectionEffectiveness.policy_stats.policy_check_example
+    : [];
+
+  if (examples.length) {
+    return cloneValue(examples);
+  }
+
+  return [
+    {
+      dev_id: 154258,
+      dev_name: 'EDR-核心区-01',
+      name: 'Linux SSH暴力破解检测-处置方式',
+      policy_type: 'EDR_LINUX_ANTI_BFA_SSH_HANDLE',
+      policy_status: '策略获取失败',
+      description: '当前策略获取失败，请人工检查该设备策略情况。',
+      latest_time: ['2026-06-20 10:00:00'],
+      event_time: ['2026-05-25 15:18:50'],
+      risk_desc: '风险描述举例',
+      dev_type: 'EDR',
+      risk_status: 'at_risk',
+      handle_status: 'generated'
+    }
+  ];
+}
+
+function buildMockBranch1Data(input) {
+  return {
+    ...cloneValue(input.reportData),
+    scoring: cloneValue(input.scoringResult),
+    protection_effectiveness: cloneValue(input.protectionEffectiveness),
+    without_aes_asset_stats: cloneValue(input.protectionEffectiveness.without_aes_asset_stats),
+    policy_stats: cloneValue(input.protectionEffectiveness.policy_stats)
   };
 }
 
@@ -570,6 +808,40 @@ function buildMockDeviceSnapshot(reportData) {
     },
     mock: true
   };
+}
+
+function buildFieldCoverage(sourceJsonExamples, reportData) {
+  const sourcePathSet = new Set();
+  const reportPathSet = new Set();
+
+  for (const sample of Object.values(sourceJsonExamples)) {
+    collectJsonPaths(sample, '', sourcePathSet);
+  }
+  collectJsonPaths(reportData, '', reportPathSet);
+
+  return {
+    sourceJsonPathCount: sourcePathSet.size,
+    reportDataPathCount: reportPathSet.size,
+    reportDataMissingPaths: [...sourcePathSet].filter((item) => !reportPathSet.has(item)).sort()
+  };
+}
+
+function collectJsonPaths(value, prefix, output) {
+  if (Array.isArray(value)) {
+    output.add(`${prefix}[]`);
+    value.forEach((item) => collectJsonPaths(item, `${prefix}[]`, output));
+    return;
+  }
+
+  if (!isPlainObject(value)) {
+    return;
+  }
+
+  for (const [key, nested] of Object.entries(value)) {
+    const next = prefix ? `${prefix}.${key}` : key;
+    output.add(next);
+    collectJsonPaths(nested, next, output);
+  }
 }
 
 function buildTopRiskAsset(ip, managedStatus, businessSystem, riskCount, detailLines) {
