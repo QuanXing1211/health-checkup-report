@@ -46,7 +46,7 @@ async function main() {
     { name: '离线', value: 1 },
     { name: '已禁用', value: 1 },
     { name: '已降级', value: 1 },
-    { name: '未安装', value: 1 }
+    { name: '未防护', value: 0 }
   ]);
   assert.strictEqual(stats.internetExposureTotal, 3);
   assert.deepStrictEqual(stats.internetExposureDistribution, [

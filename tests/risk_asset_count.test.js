@@ -19,24 +19,6 @@ async function main() {
   assert.strictEqual(result.top1BusinessSystem, '支付网关');
   assert.deepStrictEqual(result.riskAssetTop5, [
     {
-      ip: '10.10.2.20',
-      managedStatus: '已托管',
-      businessSystem: '电商平台',
-      riskCount: 3
-    },
-    {
-      ip: '10.10.3.31',
-      managedStatus: '未托管',
-      businessSystem: 'OA系统',
-      riskCount: 2
-    },
-    {
-      ip: '10.10.2.21',
-      managedStatus: '未托管',
-      businessSystem: '电商平台',
-      riskCount: 2
-    },
-    {
       ip: '10.10.1.11',
       managedStatus: '已托管',
       businessSystem: '支付网关',
@@ -47,6 +29,24 @@ async function main() {
       managedStatus: '已托管',
       businessSystem: '支付网关',
       riskCount: 1
+    },
+    {
+      ip: '10.10.2.20',
+      managedStatus: '已托管',
+      businessSystem: '电商平台',
+      riskCount: 3
+    },
+    {
+      ip: '10.10.2.21',
+      managedStatus: '未托管',
+      businessSystem: '电商平台',
+      riskCount: 2
+    },
+    {
+      ip: '10.10.3.31',
+      managedStatus: '未托管',
+      businessSystem: 'OA系统',
+      riskCount: 2
     }
   ]);
 

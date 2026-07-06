@@ -26,8 +26,6 @@ import re
 import sys
 
 from openpyxl import load_workbook
-from collections import Counter
-
 from _path_helper import decode_argv
 decode_argv()
 
@@ -334,6 +332,71 @@ def build_asset_all_business_map(filepath):
     return asset_business_map
 
 
+def rank_risk_assets(typed_risk_records, risk_records, asset_detail_map, limit=5):
+    asset_counts = {}
+
+    for record in typed_risk_records:
+        asset = record.get('asset')
+        if not asset:
+            continue
+        bucket = asset_counts.setdefault(asset, {
+            'critical': 0,
+            'high': 0,
+            'medium': 0,
+            'low': 0,
+            'total': 0
+        })
+        severity = record.get('severity')
+        if severity in ('critical', 'high', 'medium', 'low'):
+            bucket[severity] += 1
+
+    for record in risk_records:
+        asset = record.get('asset')
+        if not asset:
+            continue
+        bucket = asset_counts.setdefault(asset, {
+            'critical': 0,
+            'high': 0,
+            'medium': 0,
+            'low': 0,
+            'total': 0
+        })
+        bucket['total'] += 1
+
+    ranking = []
+    for asset, counts in asset_counts.items():
+        detail = asset_detail_map.get(asset, {})
+        ranking.append({
+            'ip': asset,
+            'managedStatus': detail.get('managedStatus', ''),
+            'businessSystem': detail.get('businessSystem', ''),
+            'riskCount': counts['total'],
+            '_critical': counts['critical'],
+            '_high': counts['high'],
+            '_medium': counts['medium'],
+            '_low': counts['low']
+        })
+
+    ranking.sort(key=lambda item: (
+        -item['_critical'],
+        -item['_high'],
+        -item['_medium'],
+        -item['_low'],
+        -item['riskCount'],
+        item['ip']
+    ))
+
+    return [
+        {
+            'ip': item['ip'],
+            'managedStatus': item['managedStatus'],
+            'businessSystem': item['businessSystem'],
+            'riskCount': item['riskCount']
+        }
+        for item in ranking[:limit]
+    ]
+
+
 def resolve_top1_business_system(risk_records, asset_business_map):
     business_counts = {}
     for record in risk_records:
@@ -399,16 +462,7 @@ def main():
     asset_detail_map = build_asset_detail_map(asset_path)
     business_systems = sorted({asset_business_map[asset] for asset in all_assets if asset in asset_business_map})
     top1_business_system = resolve_top1_business_system(typed_risk_records, asset_all_business_map)
-    risk_counter = Counter(record['asset'] for record in risk_records)
-    risk_asset_top5 = []
-    for asset, risk_count in risk_counter.most_common(5):
-        detail = asset_detail_map.get(asset, {})
-        risk_asset_top5.append({
-            'ip': asset,
-            'managedStatus': detail.get('managedStatus', ''),
-            'businessSystem': detail.get('businessSystem', ''),
-            'riskCount': risk_count
-        })
+    risk_asset_top5 = rank_risk_assets(typed_risk_records, risk_records, asset_detail_map, 5)
 
     print(json.dumps({
         'affectedAssetCount': len(all_assets),

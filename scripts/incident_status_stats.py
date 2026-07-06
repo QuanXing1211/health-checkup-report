@@ -75,6 +75,7 @@ def main():
             status = normalize(row[status_col])
             if status == "处置完成":
                 closed += 1
+                contained += 1
             elif status == "已遏制":
                 contained += 1
             elif status == "处置中":

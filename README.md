@@ -2,13 +2,14 @@
 
 生成指定客户、指定时间段的安全体检 HTML 报告。
 
-当前版本可以生成 HTML 报告；提供 XDR Cookie 时，会在同一次运行中导出配置的 XDR 表格并拉取资产台账统计。
+当前版本以 MSSW 作为唯一业务主链路生成 HTML 报告。`--mssw-cookie-path` 和 `--xdr-cookie-path` 在 `generate` 主流程中都必传，其中 XDR Cookie 当前只做校验和透传保留，不参与主链路取数。
 
 ## Run
 
 ```powershell
 node health_report.js `
   --customer "示例客户" `
+  --mssw-cookie-path "M:\Users\$env:USERNAME\Downloads\mssw_cookies.txt" `
   --xdr-cookie-path "M:\Users\$env:USERNAME\Downloads\xdr_cookies.txt"
 ```
 
@@ -19,6 +20,7 @@ node health_report.js `
   --customer "示例客户" `
   --start "2026-06-01" `
   --end "2026-06-16" `
+  --mssw-cookie-path "M:\Users\$env:USERNAME\Downloads\mssw_cookies.txt" `
   --xdr-cookie-path "M:\Users\$env:USERNAME\Downloads\xdr_cookies.txt"
 ```
 
@@ -33,6 +35,11 @@ node health_report.js `
 
 默认只输出简洁摘要；如需完整 JSON 结果，加 `--json`。
 
+说明：
+
+- `--mssw-cookie-path` 是当前所有报告、导表、设备统计、时间范围推导的唯一业务凭证
+- `--xdr-cookie-path` 当前只做必传保留，不会触发旧 XDR 资产、事件、设备或统计逻辑
+
 默认会导出 `asset,incident`。如需指定表格：
 
 ```powershell
@@ -40,6 +47,7 @@ node health_report.js `
   --customer "示例客户" `
   --start "2026-06-01" `
   --end "2026-06-16" `
+  --mssw-cookie-path "M:\Users\$env:USERNAME\Downloads\mssw_cookies.txt" `
   --xdr-cookie-path "M:\Users\$env:USERNAME\Downloads\xdr_cookies.txt" `
   --xdr-tables "asset,incident"
 ```
@@ -50,27 +58,25 @@ node health_report.js `
 
 | 字段 | 语义 | 来源 | 取值逻辑 |
 | --- | --- | --- | --- |
-| `projectBackground.title` | 报告标题 | CLI / 默认值 | 固定为 `首次安全体检报告` |
 | `projectBackground.customerName` | 客户名称 | `--customer` | 直接取命令行参数 |
-| `projectBackground.customerId` | 客户 ID | `--customer-id` | 直接取命令行参数，未传则 `null` |
 | `projectBackground.startDate` | 报告开始日期 | `--start` / MSSW 项目列表接口 | 用户传时间时直接取命令行参数；未传时取最早 `service_start` |
 | `projectBackground.endDate` | 报告结束日期 | `--end` / MSSW 项目列表接口 + 运行时 | 用户传时间时直接取命令行参数；未传时取 `min(报告生成时刻, 最早非空 service_end)` |
-| `projectBackground.generatedAt` | 数据生成时间 | 运行时 | 取脚本执行时的 ISO 时间字符串 |
-| `assetLedger.core_asset` | 核心资产数 | XDR 资产台账 count 接口 | 取 `{"magnitude":{"op":"=","val":"core"}}` 的 `total` |
+| `assetLedger.core_asset` | 核心资产数 | 导出的资产表 Excel | 读取第二行表头里的 `重要级别` 列；列值非空且包含 `核心` 时计为核心资产 |
 | `assetLedger.manage_asset` | 台账资产数 | 导出的资产表 Excel | 统计第三行开始的有效行数 |
-| `assetLedger.ready_to_outbound` | 7天内即将退库资产数 | XDR 资产台账 count 接口 | 取 `{"ready_to_outbound":{"op":"=","val":"last7d"}}` 的 `total` |
+| `assetLedger.ready_to_outbound` | 7天内即将退库资产数 | MSSW 资产台账 count 接口 | 取 `{"ready_to_outbound":{"op":"=","val":"last7d"}}` 的 `total` |
 | `assetLedger.typeDistribution` | 资产类型分布 | 导出的资产表 Excel | 读取第二行表头里的 `资产类型(一级)` 列；值包含 `服务器` 计入服务器，包含 `终端` 计入终端，其余计入其他 |
-| `assetLedger.protectionDistribution` | 资产防护统计 | 导出的资产表 Excel | 读取第二行表头里的 `agent状态` 列；只统计值恰好等于 `在线 / 离线 / 已禁用 / 已降级 / 未安装` 的资产，并按这 5 个固定枚举输出 |
+| `assetLedger.protectionDistribution` | 资产防护统计 | 导出的资产表 Excel | 读取第二行表头里的 `agent状态` 列；值恰好等于 `在线 / 离线 / 已禁用 / 已降级` 时分别计数，值等于 `已卸载 / 已移除 / 未接入 / 未授权` 时统一归并到 `未防护`，并按 `在线 / 离线 / 已禁用 / 已降级 / 未防护` 这 5 个固定枚举输出 |
 | `assetLedger.internetExposureDistribution` | 互联网暴露资产分布 | 导出的资产表 Excel | 读取第二行表头里的 `互联网暴露` 列；列值非空且不等于 `未暴露` 时视为暴露，再按 `资产类型(一级)` 列统计 `服务器 / 终端 / 其他` |
 | `assetLedger.internetExposureTotal` | 互联网暴露资产总数 | 导出的资产表 Excel | 读取第二行表头里的 `互联网暴露` 列；列值非空且不等于 `未暴露` 时计为 1 |
-| `riskOverview.securityLogTotal` | XDR接收安全日志数 | XDR 安全日志量接口 | 取 `log/search/count` 接口返回的总数 |
-| `riskOverview.alertTotal` | 有效告警数 | XDR 告警消减率接口 | 取 `overview/count` 接口返回的 `alertTotalCount.value` |
-| `riskOverview.totalEvents` | 有效安全事件数 | XDR 事件数量接口 + 导出的事件表 Excel | 直接复用 `riskDetails.totalEvents`；优先取事件数量接口 `data.total`，缺失时回退到事件表非空数据行数 |
+| `riskOverview.securityLogTotal` | 接收安全日志数 | MSSW 安全日志量接口 | 取 MSSW 日志统计接口返回的总数 |
+| `riskOverview.alertTotal` | 有效告警数 | MSSW 告警统计接口 | 取 MSSW 事件表统计接口返回的总数 |
+| `riskOverview.totalEvents` | 有效安全事件数 | 导出的事件表 Excel | 直接复用 `riskDetails.totalEvents` |
 | `riskOverview.closedEvents` | 处置闭环数 | 导出的事件表 Excel | 直接复用 `riskDetails.closedEvents`，即 `处置状态 = 处置完成` 的事件行数 |
-| `riskOverview.containedEvents` | 总计遏制数 | 导出的事件表 Excel | 直接复用 `riskDetails.containedEvents`，即 `处置状态 = 已遏制` 的事件行数 |
-| `riskOverview.alertReductionRate` | 告警消减率 | XDR 告警消减率接口 | 直接复用 `riskDetails.alertReductionRate`；计算口径为 `(alertTotalCount.value - incidentCount.value) / alertTotalCount.value`，结果按 0.1 为粒度四舍五入 |
+| `riskOverview.containedEvents` | 总计遏制数 | 导出的事件表 Excel | 直接复用 `riskDetails.containedEvents`，即 `处置状态 = 已遏制` 或 `处置完成` 的事件行数 |
+| `riskOverview.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 直接复用 `riskDetails.alertReductionRate`；若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果按 0.1 为粒度四舍五入 |
 | `riskOverview.closeRate` | 事件闭环率 | 导出的事件表 Excel | 直接复用 `riskDetails.closeRate`，保证与风险详情完全一致 |
-| `riskOverview.affectedAssetCount` | 影响资产数 | 导出的事件表 Excel | 直接复用 `riskDetails.uniqueAssetCount`；遍历事件表所有事件，提取"影响资产"列中的 IPv4 地址后去重计数 |
+| `riskOverview.riskAssetCount` | 风险资产数 | 风险清单目录中的事件表 Excel + 弱口令表 Excel + 漏洞表 Excel + 暴露面表 Excel + 资产表 Excel | 在五张风险清单归档完成后综合统计：事件表取 `影响资产` 且排除 `处置状态 = 处置完成`；弱口令表取 `风险资产` 且若存在 `处置状态` 列则排除 `处置完成`；漏洞表取 `风险资产`；暴露面表中 `Web服务风险分布` 通过 `访问路径 -> 端口表.Host` 映射资产，`非Web服务风险分布` 直接取 `IP地址/子域名`；最后按资产键去重计数 |
+| `riskOverview.affectedAssetCount` | 影响资产数 | 导出的事件表 Excel | 直接复用 `riskDetails.uniqueAssetCount`；遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址后去重计数 |
 | `riskOverview.incidentGptStats.total` | 已确认的威胁运营事件总数 | MSSW 事件表 Excel / MSSW 事件表接口 + 处置标签接口 | `incidentGptStats.hostCompromise.total + incidentGptStats.virusTrojan.total` |
 | `riskOverview.incidentGptStats.hostCompromise.total` | 已确认 C2 外联事件数 | MSSW 事件表 Excel / MSSW 事件表接口 + 处置标签接口 | 先筛出 `GPT研判结论 = 主机失陷活动` 的事件，再通过 `disposalTabs(IP)` 和 `disposalTabs(DNS)` 确认存在恶意实体后计数 |
 | `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 已确认 C2 外联事件 ID 列表 | 同上 | 保留通过确认的主机失陷事件 ID，按遍历顺序输出 |
@@ -85,18 +91,19 @@ node health_report.js `
 | `riskOverview.exploitStats.highRiskAsset` | 漏洞利用高风险资产 | 导出的事件表 Excel | 取第一条 `安全事件一级分类 = 漏洞利用` 事件的 `影响资产` 原始值 |
 | `riskOverview.exploitStats.attackSuccessCount` | 漏洞利用成功次数 | 导出的事件表 Excel | 在 `安全事件一级分类 = 漏洞利用` 的事件中，统计 `攻击状态 = 成功` 的事件行数 |
 | `riskOverview.exploitStats.incidentIds` | 漏洞利用事件 ID 列表 | 导出的事件表 Excel | 保留 `安全事件一级分类 = 漏洞利用` 的事件 ID，按事件表遍历顺序输出 |
-| `riskDetails.totalEvents` | 事件总数 | XDR 事件数量接口 + 导出的事件表 Excel | 优先取数量接口 `data.total`，并用导出表统计结果校正闭环率 |
+| `riskDetails.totalEvents` | 事件总数 | 导出的事件表 Excel | 统计事件表有效数据行数 |
 | `riskDetails.severeEvents` | 严重事件数 | 导出的事件表 Excel | 读取表头为 `等级` 的列，统计值等于 `严重` 的事件行数 |
 | `riskDetails.highEvents` | 高危事件数 | 导出的事件表 Excel | 读取表头为 `等级` 的列，统计值等于 `高危` 的事件行数 |
 | `riskDetails.closedEvents` | 已闭环事件数 | 导出的事件表 Excel | 统计 `处置状态` 列值等于 `处置完成` 的事件行数；指标名仍保留“已闭环” |
-| `riskDetails.containedEvents` | 已遏制事件数 | 导出的事件表 Excel | 读取表头为 `处置状态` 的列，统计值等于 `已遏制` 的事件行数 |
+| `riskDetails.containedEvents` | 已遏制事件数 | 导出的事件表 Excel | 读取表头为 `处置状态` 的列，统计值等于 `已遏制` 或 `处置完成` 的事件行数 |
 | `riskDetails.processingEvents` | 处置中事件数 | 导出的事件表 Excel | 读取表头为 `处置状态` 的列，统计值等于 `处置中` 的事件行数 |
-| `riskDetails.closeRate` | 闭环率 | XDR 事件数量接口 + 导出的事件表 Excel | 用 `closedEvents / totalEvents * 100` 计算，四舍五入为整数；若存在事件数量接口返回值，则分母使用接口 `data.total` |
-| `riskDetails.alertReductionRate` | 告警消减率 | XDR 告警消减率接口 | 取 `overview/count` 中 `alertTotalCount.value` 和 `incidentCount.value`，按 `(alertTotalCount.value - incidentCount.value) / alertTotalCount.value` 计算，结果按 0.1 为粒度四舍五入 |
+| `riskDetails.closeRate` | 闭环率 | 导出的事件表 Excel | 用 `closedEvents / totalEvents * 100` 计算，四舍五入为整数 |
+| `riskDetails.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果按 0.1 为粒度四舍五入 |
 | `riskDetails.uniqueAssetCount` | 涉及到的资产数 | 导出的事件表 Excel | 遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址（如 `10.5.40.62(未归类组)` 取 `10.5.40.62`）后去重计数 |
-| `riskDetails.highRiskIncidentExamples.vulnExploits` | 高危及以上事件举例-漏洞利用类 | 导出的事件表 Excel + `riskOverview.exploitStats.incidentIds` | 按漏洞利用事件 ID 顺序回查事件表，最多取 5 条；带出 `事件名称`、`受影响资产`、`最近发生时间`、`处置状态` |
-| `riskDetails.highRiskIncidentExamples.viruses` | 高危及以上事件举例-病毒木马类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 按已确认病毒木马事件 ID 顺序回查事件表，最多取 5 条；从 `文件` 列中提取所有标记为 `严重` 的 MD5 并用 `、` 拼接，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
-| `riskDetails.highRiskIncidentExamples.c2Connections` | 高危及以上事件举例-C2外联类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 按已确认 C2 外联事件 ID 顺序回查事件表，最多取 5 条；从 `外网IP` 和 `域名` 列中提取所有标记为 `严重` 的实体并用 `、` 拼接，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
+| `riskDetails.managedAvgResponseTime` | 托管资产事件平均响应时间 | 导出的资产表 Excel + 事件表 Excel | 先筛出影响资产属于托管资产且 `处置状态 = 处置完成` 的事件，再用 `完成时间 - 事件创建时间` 计算每起事件的响应分钟数，最后求平均并保留 1 位小数；任一时间缺失或无法解析则跳过该事件 |
+| `riskDetails.highRiskIncidentExamples.vulnExploits` | 高危及以上事件举例-漏洞利用类 | 导出的事件表 Excel + `riskOverview.exploitStats.incidentIds` | 回查 `incidentIds` 命中的事件，读取 `等级` 列并按 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条；带出 `事件名称`、`受影响资产`、`最近发生时间`、`处置状态` |
+| `riskDetails.highRiskIncidentExamples.viruses` | 高危及以上事件举例-病毒木马类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 回查已确认病毒木马事件，先从 `文件` 列中提取所有标记为 `严重` 的 MD5 并用 `、` 拼接，再按 `等级` 列的 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
+| `riskDetails.highRiskIncidentExamples.c2Connections` | 高危及以上事件举例-C2外联类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 回查已确认 C2 外联事件，先从 `外网IP` 和 `域名` 列中提取所有标记为 `严重` 的实体并用 `、` 拼接，再按 `等级` 列的 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
 | `riskOverview.devices` | 接入组件数 | 深信服设备列表接口 + 第三方设备列表接口 | 深信服设备总数优先取 `/api/apex/device/v1/devices/list` 返回的 `data.total`，第三方设备数取 `/api/apex/thirdparty/v1/app/instance/list` 的 `data.count`，两者相加 |
 | `riskDetails.devices` | 接入安全设备数 | 深信服设备列表接口 + 第三方设备列表接口 | 保留兼容字段，值与 `riskDetails.sangfor + riskDetails.third` 一致 |
 | `riskDetails.sangfor` | 深信服设备数 | 深信服设备列表接口 | 取 `/api/apex/device/v1/devices/list` 返回的 `data.total` |

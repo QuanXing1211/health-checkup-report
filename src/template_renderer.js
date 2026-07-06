@@ -15,16 +15,21 @@ const DATA_FIELD_MAP = {
   'ops.log_reduce-v': 'ops.logReduce',
   'ops.alert_reduce-v': 'ops.alertReduce',
   'ops.severe-v': 'ops.severe',
-  'ops.high-v': 'ops.high'
+  'ops.high-v': 'ops.high',
+  'riskBiz': 'riskOverview.riskBusinessCount',
+  'riskAssets': 'riskOverview.riskAssetCount',
+  'impactAssets': 'riskOverview.affectedAssetCount'
 };
 
 const SECTION_RENDERERS = {
   'assetLedger.summary': renderAssetLedgerSummary,
-  'riskOverview.summary': renderRiskOverviewSummary
+  'riskOverview.summary': renderRiskOverviewSummary,
+  'riskOverview.topRiskAssetsSummary': renderTopRiskAssetsSummary
 };
 
 const REPEAT_RENDERERS = {
   'riskOverview.keyRisks': renderKeyRiskRows,
+  'riskOverview.topRiskAssets': renderTopRiskAssetRows,
   'riskDetails.highRiskIncidentExamples.vulnExploits': renderVulnExploitRows,
   'riskDetails.highRiskIncidentExamples.viruses': renderVirusRows,
   'riskDetails.highRiskIncidentExamples.c2Connections': renderC2Rows,
@@ -178,8 +183,17 @@ function renderAssetLedgerSummary(data) {
 
 function renderRiskOverviewSummary(data) {
   const overview = data.riskOverview || {};
-  const systems = Array.isArray(overview.keySystems) ? overview.keySystems.join('、') : '';
-  return paragraph(`本次安全体检中，您的核心业务系统「${escapeHtml(systems)}等」存在 <strong>${num(overview.total)}</strong> 个安全风险，其中【${escapeHtml(overview.topSystem || '')}】风险较大，系统下的资产存在 <strong>${num(overview.topSystemHighRisks)}</strong> 个高危及以上的安全风险。`);
+  const ranking = Array.isArray(overview.coreBusinessSystemRanking)
+    ? overview.coreBusinessSystemRanking.filter(Boolean)
+    : [];
+  const rankingText = ranking.length
+    ? `「${ranking.slice(0, 3).map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}等」`
+    : '「<strong>暂无</strong>」';
+  const topSystemText = overview.maxRiskSystem
+    ? `【<strong>${escapeHtml(overview.maxRiskSystem)}</strong>】`
+    : '【<strong>暂无</strong>】';
+
+  return paragraph(`本次安全体检中，您的核心业务系统${rankingText}存在 <strong>${num(overview.securityRiskTotal)}</strong> 个安全风险，其中${topSystemText}风险较大，系统下的资产存在 <strong>${num(overview.highAndAboveRiskCount)}</strong> 个高危及以上的安全风险。`);
 }
 
 function renderKeyRiskRows(rows) {
@@ -196,6 +210,53 @@ function renderKeyRiskRows(rows) {
     `<td>${formatLines(row.status)}</td>`,
     '</tr>'
   ].join('')).join('');
+}
+
+function renderTopRiskAssetsSummary(data) {
+  const rows = Array.isArray(data && data.riskOverview && data.riskOverview.topRiskAssets)
+    ? data.riskOverview.topRiskAssets.filter(Boolean)
+    : [];
+  const topTargets = rows
+    .map((row) => String(row.businessSystem || row.ip || '').trim())
+    .filter(Boolean)
+    .filter((value, index, list) => list.indexOf(value) === index)
+    .slice(0, 2);
+
+  const targetText = topTargets.length
+    ? topTargets.map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')
+    : '<strong>重点风险资产</strong>';
+
+  return `综上，贵公司当前的安全建设水位有一定差距，随时可能面临数据泄露、系统破坏导致业务中断以及由此带来的经济损失、信誉损害、公信力下降等更为致命的风险。修复方案重点针对 ${targetText}。`;
+}
+
+function renderTopRiskAssetRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    return '<tr><td colspan="3">暂无风险资产 TOP5 数据</td></tr>';
+  }
+
+  return rows.slice(0, 5).map((row) => {
+    const ip = String(row.ip || '').trim();
+    const managedStatus = String(row.managedStatus || '').trim();
+    const businessSystem = String(row.businessSystem || '').trim();
+    const riskCount = Number(row.riskCount || 0);
+    const managedTag = managedStatus
+      ? `<span class="sr-tag sr-tag--light sr-tag--${managedStatusLevel(managedStatus)}">${escapeHtml(managedStatus)}</span>`
+      : '';
+    const detailLines = Array.isArray(row.detailLines) && row.detailLines.length
+      ? row.detailLines.map((line) => escapeHtml(String(line)))
+      : [
+        businessSystem ? `所属业务：${escapeHtml(businessSystem)}` : '所属业务：暂无',
+        managedStatus ? `托管状态：${escapeHtml(managedStatus)}` : '托管状态：暂无'
+      ];
+
+    return [
+      '<tr>',
+      `<td class="sr-top5-asset"><div class="sr-top5-asset-ip-row"><span class="sr-top5-asset-ip">${escapeHtml(ip)}</span>${managedTag}</div><div class="sr-top5-asset-biz">${escapeHtml(businessSystem || '暂无业务')}</div></td>`,
+      `<td><strong>${riskCount}</strong></td>`,
+      `<td>${detailLines.join('<br>')}</td>`,
+      '</tr>'
+    ].join('');
+  }).join('');
 }
 
 function renderVulnExploitRows(rows) {
@@ -220,8 +281,8 @@ function renderVirusRows(rows) {
 
   return rows.slice(0, 5).map((row) => [
     '<tr>',
-    `<td><span class="sr-event-name">${escapeHtml(row.md5 || '')}</span></td>`,
     `<td>${escapeHtml(row.affectedAsset || '')}</td>`,
+    `<td><span class="sr-event-name">${formatMultiValueCell(row.md5 || '')}</span></td>`,
     `<td>${escapeHtml(row.lastOccurredAt || '')}</td>`,
     `<td>${renderStatusTag(row.disposalStatus)}</td>`,
     '</tr>'
@@ -235,8 +296,8 @@ function renderC2Rows(rows) {
 
   return rows.slice(0, 5).map((row) => [
     '<tr>',
-    `<td><span class="sr-event-name">${escapeHtml(row.ioc || '')}</span></td>`,
     `<td>${escapeHtml(row.affectedAsset || '')}</td>`,
+    `<td><span class="sr-event-name">${formatMultiValueCell(row.ioc || '')}</span></td>`,
     `<td>${escapeHtml(row.lastOccurredAt || '')}</td>`,
     `<td>${renderStatusTag(row.disposalStatus)}</td>`,
     '</tr>'
@@ -331,10 +392,34 @@ function formatLines(value) {
   return lines.map((line, index) => `${index + 1}.${escapeHtml(String(line))}`).join('<br>');
 }
 
+function formatMultiValueCell(value) {
+  return String(value || '')
+    .split('、')
+    .map((item) => escapeHtml(item.trim()))
+    .filter(Boolean)
+    .join('<br>');
+}
+
 function renderStatusTag(status) {
-  const text = String(status || '');
-  const level = /处置完成/.test(text) ? 'success' : (/处置中/.test(text) ? 'warning' : 'info');
+  const text = String(status || '').trim();
+  const level = eventStatusLevel(text);
   return `<span class="sr-tag sr-tag--light sr-tag--${level}">${escapeHtml(text)}</span>`;
+}
+
+function eventStatusLevel(text) {
+  if (/待处置/.test(text)) return 'high';
+  if (/处置中/.test(text)) return 'warning';
+  if (/处置完成|已处置/.test(text)) return 'success';
+  if (/挂起/.test(text)) return 'medium-low';
+  if (/已忽略/.test(text)) return 'info';
+  if (/已遏制/.test(text)) return 'medium';
+  return 'info';
+}
+
+function managedStatusLevel(text) {
+  if (/未托管|未纳管/.test(text)) return 'medium';
+  if (/已托管|已纳管/.test(text)) return 'success';
+  return 'info';
 }
 
 function injectReportData(html, data) {

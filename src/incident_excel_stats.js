@@ -82,6 +82,26 @@ async function parseIncidentGptStats(excelPath) {
   };
 }
 
+async function extractIncidentDirectStats(excelPath) {
+  if (!excelPath) {
+    return {
+      hostCompromiseIds: [],
+      virusTrojanIds: [],
+      exploitIds: []
+    };
+  }
+
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_incident_direct_stats.py');
+  const stdout = await execPythonWithArgs(scriptPath, [encodePath(excelPath)], '事件表直接分类统计失败');
+  const parsed = JSON.parse(stdout);
+
+  return {
+    hostCompromiseIds: Array.isArray(parsed.hostCompromiseIds) ? parsed.hostCompromiseIds : [],
+    virusTrojanIds: Array.isArray(parsed.virusTrojanIds) ? parsed.virusTrojanIds : [],
+    exploitIds: Array.isArray(parsed.exploitIds) ? parsed.exploitIds : []
+  };
+}
+
 async function extractIncidentAssetInfo(incidentExcelPath, assetExcelPath, confirmedIds, virusIds) {
   if (!incidentExcelPath || !Array.isArray(confirmedIds) || !Array.isArray(virusIds)) {
     return {
@@ -100,6 +120,34 @@ async function extractIncidentAssetInfo(incidentExcelPath, assetExcelPath, confi
   ];
   const stdout = await execPythonWithArgs(scriptPath, args, '提取事件资产信息失败');
   return JSON.parse(stdout);
+}
+
+async function summarizeTopRiskAssetDetails(options = {}) {
+  const topAssets = Array.isArray(options.topAssets) ? options.topAssets : [];
+  if (!Array.isArray(topAssets) || !topAssets.length) {
+    return {
+      assets: {}
+    };
+  }
+
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'top_risk_asset_details.py');
+  const args = [
+    encodePath(options.incidentExcelPath || ''),
+    encodePath(options.assetExcelPath || ''),
+    encodePath(options.weakPasswordExcelPath || ''),
+    encodePath(options.vulnerabilityExcelPath || ''),
+    encodePath(options.exposureExcelPath || ''),
+    JSON.stringify(topAssets),
+    JSON.stringify(Array.isArray(options.c2Ids) ? options.c2Ids : []),
+    JSON.stringify(Array.isArray(options.virusIds) ? options.virusIds : []),
+    JSON.stringify(Array.isArray(options.exploitIds) ? options.exploitIds : [])
+  ];
+  const stdout = await execPythonWithArgs(scriptPath, args, '统计风险资产详情失败');
+  const parsed = JSON.parse(stdout);
+
+  return {
+    assets: parsed && parsed.assets && typeof parsed.assets === 'object' ? parsed.assets : {}
+  };
 }
 
 async function extractC2ConnectionExamples(incidentExcelPath, confirmedIds) {
@@ -234,7 +282,9 @@ module.exports = {
   summarizeIncidentStatus,
   removeIncidentRows,
   parseIncidentGptStats,
+  extractIncidentDirectStats,
   extractIncidentAssetInfo,
+  summarizeTopRiskAssetDetails,
   extractC2ConnectionExamples,
   extractVirusTrojanExamples,
   extractVulnExploitExamples,

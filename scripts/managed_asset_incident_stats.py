@@ -1,6 +1,7 @@
 import json
 import re
 import sys
+from datetime import datetime
 from collections import Counter
 
 from openpyxl import load_workbook
@@ -13,6 +14,14 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 IP_PATTERN = re.compile(r'(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)')
+SEVERITY_MAP = {
+    "严重": "critical",
+    "超危": "critical",
+    "超危 改为  严重": "critical",
+    "高危": "high",
+    "中危": "medium",
+    "低危": "low",
+}
 
 
 def normalize(value):
@@ -49,36 +58,83 @@ def top_n(counter, n):
     return [{"name": k, "value": v} for k, v in counter.most_common(n)]
 
 
-def parse_response_time(value):
-    """解析响应时间（分钟），支持 "23"、"23分钟"、"23 min" 等格式"""
+def rank_business_systems(records, n):
+    """
+    按业务系统聚合事件并排序：
+    1. 严重
+    2. 高危
+    3. 中危
+    4. 低危
+    5. total
+    6. system（升序兜底，保证稳定）
+    """
+    system_counts = {}
+    for record in records:
+        system_name = record.get("system")
+        if not system_name:
+            continue
+        bucket = system_counts.setdefault(system_name, {
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0,
+            "total": 0,
+        })
+        severity = record.get("severity")
+        if severity in ("critical", "high", "medium", "low"):
+            bucket[severity] += 1
+        bucket["total"] += 1
+
+    ranking = []
+    for system_name, counts in system_counts.items():
+        ranking.append({
+            "name": system_name,
+            "value": counts["total"],
+            "critical": counts["critical"],
+            "high": counts["high"],
+            "highRisk": counts["critical"] + counts["high"],
+            "medium": counts["medium"],
+            "low": counts["low"],
+        })
+
+    ranking.sort(key=lambda item: (
+        -item["critical"],
+        -item["high"],
+        -item["medium"],
+        -item["low"],
+        -item["value"],
+        item["name"],
+    ))
+    return ranking[:n]
+
+
+def parse_datetime_value(value):
+    """解析 Excel/字符串时间，返回 datetime"""
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        return value
+
     text = normalize(value)
     if not text:
         return None
 
-    # 尝试直接解析数字
-    try:
-        return float(text)
-    except ValueError:
-        pass
-
-    # 尝试提取数字（支持 "23分钟"、"23min" 等格式）
-    m = re.search(r'(\d+(?:\.\d+)?)\s*[分钟分min]*', text)
-    if m:
-        return float(m.group(1))
+    formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d %H:%M",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
 
     return None
-
-
-def top_n_with_other(counter, n):
-    """取 Counter 前 n 项, 超过 n 项时末尾补充"其他"（取值 = 总数 - 前 n 项之和）"""
-    items = counter.most_common(n)
-    total = sum(counter.values())
-    top_sum = sum(v for _, v in items)
-
-    result = [{"name": k, "value": v} for k, v in items]
-    if len(counter) > n:
-        result.append({"name": "其他", "value": total - top_sum})
-    return result
 
 
 def main():
@@ -152,7 +208,7 @@ def main():
     disposed_managed = 0
     disposed_response_times = []
     event_type_counter = Counter()
-    business_counter = Counter()
+    business_risk_records = []
 
     try:
         incident_wb = load_workbook(incident_path, data_only=True)
@@ -164,7 +220,9 @@ def main():
         status_col = find_column(incident_headers, ["处置状态"])
         asset_col = find_column(incident_headers, ["影响资产"])
         event_type_col = find_column(incident_headers, ["安全事件一级分类"])
-        response_time_col = find_column(incident_headers, ["响应时间"])
+        completed_at_col = find_column(incident_headers, ["完成时间"])
+        created_at_col = find_column(incident_headers, ["事件创建时间"])
+        level_col = find_column(incident_headers, ["等级"])
 
         for row in incident_ws.iter_rows(min_row=2, values_only=True):
             if not any(normalize(cell) for cell in row):
@@ -186,7 +244,11 @@ def main():
             # 业务系统安全事件分布
             if incident_ip and incident_ip in ip_to_business:
                 biz = ip_to_business[incident_ip]
-                business_counter[biz] += 1
+                severity_raw = normalize(row[level_col] if level_col is not None and level_col < len(row) else None)
+                business_risk_records.append({
+                    "system": biz,
+                    "severity": SEVERITY_MAP.get(severity_raw, ""),
+                })
 
             # 托管资产事件统计（只统计影响资产为托管 IP 的事件）
             if not incident_ip or incident_ip not in managed_asset_ips:
@@ -199,12 +261,17 @@ def main():
                 if status == "已遏制":
                     contained_managed += 1
                 elif status == "处置完成":
+                    contained_managed += 1
                     disposed_managed += 1
-                    # 收集处置完成事件的响应时间
-                    if response_time_col is not None and response_time_col < len(row):
-                        rt = parse_response_time(row[response_time_col])
-                        if rt is not None:
-                            disposed_response_times.append(rt)
+                    # 收集处置完成事件的响应时间（完成时间 - 事件创建时间）
+                    completed_at = row[completed_at_col] if completed_at_col is not None and completed_at_col < len(row) else None
+                    created_at = row[created_at_col] if created_at_col is not None and created_at_col < len(row) else None
+                    completed_dt = parse_datetime_value(completed_at)
+                    created_dt = parse_datetime_value(created_at)
+                    if completed_dt is not None and created_dt is not None:
+                        diff_minutes = (completed_dt - created_dt).total_seconds() / 60
+                        if diff_minutes >= 0:
+                            disposed_response_times.append(diff_minutes)
 
         incident_wb.close()
     except Exception as e:
@@ -224,6 +291,7 @@ def main():
 
     close_rate = round((disposed_managed / total_managed) * 100) if total_managed else 0
     avg_response_time = round(sum(disposed_response_times) / len(disposed_response_times), 1) if disposed_response_times else 0
+    business_ranking = rank_business_systems(business_risk_records, 5)
 
     result = {
         "managedAssetEvents": total_managed,
@@ -233,8 +301,15 @@ def main():
         "managedAssetCount": len(managed_asset_ips),
         "managedAvgResponseTime": avg_response_time,
         "topEventType": top1_name(event_type_counter),
-        "top3BusinessSystems": "、".join(item["name"] for item in top_n_with_other(business_counter, 5)[:3]),
-        "businessSystemEventDistribution": top_n_with_other(business_counter, 5)
+        "top3BusinessSystems": "、".join(item["name"] for item in business_ranking[:3]),
+        "businessSystemEventDistribution": [
+            {
+                "name": item["name"],
+                "value": item["value"],
+                "highRisk": item["highRisk"],
+            }
+            for item in business_ranking
+        ]
     }
 
     print(json.dumps(result, ensure_ascii=False))

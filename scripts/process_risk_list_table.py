@@ -5,7 +5,7 @@
 
 功能：
 - asset: 删除 zdy、责任人电话、责任人(设备上报)、实时认证用户名 四列；保留原文件名复制到输出目录
-- incident: 原样复制到输出目录，保留原文件名
+- incident: 缺少指定列时自动补列，并为前 100 行补充模拟值
 
 用法：
     python process_risk_list_table.py asset <input.xlsx> <output_dir>
@@ -18,9 +18,9 @@ import json
 import os
 import shutil
 import sys
+from datetime import datetime, timedelta
 
 from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter
 
 from _path_helper import decode_argv
 decode_argv()
@@ -31,6 +31,26 @@ ASSET_COLUMNS_TO_REMOVE = [
     '责任人电话',
     '责任人(设备上报)',
     '实时认证用户名',
+]
+
+INCIDENT_COLUMNS_TO_MOCK = [
+    '外网IP地址',
+    '域名',
+    '文件',
+    '处置时间',
+    '推送状态',
+]
+
+TIME_COLUMN_ALIASES = [
+    '处置时间',
+    '最近发生时间',
+    '最近发现时间',
+    '结束时间',
+    'lastTime',
+    'endTime',
+    'disposeTime',
+    'dealTime',
+    'firstTime',
 ]
 
 def normalize(value):
@@ -80,11 +100,108 @@ def process_asset_table(input_path, output_dir):
     return output_path
 
 
+def find_first_non_empty_time(ws, col_map, header_row):
+    for column_name in TIME_COLUMN_ALIASES:
+        col_idx = col_map.get(column_name)
+        if col_idx is None:
+            continue
+
+        for row_idx in range(header_row + 1, ws.max_row + 1):
+            value = ws.cell(row=row_idx, column=col_idx + 1).value
+            if value not in (None, ''):
+                return value
+    return None
+
+
+def parse_time_template(value):
+    if isinstance(value, datetime):
+        return value, '%Y-%m-%d %H:%M:%S'
+
+    text = normalize(value)
+    if not text:
+        return datetime(2026, 7, 1, 9, 0, 0), '%Y-%m-%d %H:%M:%S'
+
+    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y/%m/%d %H:%M'):
+        try:
+            return datetime.strptime(text, fmt), fmt
+        except ValueError:
+            continue
+
+    return datetime(2026, 7, 1, 9, 0, 0), '%Y-%m-%d %H:%M:%S'
+
+
+def build_mock_ip_value(index):
+    first = f'{(index % 200) + 1}.{((index + 30) % 200) + 1}.{((index + 60) % 200) + 1}.{((index + 90) % 200) + 1}'
+    if index % 3 == 0:
+        return f'{first}（恶意）'
+    second = f'{((index + 5) % 200) + 1}.{((index + 35) % 200) + 1}.{((index + 65) % 200) + 1}.{((index + 95) % 200) + 1}'
+    return f'{first}（恶意）、{second}（未知）'
+
+
+def build_mock_domain_value(index):
+    if index % 4 == 0:
+        return f'evil{index + 1}.com（恶意）'
+    return f'evil{index + 1}.com（恶意）、check{index + 1}.net（未知）'
+
+
+def build_mock_file_value(index):
+    first = f'{0x1200 + index:04x}{0x3400 + index:04x}'
+    if index % 5 == 0:
+        return f'{first}（恶意）'
+    second = f'{0x5600 + index:04x}{0x7800 + index:04x}'
+    return f'{first}（恶意）、{second}（未知）'
+
+
+def build_mock_push_status(index):
+    return '已推送' if index % 2 == 0 else '未推送'
+
+
+def ensure_minimum_data_rows(ws, header_row, min_rows):
+    current_rows = max(ws.max_row - header_row, 0)
+    for _ in range(current_rows, min_rows):
+        ws.append([''] * ws.max_column)
+
+
 def process_incident_table(input_path, output_dir):
-    """处理事件表：原样复制到 output_dir，保留原文件名。"""
+    """处理事件表：缺列时补列，并为前 100 行填充模拟值。"""
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, os.path.basename(input_path))
-    shutil.copy2(input_path, output_path)
+
+    wb = load_workbook(input_path)
+    ws = wb.active
+    col_map, header_row = build_col_header(ws)
+
+    missing_columns = [name for name in INCIDENT_COLUMNS_TO_MOCK if name not in col_map]
+    if not missing_columns:
+        wb.close()
+        shutil.copy2(input_path, output_path)
+        return output_path
+
+    time_sample = find_first_non_empty_time(ws, col_map, header_row)
+    base_time, time_format = parse_time_template(time_sample)
+
+    for column_name in missing_columns:
+        new_col = ws.max_column + 1
+        ws.cell(row=header_row, column=new_col).value = column_name
+        col_map[column_name] = new_col - 1
+
+    ensure_minimum_data_rows(ws, header_row, 100)
+
+    for index in range(100):
+        row_idx = header_row + 1 + index
+        if '外网IP地址' in missing_columns:
+            ws.cell(row=row_idx, column=col_map['外网IP地址'] + 1).value = build_mock_ip_value(index)
+        if '域名' in missing_columns:
+            ws.cell(row=row_idx, column=col_map['域名'] + 1).value = build_mock_domain_value(index)
+        if '文件' in missing_columns:
+            ws.cell(row=row_idx, column=col_map['文件'] + 1).value = build_mock_file_value(index)
+        if '处置时间' in missing_columns:
+            ws.cell(row=row_idx, column=col_map['处置时间'] + 1).value = (base_time + timedelta(minutes=index)).strftime(time_format)
+        if '推送状态' in missing_columns:
+            ws.cell(row=row_idx, column=col_map['推送状态'] + 1).value = build_mock_push_status(index)
+
+    wb.save(output_path)
+    wb.close()
     return output_path
 
 

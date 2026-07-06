@@ -1,16 +1,12 @@
 'use strict';
 
-const { fetchXdrAssetOverview } = require('./xdr_asset_client');
+const { fetchMsswAssetOverview } = require('./xdr_asset_client');
 
 async function collectReportData(input) {
-  const isXdr = !!input.xdrCookiePath;
-  const isMssw = !!input.msswCookiePath && !input.xdrCookiePath;
-
-  if (isXdr || isMssw) {
-    const mode = isXdr ? 'XDR' : 'MSSW';
-    logInfo(input.logger, `使用 ${mode} 数据生成报告资产台账`);
+  if (input.msswCookiePath) {
+    logInfo(input.logger, '使用 MSSW 主链路生成报告资产台账');
     const baseData = buildBaseReportData(input);
-    const xdrData = await fetchXdrAssetOverview(input.xdrCookiePath, {
+    const overviewData = await fetchMsswAssetOverview({
       logger: input.logger,
       projectBackground: {
         customerName: input.customer || '',
@@ -18,16 +14,14 @@ async function collectReportData(input) {
         startDate: input.start || '',
         endDate: input.end || ''
       },
-      ...(isMssw ? {
-        msswCookiePath: input.msswCookiePath,
-        msswBaseUrl: input.msswBaseUrl,
-        customerId: input.customerId,
-        incidentFilePath: input.incidentFilePath,
-        assetFilePath: input.assetFilePath
-      } : {})
+      msswCookiePath: input.msswCookiePath,
+      msswBaseUrl: input.msswBaseUrl,
+      customerId: input.customerId,
+      incidentFilePath: input.incidentFilePath,
+      assetFilePath: input.assetFilePath
     });
 
-    let merged = deepMerge(baseData, xdrData);
+    let merged = deepMerge(baseData, overviewData);
     // core_asset 改为由 Excel 资产表统计提供，不查接口
     merged.assetLedger.core_asset = 0;
     merged = applyAssetStatusStats(merged, input.assetStatusStats);
@@ -86,7 +80,6 @@ function applyIncidentStatusStats(reportData, stats) {
     merged.riskOverview.containedEvents = merged.riskDetails.containedEvents;
     merged.riskOverview.totalEvents = merged.riskDetails.totalEvents;
     merged.riskOverview.alertReductionRate = merged.riskDetails.alertReductionRate;
-    merged.riskOverview.affectedAssetCount = merged.riskDetails.uniqueAssetCount;
   }
 
   return merged;

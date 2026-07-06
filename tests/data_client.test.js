@@ -5,6 +5,7 @@ const assert = require('assert');
 async function main() {
   const xdrClientPath = require.resolve('../src/xdr_asset_client');
   const originalCacheEntry = require.cache[xdrClientPath];
+  const fetchCalls = [];
 
   try {
     require.cache[xdrClientPath] = {
@@ -12,7 +13,9 @@ async function main() {
       filename: xdrClientPath,
       loaded: true,
       exports: {
-        fetchXdrAssetOverview: async () => ({
+        fetchMsswAssetOverview: async (options) => {
+          fetchCalls.push({ options });
+          return ({
         assetLedger: {
           ready_to_outbound: 3,
         },
@@ -75,7 +78,8 @@ async function main() {
           }
         },
         appendix: {}
-      })
+      });
+        }
     }
   };
 
@@ -85,6 +89,11 @@ async function main() {
     start: '2026-06-01',
     end: '2026-06-16',
     xdrCookiePath: 'fake-cookie.txt',
+    msswCookiePath: 'fake-mssw-cookie.txt',
+    msswBaseUrl: 'pre.soar.sangfor.com',
+    customerId: 'company-001',
+    incidentFilePath: 'incident.xlsx',
+    assetFilePath: 'asset.xlsx',
     assetStatusStats: {
       assetTotal: 555,
       manage_asset: 555,
@@ -121,6 +130,12 @@ async function main() {
   });
 
   assert.strictEqual(data.projectBackground.customerName, '测试客户');
+  assert.strictEqual(fetchCalls.length, 1);
+  assert.strictEqual(fetchCalls[0].options.msswCookiePath, 'fake-mssw-cookie.txt');
+  assert.strictEqual(fetchCalls[0].options.msswBaseUrl, 'pre.soar.sangfor.com');
+  assert.strictEqual(fetchCalls[0].options.customerId, 'company-001');
+  assert.strictEqual(fetchCalls[0].options.incidentFilePath, 'incident.xlsx');
+  assert.strictEqual(fetchCalls[0].options.assetFilePath, 'asset.xlsx');
   assert.strictEqual(Object.prototype.hasOwnProperty.call(data, 'report'), false);
   assert.strictEqual(data.assetLedger.manage_asset, 555);
   assert.strictEqual(data.assetLedger.core_asset, 12);
@@ -138,7 +153,7 @@ async function main() {
   assert.strictEqual(data.riskOverview.closedEvents, 12);
   assert.strictEqual(data.riskOverview.containedEvents, 5);
   assert.strictEqual(data.riskOverview.closeRate, 7);
-  assert.strictEqual(data.riskOverview.affectedAssetCount, 42);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(data.riskOverview, 'affectedAssetCount'), false);
   assert.strictEqual(data.riskOverview.incidentGptStats.hostCompromise.total, 2);
   assert.strictEqual(data.riskOverview.incidentGptStats.virusTrojan.total, 3);
   assert.strictEqual(data.riskOverview.incidentGptStats.threatActorStats[0].name, '银狐');

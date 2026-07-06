@@ -1,0 +1,500 @@
+{
+  "projectBackground": {
+    "customerName": "",
+    "startDate": "",
+    "endDate": "",
+    "customerId": "",
+    "title": "",
+    "generatedAt": ""
+  },
+  "assetLedger": {
+    "ready_to_outbound": 0,
+    "manage_asset": 0,
+    "core_asset": 0,
+    "core_managed_asset": 0,
+    "internetExposureTotal": 0,
+    "assetTotal": 0,
+    "typeDistribution": [
+      {
+        "name": "服务器",
+        "value": 0
+      },
+      {
+        "name": "终端",
+        "value": 0
+      },
+      {
+        "name": "其他",
+        "value": 0
+      }
+    ],
+    "protectionDistribution": [
+      {
+        "name": "在线",
+        "value": 0
+      },
+      {
+        "name": "离线",
+        "value": 0
+      },
+      {
+        "name": "已禁用",
+        "value": 0
+      },
+      {
+        "name": "已降级",
+        "value": 0
+      },
+      {
+        "name": "未防护",
+        "value": 0
+      }
+    ],
+    "internetExposureDistribution": [
+      {
+        "name": "服务器",
+        "value": 0
+      },
+      {
+        "name": "终端",
+        "value": 0
+      },
+      {
+        "name": "其他",
+        "value": 0
+      }
+    ]
+  },
+  "riskOverview": {
+    "securityLogTotal": 0,
+    "alertTotal": 0,
+    "alertReductionRate": 0,
+    "closeRate": 0,
+    "closedEvents": 0,
+    "containedEvents": 0,
+    "totalEvents": 0,
+    "affectedAssetCount": 0,
+    "riskAssetCount": 0,
+    "riskBusinessCount": 0,
+    "devices": 0,
+    "coreBusinessSystemRanking": [
+      "",
+      "",
+      ""
+    ],
+    "maxRiskSystem": "",
+    "securityRiskTotal": 0,
+    "highAndAboveRiskCount": 0,
+    "topRiskAssets": [],
+    "incidentGptStats": {
+      "total": 0,
+      "hostCompromise": {
+        "total": 0,
+        "confirmedIncidentIds": []
+      },
+      "virusTrojan": {
+        "total": 0,
+        "confirmedIncidentIds": []
+      },
+      "threatActorStats": [
+        {
+          "name": "",
+          "count": 0
+        },
+        {
+          "name": "",
+          "count": 0
+        }
+      ],
+      "c2ConnectionExamples": [],
+      "virusTrojanExamples": [],
+      "virusAttackAsset": "",
+      "nonAesCoveredAssets": [
+        "",
+        ""
+      ],
+      "unlabeledAssets": [
+        "",
+        ""
+      ],
+      "confirmedIncidentIds": []
+    },
+    "exploitStats": {
+      "total": 0,
+      "highRiskAsset": "",
+      "attackSuccessCount": 0,
+      "incidentIds": []
+    },
+    "keyRisks": []
+  },
+  "riskDetails": {
+    "securityLogTotal": 0,
+    "alertTotal": 0,
+    "alertReductionRate": 0,
+    "closeRate": 0,
+    "totalEvents": 0,
+    "severeEvents": 0,
+    "highEvents": 0,
+    "closedEvents": 0,
+    "containedEvents": 0,
+    "processingEvents": 0,
+    "uniqueAssetCount": 0,
+    "managedAssetEvents": 0,
+    "managedAssetContainedEvents": 0,
+    "managedAssetDisposedEvents": 0,
+    "managedEventCloseRate": 0,
+    "managedAssetCount": 0,
+    "managedAvgResponseTime": 0,
+    "topEventType": "",
+    "top3BusinessSystems": "",
+    "businessSystemEventDistribution": [],
+    "eventTypeDistribution": [],
+    "devices": 0,
+    "sangfor": 0,
+    "af": 0,
+    "aes": 0,
+    "sip": 0,
+    "sta": 0,
+    "other_sf": 0,
+    "third": 0,
+    "highRiskIncidentExamples": {
+      "vulnExploits": [],
+      "viruses": [],
+      "c2Connections": []
+    }
+  },
+  "summary": {
+    "internet": {
+      "exposure": {
+        "risk_ports": 0,
+        "total_ports": 0,
+        "risk_assets": 0
+      },
+      "vuln": {
+        "priority_urgent": 0,
+        "total": 0,
+        "risk_assets": 0
+      },
+      "weak_pwd": {
+        "risk_assets": 0,
+        "total": 0
+      }
+    },
+    "intranet": {
+      "vuln": {
+        "priority_urgent": 0,
+        "total": 0,
+        "risk_assets": 0
+      },
+      "weak_pwd": {
+        "risk_assets": 0,
+        "total": 0
+      }
+    }
+  },
+  "key_risks": {
+    "vuln": {
+      "biz_example": "",
+      "high_count": 0
+    },
+    "weak_pwd": {
+      "biz_example": "",
+      "total": 0,
+      "example_asset": "",
+      "priority_assets": "",
+      "priority_assets_reason": ""
+    },
+    "exposure": {
+      "web_count": 0,
+      "nonweb_count": 0,
+      "total": 0,
+      "nonweb_services": "",
+      "example_service": ""
+    }
+  },
+  "risk_detail": {
+    "internet": {
+      "exposure": 0,
+      "vuln": 0,
+      "weak_pwd": 0,
+      "total": 0,
+      "high_above": 0
+    },
+    "intranet": {
+      "vuln": 0,
+      "weak_pwd": 0,
+      "total": 0,
+      "high": 0
+    }
+  },
+  "internet": {
+    "exposure": {
+      "risk_asset_count": 0,
+      "port_count": 0,
+      "vuln_count": 0,
+      "total_exposure": 0,
+      "risk_exposure": 0,
+      "total_assets": 0,
+      "risk_assets": 0,
+      "dist": [
+        {
+          "name": "资产总表",
+          "value": 0
+        },
+        {
+          "name": "根域名",
+          "value": 0
+        },
+        {
+          "name": "子域名",
+          "value": 0
+        },
+        {
+          "name": "IP C段",
+          "value": 0
+        },
+        {
+          "name": "端口表",
+          "value": 0
+        },
+        {
+          "name": "WEB资产",
+          "value": 0
+        },
+        {
+          "name": "非WEB资产",
+          "value": 0
+        },
+        {
+          "name": "登录入口（0）",
+          "value": 0
+        },
+        {
+          "name": "网络&安全设备",
+          "value": 0
+        },
+        {
+          "name": "公有云资产",
+          "value": 0
+        },
+        {
+          "name": "SSL证书",
+          "value": 0
+        },
+        {
+          "name": "公众号&小程序资产（0）",
+          "value": 0
+        },
+        {
+          "name": "APP资产（0）",
+          "value": 0
+        }
+      ],
+      "web_top5": [],
+      "nonweb_top5": [],
+      "stack_rows": []
+    },
+    "vuln": {
+      "total": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "related_assets": 0,
+      "priority_urgent": 0,
+      "priority_soon": 0,
+      "priority_suggest": 0,
+      "top_rows": []
+    },
+    "weak_pwd": {
+      "affected_assets": 0,
+      "total_count": 0,
+      "asset_rows": []
+    }
+  },
+  "intranet": {
+    "vuln": {
+      "total": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "related_biz": 0,
+      "related_assets": 0,
+      "priority_urgent": 0,
+      "priority_soon": 0,
+      "priority_suggest": 0,
+      "biz_top_rows": [],
+      "asset_top_rows": []
+    },
+    "weak_pwd": {
+      "total_count": 0,
+      "affected_assets": 0,
+      "risk_count": 0,
+      "biz_rows": [],
+      "asset_rows": []
+    }
+  },
+  "appendix": {
+    "businessSystemRanking": {
+      "coreBusinessSystemRanking": [],
+      "maxRiskSystem": "",
+      "securityRiskTotal": 0,
+      "highAndAboveRiskCount": 0
+    }
+  },
+  "scoring": {
+    "grade": "",
+    "total_score": 0,
+    "grade_color": "",
+    "L1": {
+      "资产防护得分": 0,
+      "日常运营得分": 0
+    },
+    "L2": {
+      "托管资产得分": 0,
+      "组件检测得分": 0,
+      "事件得分": 0,
+      "勒索风险得分": 0
+    },
+    "L3": {
+      "服务器得分": 0,
+      "终端得分": 0,
+      "服务器权重": 0,
+      "终端权重": 0,
+      "设备离线得分": 0,
+      "策略隐患得分": 0,
+      "漏洞得分": 0,
+      "端口得分": 0,
+      "弱密码基础分": 0,
+      "脆弱性事件分": 0,
+      "弱密码得分": 0
+    },
+    "data_summary": {
+      "asset": {
+        "server": {
+          "both_coverage": 0,
+          "client_only": 0,
+          "net_only": 0,
+          "no_coverage": 0,
+          "total": 0
+        },
+        "pc": {
+          "both_coverage": 0,
+          "client_only": 0,
+          "net_only": 0,
+          "no_coverage": 0,
+          "total": 0
+        },
+        "all_assets": 0,
+        "device": {
+          "activated_count": 0,
+          "offline_count": 0,
+          "total": 0
+        }
+      },
+      "event": {
+        "server_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "pc_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "total_events": 0
+      },
+      "weak_pwd_event": {
+        "server_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "pc_events": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "total_events": 0
+      },
+      "vuln": {
+        "urgent_count": 0,
+        "fast_count": 0,
+        "suggest_count": 0,
+        "total_vulns": 0
+      },
+      "weak_pwd": {
+        "high_count": 0,
+        "middle_count": 0,
+        "low_count": 0,
+        "unknown_count": 0,
+        "total_weak_pwd": 0
+      },
+      "port": {
+        "risk_port_count": 0,
+        "total_ports": 0
+      },
+      "policy": {
+        "check_cnt": 0,
+        "risk_cnt": 0,
+        "policy_status_summary": {},
+        "risk_status_summary": {}
+      }
+    },
+    "weights_used": {
+      "DEFAULT_ASSETS_RATIO": 0,
+      "ASSETS_RATIO": 0,
+      "COMPONENTS_RATIO": 0,
+      "EVENTS_RATIO": 0,
+      "VULNERABILITIES_RATIO": 0,
+      "SERVER_RATIO": 0,
+      "PC_SCORE": 0,
+      "DEVICE_K": 0,
+      "POLICY_K": 0,
+      "VULNERABILITY_K": 0,
+      "WEAK_PASSWORD_K": 0,
+      "PORT_K": 0,
+      "WEAK_PASSWORD_BASE_K": 0,
+      "SERVER_MAJOR_EVENT_K": 0,
+      "SERVER_GENERAL_EVENT_K": 0,
+      "SERVER_OTHER_EVENT_K": 0,
+      "SERVER_MAJOR_THREAT_K": 0,
+      "PC_MAJOR_EVENT_K": 0,
+      "PC_GENERAL_EVENT_K": 0,
+      "PC_OTHER_EVENT_K": 0,
+      "PC_MAJOR_THREAT_K": 0,
+      "AGENT_FIX_VULN_K": 0,
+      "FAST_FIX_VULN_K": 0,
+      "SUGGEST_FIX_VULN_K": 0,
+      "RISK_PORT_K": 0,
+      "HIGH_LEVEL_WEAKPWD_K": 0,
+      "MIDDLE_LEVEL_WEAKPWD_K": 0,
+      "LOW_LEVEL_WEAKPWD_K": 0,
+      "UNKNOWN_LEVEL_WEAKPWD_K": 0
+    }
+  },
+  "protection_effectiveness": {
+    "policy_stats": {
+      "total": 0,
+      "abnormal_count": 0,
+      "abnormal_by_dev_type": {},
+      "abnormal_by_dev_type_text": "",
+      "abnormal_by_dev_type_bracket": "",
+      "abnormal_component_count": 0,
+      "total_component_count": 0,
+      "by_device": [],
+      "policy_check_example": []
+    },
+    "without_aes_asset_stats": {
+      "ips": "",
+      "total": 0,
+      "hide_hint": false
+    }
+  }
+}

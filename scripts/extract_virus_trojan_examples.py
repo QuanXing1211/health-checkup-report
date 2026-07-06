@@ -31,6 +31,12 @@ decode_argv()
 
 
 SEVERE_LABEL = "严重"
+LEVEL_PRIORITY = {
+    "严重": 4,
+    "高危": 3,
+    "中危": 2,
+    "低危": 1,
+}
 
 
 def normalize(value):
@@ -79,12 +85,13 @@ def main():
     asset_col = find_column(col_map, ["受影响资产", "影响资产", "host_ip", "hostIp", "主机IP", "ip"])
     time_col = find_column(col_map, ["最近发生时间", "最近发现时间", "endTime", "结束时间"])
     status_col = find_column(col_map, ["处置状态", "dealStatus"])
+    level_col = find_column(col_map, ["等级", "severity"])
 
     if id_col is None:
         raise SystemExit(f"事件表缺少事件ID列，可用列: {list(col_map.keys())}")
 
     rows = []
-    for row in sheet.iter_rows(min_row=2, values_only=True):
+    for row_index, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
         incident_id = normalize(row[id_col]) if len(row) > id_col else ""
         if not incident_id or incident_id not in confirmed_set:
             continue
@@ -97,6 +104,11 @@ def main():
             continue
 
         rows.append({
+            "_levelPriority": LEVEL_PRIORITY.get(
+                normalize(row[level_col]) if level_col is not None and len(row) > level_col else "",
+                0
+            ),
+            "_rowIndex": row_index,
             "incidentId": incident_id,
             "md5": "、".join(severe_md5s),
             "affectedAsset": normalize(row[asset_col]) if asset_col is not None and len(row) > asset_col else "",
@@ -104,8 +116,11 @@ def main():
             "disposalStatus": normalize(row[status_col]) if status_col is not None and len(row) > status_col else ""
         })
 
-        if len(rows) >= 5:
-            break
+    rows.sort(key=lambda item: (-item["_levelPriority"], item["_rowIndex"]))
+    rows = rows[:5]
+    for item in rows:
+        item.pop("_levelPriority", None)
+        item.pop("_rowIndex", None)
 
     workbook.close()
     print(json.dumps({"viruses": rows}, ensure_ascii=False))

@@ -6,11 +6,12 @@ const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
-const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats } = require('./src/incident_excel_stats');
-const { exportXdrAssetList, exportXdrIncidentList, exportXdrDeviceList, exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, fetchXdrAssetOverview, readXdrCookieInfo, readMsswCookieInfo, resolveWorkingXdrBaseUrl, collectDeviceCategoryCounts, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/xdr_asset_client');
+const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails } = require('./src/incident_excel_stats');
+const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
 const { rankBusinessSystems } = require('./src/business_system_ranking');
+const { calculateRiskAssetCount } = require('./src/risk_asset_count');
 const { runBranch1ReportStage, mergeBranch1ReportPatch, exportBranch1Word, getDefaultDeviceJsonPath } = require('./src/branch1_adapter');
 const { renderReportToFile } = require('./src/template_renderer');
 
@@ -39,34 +40,7 @@ async function main() {
     }
   }
 
-  // 设备表导出
-  if (options['mssw-cookie-path']) {
-    await exportMsswDeviceList({
-      msswCookiePath: options['mssw-cookie-path'],
-      msswBaseUrl: options['mssw-base-url'],
-      customerId,
-      logger
-    });
-  } else if (options['xdr-cookie-path']) {
-    await exportXdrDeviceList({
-      xdrCookiePath: options['xdr-cookie-path'],
-      xdrBaseUrl: options['xdr-base-url'],
-      logger
-    });
-  }
-
   if (command && command !== 'generate') {
-    if (command === 'xdr-asset-export') {
-      const result = await exportXdrAssetList({
-        xdrCookiePath: options['xdr-cookie-path'],
-        downloadDir: options['download-dir'],
-        timeoutMs: options['timeout-ms'] ? Number(options['timeout-ms']) : undefined,
-        logger
-      });
-      outputResult(result, emitJson, logger, `XDR 资产表已导出: ${result.filePath}`);
-      return;
-    }
-
     if (command === 'mssw-asset-export') {
       requireArgs(options, ['mssw-cookie-path', 'customer-id']);
       const result = await exportMsswAssetList({
@@ -80,42 +54,19 @@ async function main() {
       return;
     }
 
-    if (command === 'xdr-incident-export') {
-      const result = await exportXdrIncidentList({
-        xdrCookiePath: options['xdr-cookie-path'],
-        downloadDir: options['download-dir'],
-        start: options.start,
-        end: options.end,
-        timeoutMs: options['timeout-ms'] ? Number(options['timeout-ms']) : undefined,
-        pollIntervalMs: options['poll-interval-ms'] ? Number(options['poll-interval-ms']) : undefined,
-        logger
-      });
-      outputResult(result, emitJson, logger, `XDR 事件表已导出: ${result.filePath}`);
-      return;
-    }
-
-    if (command === 'xdr-asset-summary') {
-      const root = __dirname;
-      const end = options.end || formatLocalDate(new Date());
-      const result = await fetchXdrAssetOverview(options['xdr-cookie-path'], {
-        logger,
-        projectBackground: {
-          customerName: options.customer || '',
-          customerId: options['customer-id'] || null,
-          startDate: options.start || '',
-          endDate: end
-        }
-      });
-      const outputJson = options['output-json'] || path.join(root, 'output', 'xdr-asset-summary.json');
-      const merged = await mergeJsonFile(outputJson, result);
-      outputResult(merged, emitJson, logger, `XDR 资产台账统计已更新: ${outputJson}`);
-      return;
-    }
-
     throw new Error(`Unsupported command: ${command}`);
   }
 
-  requireArgs(options, ['customer']);
+  requireArgs(options, ['customer', 'mssw-cookie-path', 'xdr-cookie-path']);
+
+  await readXdrCookieInfo(options['xdr-cookie-path']);
+
+  await exportMsswDeviceList({
+    msswCookiePath: options['mssw-cookie-path'],
+    msswBaseUrl: options['mssw-base-url'],
+    customerId,
+    logger
+  });
 
   const effectiveTimeRange = await resolveEffectiveTimeRange({
     options,
@@ -133,7 +84,7 @@ async function main() {
 
   logger(`开始生成: ${options.customer} ${effectiveTimeRange.start} ~ ${effectiveTimeRange.end}`);
 
-  const xdrExports = await exportConfiguredXdrTables({
+  const tableExports = await exportConfiguredXdrTables({
     xdrCookiePath: options['xdr-cookie-path'],
     msswCookiePath: options['mssw-cookie-path'],
     downloadDir: options['download-dir'],
@@ -146,19 +97,19 @@ async function main() {
     pollIntervalMs: options['poll-interval-ms'] ? Number(options['poll-interval-ms']) : undefined,
     logger
   });
-  if (Object.keys(xdrExports).length) {
-    logger(`XDR 导出完成: ${Object.keys(xdrExports).join(', ')}`);
+  if (Object.keys(tableExports).length) {
+    logger(`MSSW 导表完成: ${Object.keys(tableExports).join(', ')}`);
   } else {
-    logger('跳过 XDR 导出');
+    logger('跳过 MSSW 导表');
   }
 
-  const assetStatusStats = await summarizeExportedAssetStatus(xdrExports, logger);
-  const incidentStatusStats = await summarizeExportedIncidentStatus(xdrExports, logger);
+  const assetStatusStats = await summarizeExportedAssetStatus(tableExports, logger);
+  const incidentStatusStats = await summarizeExportedIncidentStatus(tableExports, logger);
 
   // 从事件表提取漏洞利用统计（不阻断主流程）
   let exploitStats = null;
   let vulnExploitExamples = [];
-  const incidentFilePath = await resolveIncidentFilePath(options, xdrExports);
+  const incidentFilePath = await resolveIncidentFilePath(options, tableExports);
   if (incidentFilePath) {
     try {
       exploitStats = await extractExploitStats(incidentFilePath);
@@ -270,30 +221,6 @@ async function main() {
     logger(`事件类型分布已补充"其他": ${otherValue} 起`);
   }
 
-  if (options['xdr-cookie-path']) {
-    let cookieInfo, resolved;
-    try {
-      cookieInfo = await readXdrCookieInfo(options['xdr-cookie-path']);
-      resolved = await resolveWorkingXdrBaseUrl(cookieInfo, options['xdr-base-url'], logger);
-    } catch (error) {
-      logger(`初始化 XDR 连接失败: ${error.message}`);
-    }
-
-    if (cookieInfo && resolved) {
-      try {
-        logger('正在查询设备分类数量...');
-        const deviceCounts = await collectDeviceCategoryCounts(cookieInfo, resolved.xdrBaseUrl, logger);
-        reportData.riskDetails = Object.assign(reportData.riskDetails || {}, deviceCounts);
-        reportData.riskOverview = Object.assign(reportData.riskOverview || {}, {
-          devices: deviceCounts.devices
-        });
-        logger(`设备总数: ${deviceCounts.devices}, AF: ${deviceCounts.af}, AES: ${deviceCounts.aes}, SIP: ${deviceCounts.sip}, STA: ${deviceCounts.sta}`);
-      } catch (error) {
-        logger(`获取设备分类数量失败: ${error.message}，将跳过设备分类统计`);
-      }
-    }
-  }
-
   if (options['mssw-cookie-path']) {
     try {
       const loadedMsswCookie = msswCookie || await readMsswCookieInfo(options['mssw-cookie-path']);
@@ -352,26 +279,6 @@ async function main() {
     Object.assign(reportData, preventionData);
     logger('威胁预防 JSON 已合并到 report-data');
 
-    const businessSystemRanking = await rankBusinessSystems({
-      eventsPath: incidentFilePath,
-      weakpwdPath: preventionTables.weakpwd.filePath,
-      vulnPath: preventionTables.vuln.filePath,
-      exposurePath: preventionTables.exposure.filePath,
-      assetPath: resolvedAssetFilePath,
-      logger
-    });
-    reportData.appendix = Object.assign({}, reportData.appendix || {}, {
-      businessSystemRanking: {
-        coreBusinessSystemRanking: Array.isArray(businessSystemRanking.coreBusinessSystemRanking)
-          ? businessSystemRanking.coreBusinessSystemRanking
-          : [],
-        maxRiskSystem: businessSystemRanking.maxRiskSystem || null,
-        securityRiskTotal: Number(businessSystemRanking.securityRiskTotal || 0),
-        highAndAboveRiskCount: Number(businessSystemRanking.highAndAboveRiskCount || 0)
-      }
-    });
-    logger('业务系统排序数据已合并到 appendix.businessSystemRanking');
-
     branch1Result = await runBranch1ReportStage({
       customer: options.customer,
       companyId: customerId,
@@ -407,6 +314,78 @@ async function main() {
     preventionTables.exposure.filePath = archivedFiles.exposurePath;
     preventionTables.weakpwd.filePath = archivedFiles.weakpwdPath;
     preventionTables.vuln.filePath = archivedFiles.vulnPath;
+
+    const businessSystemRanking = await rankBusinessSystems({
+      eventsPath: archivedFiles.incidentPath,
+      weakpwdPath: archivedFiles.weakpwdPath,
+      vulnPath: archivedFiles.vulnPath,
+      exposurePath: archivedFiles.exposurePath,
+      assetPath: archivedFiles.assetPath,
+      logger
+    });
+    reportData.riskOverview = Object.assign({}, reportData.riskOverview || {}, {
+      coreBusinessSystemRanking: Array.isArray(businessSystemRanking.coreBusinessSystemRanking)
+        ? businessSystemRanking.coreBusinessSystemRanking
+        : [],
+      maxRiskSystem: businessSystemRanking.maxRiskSystem || null,
+      securityRiskTotal: Number(businessSystemRanking.securityRiskTotal || 0),
+      highAndAboveRiskCount: Number(businessSystemRanking.highAndAboveRiskCount || 0)
+    });
+    logger('业务系统排序数据已在 5 个风险清单落盘后合并到 riskOverview');
+
+    const riskAssetStats = await calculateRiskAssetCount({
+      eventPath: archivedFiles.incidentPath,
+      assetPath: archivedFiles.assetPath,
+      weakPasswordPath: archivedFiles.weakpwdPath,
+      vulnerabilityPath: archivedFiles.vulnPath,
+      exposurePath: archivedFiles.exposurePath
+    });
+    let topRiskAssets = Array.isArray(riskAssetStats.riskAssetTop5)
+      ? riskAssetStats.riskAssetTop5
+      : [];
+    if (topRiskAssets.length) {
+      try {
+        const incidentGptStats = reportData.riskOverview && reportData.riskOverview.incidentGptStats
+          ? reportData.riskOverview.incidentGptStats
+          : {};
+        const topRiskAssetDetails = await summarizeTopRiskAssetDetails({
+          incidentExcelPath: archivedFiles.incidentPath,
+          assetExcelPath: archivedFiles.assetPath,
+          weakPasswordExcelPath: archivedFiles.weakpwdPath,
+          vulnerabilityExcelPath: archivedFiles.vulnPath,
+          exposureExcelPath: archivedFiles.exposurePath,
+          topAssets: topRiskAssets,
+          c2Ids: incidentGptStats.hostCompromise && Array.isArray(incidentGptStats.hostCompromise.confirmedIncidentIds)
+            ? incidentGptStats.hostCompromise.confirmedIncidentIds
+            : [],
+          virusIds: incidentGptStats.virusTrojan && Array.isArray(incidentGptStats.virusTrojan.confirmedIncidentIds)
+            ? incidentGptStats.virusTrojan.confirmedIncidentIds
+            : [],
+          exploitIds: exploitStats && Array.isArray(exploitStats.incidentIds) ? exploitStats.incidentIds : []
+        });
+        const detailMap = topRiskAssetDetails.assets || {};
+        topRiskAssets = topRiskAssets.map((asset) => {
+          const detail = detailMap[asset.ip] || null;
+          return detail
+            ? {
+              ...asset,
+              riskDetails: detail,
+              detailLines: Array.isArray(detail.detailLines) ? detail.detailLines : []
+            }
+            : asset;
+        });
+        logger('风险资产 TOP5 风险详情已按事件表和资产表补齐');
+      } catch (error) {
+        logger(`统计风险资产 TOP5 风险详情失败（不影响主流程）: ${error.message}`);
+      }
+    }
+
+    reportData.riskOverview = Object.assign({}, reportData.riskOverview || {}, {
+      riskAssetCount: Number(riskAssetStats.affectedAssetCount || 0),
+      riskBusinessCount: Number(riskAssetStats.riskBusinessCount || 0),
+      topRiskAssets
+    });
+    logger(`风险总览统计已更新: 风险业务数 ${reportData.riskOverview.riskBusinessCount} 个，风险资产数 ${reportData.riskOverview.riskAssetCount} 个（按风险清单五表综合统计）`);
   } else {
     logger('跳过威胁预防数据准备: 未提供相关运行上下文');
   }
@@ -450,24 +429,24 @@ function printHelp() {
 
 Options:
   --customer <name>              Customer name (用于自动查询 company_id)
+  --mssw-cookie-path <path>      Required for generate and MSSW data flow
+  --xdr-cookie-path <path>       Required for generate, currently only validated/pass-through
   --start <YYYY-MM-DD>           Optional report start date
   --end <YYYY-MM-DD>             Optional report end date
   --cookie-path <path>           SOAR cookie file path (soar.sangfor.com.cn)
-  --xdr-cookie-path <path>       XDR cookie file path
-  --mssw-cookie-path <path>      MSSW cookie file path (pre.soar.sangfor.com)
-  --xdr-tables <names>           Optional XDR export tables, default asset,incident
-  --download-dir <path>          Optional XDR download directory override
+  --xdr-tables <names>           Optional MSSW export tables, default asset,incident
+  --download-dir <path>          Optional export directory override
   --output-json <path>           Optional report data JSON path, default output/report-data.json
   --json                         Print full JSON result to stdout
-  --timeout-ms <ms>              Optional wait timeout for XDR download
-  --poll-interval-ms <ms>        Optional XDR event export polling interval
+  --timeout-ms <ms>              Optional wait timeout for MSSW export download
+  --poll-interval-ms <ms>        Optional MSSW event export polling interval
   --template <path>              HTML template path
   --output-dir <path>            Output directory
 `);
 }
 
 async function exportConfiguredXdrTables(options) {
-  if (!options.xdrCookiePath && !options.msswCookiePath) {
+  if (!options.msswCookiePath) {
     return {};
   }
 
@@ -476,57 +455,30 @@ async function exportConfiguredXdrTables(options) {
   const results = {};
   for (const table of tables) {
     if (table === 'asset') {
-      if (options.msswCookiePath) {
-        logWith(options.logger, '开始处理表格: asset (MSSW)');
-        results.asset = await exportMsswAssetList({
-          msswCookiePath: options.msswCookiePath,
-          msswBaseUrl: options.msswBaseUrl,
-          downloadDir: options.downloadDir,
-          customerId: options.customerId,
-          assetIds: options.assetIds || [],
-          logger: options.logger
-        });
-      } else if (options.xdrCookiePath) {
-        logWith(options.logger, '开始处理表格: asset (XDR)');
-        results.asset = await exportXdrAssetList({
-          xdrCookiePath: options.xdrCookiePath,
-          downloadDir: options.downloadDir,
-          timeoutMs: options.timeoutMs,
-          logger: options.logger
-        });
-      } else {
-        logWith(options.logger, '跳过 asset 导出: 需要 --mssw-cookie-path 或 --xdr-cookie-path');
-      }
+      logWith(options.logger, '开始处理表格: asset (MSSW)');
+      results.asset = await exportMsswAssetList({
+        msswCookiePath: options.msswCookiePath,
+        msswBaseUrl: options.msswBaseUrl,
+        downloadDir: options.downloadDir,
+        customerId: options.customerId,
+        assetIds: options.assetIds || [],
+        logger: options.logger
+      });
       continue;
     }
 
     if (table === 'incident') {
-      if (options.msswCookiePath) {
-        logWith(options.logger, '开始处理表格: incident (MSSW)');
-        results.incident = await exportMsswIncidentList({
-          msswCookiePath: options.msswCookiePath,
-          downloadDir: options.downloadDir,
-          start: options.start,
-          end: options.end,
-          customerId: options.customerId,
-          timeoutMs: options.timeoutMs,
-          pollIntervalMs: options.pollIntervalMs,
-          logger: options.logger
-        });
-      } else if (options.xdrCookiePath) {
-        logWith(options.logger, '开始处理表格: incident (XDR)');
-        results.incident = await exportXdrIncidentList({
-          xdrCookiePath: options.xdrCookiePath,
-          downloadDir: options.downloadDir,
-          start: options.start,
-          end: options.end,
-          timeoutMs: options.timeoutMs,
-          pollIntervalMs: options.pollIntervalMs,
-          logger: options.logger
-        });
-      } else {
-        logWith(options.logger, '跳过 incident 导出: 需要 --mssw-cookie-path 或 --xdr-cookie-path');
-      }
+      logWith(options.logger, '开始处理表格: incident (MSSW)');
+      results.incident = await exportMsswIncidentList({
+        msswCookiePath: options.msswCookiePath,
+        downloadDir: options.downloadDir,
+        start: options.start,
+        end: options.end,
+        customerId: options.customerId,
+        timeoutMs: options.timeoutMs,
+        pollIntervalMs: options.pollIntervalMs,
+        logger: options.logger
+      });
       continue;
     }
 

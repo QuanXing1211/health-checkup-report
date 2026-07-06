@@ -1,0 +1,1610 @@
+- generic [ref=f4e3]:
+  - complementary [ref=f4e4]:
+    - navigation "报告目录" [ref=f4e5]:
+      - generic [ref=f4e6]:
+        - generic [ref=f4e7]: 报告目录
+        - button "收起目录" [ref=f4e8] [cursor=pointer]: ‹
+      - list [ref=f4e9]:
+        - listitem [ref=f4e10]:
+          - link "报告封面" [ref=f4e11] [cursor=pointer]:
+            - /url: "#report-top"
+        - listitem [ref=f4e12]:
+          - link "1. 项目背景" [ref=f4e13] [cursor=pointer]:
+            - /url: "#sec-background"
+        - listitem [ref=f4e14]:
+          - link "2. 资产台账" [ref=f4e15] [cursor=pointer]:
+            - /url: "#sec-assets"
+        - listitem [ref=f4e16]:
+          - generic [ref=f4e17]:
+            - link "3. 风险总览" [ref=f4e18] [cursor=pointer]:
+              - /url: "#sec-risk-overview"
+            - button "展开或收起子目录" [expanded] [ref=f4e19] [cursor=pointer]: ▾
+          - list [ref=f4e20]:
+            - listitem [ref=f4e21]:
+              - link "3.1 关键风险如下" [ref=f4e22] [cursor=pointer]:
+                - /url: "#sec-key-risks"
+            - listitem [ref=f4e23]:
+              - link "3.2 风险资产 TOP5" [ref=f4e24] [cursor=pointer]:
+                - /url: "#sec-top5-risk"
+        - listitem [ref=f4e25]:
+          - generic [ref=f4e26]:
+            - link "4. 风险详情" [ref=f4e27] [cursor=pointer]:
+              - /url: "#sec-risk-detail"
+            - button "展开或收起子目录" [expanded] [ref=f4e28] [cursor=pointer]: ▾
+          - list [ref=f4e29]:
+            - listitem [ref=f4e30]:
+              - generic [ref=f4e31]:
+                - link "4.1 威胁运营" [ref=f4e32] [cursor=pointer]:
+                  - /url: "#sec-threat-ops"
+                - button "展开或收起子目录" [expanded] [ref=f4e33] [cursor=pointer]: ▾
+              - list [ref=f4e34]:
+                - listitem [ref=f4e35]:
+                  - link "4.1.1 运营总览" [ref=f4e36] [cursor=pointer]:
+                    - /url: "#sec-ops-overview"
+                - listitem [ref=f4e37]:
+                  - link "4.1.2 安全事件分布" [ref=f4e38] [cursor=pointer]:
+                    - /url: "#sec-event-distribution"
+                - listitem [ref=f4e39]:
+                  - link "4.1.3 高危及以上安全事件" [ref=f4e40] [cursor=pointer]:
+                    - /url: "#sec-high-risk-events"
+                - listitem [ref=f4e41]:
+                  - link "4.1.4 典型案例" [ref=f4e42] [cursor=pointer]:
+                    - /url: "#sec-case-study"
+            - listitem [ref=f4e43]:
+              - generic [ref=f4e44]:
+                - link "4.2 威胁预防" [ref=f4e45] [cursor=pointer]:
+                  - /url: "#sec-threat-prevention"
+                - button "展开或收起子目录" [expanded] [ref=f4e46] [cursor=pointer]: ▾
+              - list [ref=f4e47]:
+                - listitem [ref=f4e48]:
+                  - generic [ref=f4e49]:
+                    - link "4.2.1 互联网业务" [ref=f4e50] [cursor=pointer]:
+                      - /url: "#sec-internet"
+                    - button "展开或收起子目录" [expanded] [ref=f4e51] [cursor=pointer]: ▾
+                  - list [ref=f4e52]:
+                    - listitem [ref=f4e53]:
+                      - link "风险暴露面" [ref=f4e54] [cursor=pointer]:
+                        - /url: "#sec-internet-exposure"
+                    - listitem [ref=f4e55]:
+                      - link "漏洞" [ref=f4e56] [cursor=pointer]:
+                        - /url: "#sec-internet-vuln"
+                    - listitem [ref=f4e57]:
+                      - link "弱口令" [ref=f4e58] [cursor=pointer]:
+                        - /url: "#sec-internet-weak"
+                - listitem [ref=f4e59]:
+                  - generic [ref=f4e60]:
+                    - link "4.2.2 内网业务" [ref=f4e61] [cursor=pointer]:
+                      - /url: "#sec-intranet"
+                    - button "展开或收起子目录" [expanded] [ref=f4e62] [cursor=pointer]: ▾
+                  - list [ref=f4e63]:
+                    - listitem [ref=f4e64]:
+                      - link "漏洞" [ref=f4e65] [cursor=pointer]:
+                        - /url: "#sec-intranet-vuln"
+                    - listitem [ref=f4e66]:
+                      - link "弱口令" [ref=f4e67] [cursor=pointer]:
+                        - /url: "#sec-intranet-weak"
+                - listitem [ref=f4e68]:
+                  - link "4.2.3 防护有效性" [ref=f4e69] [cursor=pointer]:
+                    - /url: "#sec-protection-effectiveness"
+        - listitem [ref=f4e70]:
+          - generic [ref=f4e71]:
+            - link "5. 附录" [ref=f4e72] [cursor=pointer]:
+              - /url: "#sec-appendix"
+            - button "展开或收起子目录" [expanded] [ref=f4e73] [cursor=pointer]: ▾
+          - list [ref=f4e74]:
+            - listitem [ref=f4e75]:
+              - link "5.1 评估原则" [ref=f4e76] [cursor=pointer]:
+                - /url: "#sec-appendix-principles"
+            - listitem [ref=f4e77]:
+              - link "5.2 评估目标" [ref=f4e78] [cursor=pointer]:
+                - /url: "#sec-appendix-goals"
+            - listitem [ref=f4e79]:
+              - link "5.3 评估范围" [ref=f4e80] [cursor=pointer]:
+                - /url: "#sec-appendix-scope"
+            - listitem [ref=f4e81]:
+              - link "5.4 评估手段" [ref=f4e82] [cursor=pointer]:
+                - /url: "#sec-appendix-methods"
+            - listitem [ref=f4e83]:
+              - link "5.5 安全评级" [ref=f4e84] [cursor=pointer]:
+                - /url: "#sec-appendix-rating"
+      - group "预览模式" [ref=f4e86]:
+        - generic [ref=f4e87]: 预览模式
+        - generic [ref=f4e88]:
+          - button "HTML" [pressed] [ref=f4e89] [cursor=pointer]
+          - button "A4横版" [ref=f4e90] [cursor=pointer]
+          - button "A4竖版" [ref=f4e91] [cursor=pointer]
+  - main [ref=f4e92]:
+    - generic [ref=f4e93]:
+      - generic [ref=f4e94]:
+        - img "深信服科技" [ref=f4e95]
+        - heading "首次安全体检报告" [level=1] [ref=f4e97]
+        - generic [ref=f4e98]:
+          - generic [ref=f4e100]: 测试001
+          - generic [ref=f4e102]: 2026-05-31 ~ 2026-06-29
+        - img
+      - generic [ref=f4e103]:
+        - heading "1. 项目背景" [level=2] [ref=f4e104]
+        - paragraph [ref=f4e105]: 随着信息化与 AI 技术普及，企业业务系统复杂度不断提升，各类隐藏的安全漏洞、配置隐患难以靠日常运维及时发现，极易造成业务中断、数据泄露和经济损失。深信服与测试001协同构建 AI 深度赋能、运营服务辅助、SaaS 敏捷交付、低成本有实效的安全运营体系，为测试001的数智化转型保驾护航。安全体检服务深信服是针对贵公司业务系统的安全状况进行深度安全运营与风险评估，精准定位安全隐患与防护薄弱点，并配套对应的整改方案与落地指导。帮助企业快速完成系统加固，切实提升整体安全防护能力，保障企业核心业务稳定运行。
+        - paragraph [ref=f4e106]:
+          - text: 本次体检共含两项：
+          - strong [ref=f4e107]: 威胁运营
+          - text: 与
+          - strong [ref=f4e108]: 威胁预防
+          - text: 。威胁运营为深信服通过 XDR 平台、AI 智能数据解析、告警分析研判结合 7*24H 专家快速响应遏制，保障核心资产安全事件的快速闭环；威胁预防为深信服通过内外部安全组件协同，在事前帮助客户发现互联网业务与内网资产的风险。本次体检优先关注脆弱性风险，含暴露面（高危开放端口、敏感信息）、软件漏洞、弱口令等。
+        - paragraph [ref=f4e109]: 以下是在 2026-05-31 ~ 2026-06-29 期间的安全体检报告。
+      - generic [ref=f4e110]:
+        - heading "2. 资产台账" [level=2] [ref=f4e111]
+        - generic [ref=f4e112]:
+          - generic [ref=f4e113]:
+            - generic [ref=f4e114]:
+              - generic [ref=f4e115]: "5167"
+              - generic [ref=f4e116]: 台账资产
+            - generic [ref=f4e117]:
+              - generic [ref=f4e118]: "8"
+              - generic [ref=f4e119]: 核心资产
+            - generic [ref=f4e120]:
+              - generic [ref=f4e121]: "5167"
+              - generic [ref=f4e122]: 已托管资产
+            - generic [ref=f4e123]:
+              - generic [ref=f4e124]: "11"
+              - generic [ref=f4e125]: 7天内即将退库
+          - generic [ref=f4e126]:
+            - heading "资产类型分布" [level=5] [ref=f4e128]
+            - heading "资产防护统计" [level=5] [ref=f4e133]
+            - heading "互联网暴露资产" [level=5] [ref=f4e138]
+        - paragraph [ref=f4e142]:
+          - text: 【资产统计】台账资产
+          - strong [ref=f4e143]: "5167"
+          - text: 个（已托管
+          - strong [ref=f4e144]: "5167"
+          - text: 个），核心资产
+          - strong [ref=f4e145]: "8"
+          - text: 个（已托管
+          - strong [ref=f4e146]: "1"
+          - text: 个），
+          - strong [ref=f4e147]: "7"
+          - text: 天内即将退库资产
+          - strong [ref=f4e148]: "11"
+          - text: 个
+        - paragraph [ref=f4e149]:
+          - text: 【资产类型分布】服务器
+          - strong [ref=f4e150]: "284"
+          - text: 个，终端
+          - strong [ref=f4e151]: "106"
+          - text: 个，其他
+          - strong [ref=f4e152]: "4777"
+          - text: 个
+        - paragraph [ref=f4e153]:
+          - text: 【资产防护统计】在线
+          - strong [ref=f4e154]: "837"
+          - text: 个，离线
+          - strong [ref=f4e155]: "549"
+          - text: 个，已禁用
+          - strong [ref=f4e156]: "1"
+          - text: 个，已降级
+          - strong [ref=f4e157]: "0"
+          - text: 个，未防护资产
+          - strong [ref=f4e158]: "6"
+          - text: 个
+        - paragraph [ref=f4e159]:
+          - text: 【暴露资产统计】服务器
+          - strong [ref=f4e160]: "156"
+          - text: 个，终端
+          - strong [ref=f4e161]: "99"
+          - text: 个，其他
+          - strong [ref=f4e162]: "699"
+          - text: 个
+        - paragraph [ref=f4e163]: 注：当前暴露资产包含资产台账中内网映射到公网的资产
+        - paragraph [ref=f4e164]:
+          - text: 【托管服务统计】已托管资产
+          - strong [ref=f4e165]: "5167"
+          - text: 个
+        - paragraph [ref=f4e166]: 资产详情见《资产清单.xlsx》，也可访问 XDR 平台-->资产中心-->资产总览
+      - generic [ref=f4e167]:
+        - heading "3. 风险总览" [level=2] [ref=f4e168]
+        - iframe [ref=f4e173]:
+          - generic [ref=f5e3]:
+            - banner [ref=f5e4]:
+              - heading "企业安全风险总览 5.0 · Figma 335:4309" [level=1] [ref=f5e5]
+            - generic [ref=f5e6]:
+              - img "总体评分：良" [ref=f5e8]
+              - generic [ref=f5e9]:
+                - generic [ref=f5e10]:
+                  - generic [ref=f5e11]: 风险业务
+                  - generic [ref=f5e12]: "9"
+                - generic [ref=f5e13]:
+                  - generic [ref=f5e14]: 风险资产
+                  - generic [ref=f5e15]: "146"
+                - generic [ref=f5e16]:
+                  - generic [ref=f5e17]: 总接入组件数
+                  - generic [ref=f5e18]: "202"
+            - generic [ref=f5e19]:
+              - generic [ref=f5e20]:
+                - heading "威胁预防" [level=2] [ref=f5e22]
+                - generic [ref=f5e23]:
+                  - generic [ref=f5e24]:
+                    - generic [ref=f5e25]:
+                      - img [ref=f5e26]
+                      - generic [ref=f5e27]: 互联网业务
+                    - generic [ref=f5e28]:
+                      - generic [ref=f5e29]: 风险暴露面
+                      - generic [ref=f5e30]:
+                        - generic [ref=f5e31]:
+                          - generic [ref=f5e32]: 0/0
+                          - generic [ref=f5e33]: 风险端口/全部开放端口
+                        - generic [ref=f5e34]:
+                          - generic [ref=f5e35]: "0"
+                          - generic [ref=f5e36]: 风险资产
+                    - generic [ref=f5e37]:
+                      - generic [ref=f5e38]: 漏洞
+                      - generic [ref=f5e39]:
+                        - generic [ref=f5e40]:
+                          - generic [ref=f5e41]: 0/0
+                          - generic [ref=f5e42]: 急需修复/全部漏洞
+                        - generic [ref=f5e43]:
+                          - generic [ref=f5e44]: "0"
+                          - generic [ref=f5e45]: 风险资产
+                    - generic [ref=f5e46]:
+                      - generic [ref=f5e47]: 弱口令
+                      - generic [ref=f5e48]:
+                        - generic [ref=f5e49]:
+                          - generic [ref=f5e50]: "0"
+                          - generic [ref=f5e51]: 弱口令数
+                        - generic [ref=f5e52]:
+                          - generic [ref=f5e53]: "0"
+                          - generic [ref=f5e54]: 风险资产
+                  - generic [ref=f5e55]:
+                    - generic [ref=f5e56]:
+                      - img [ref=f5e57]
+                      - generic [ref=f5e58]: 内网业务
+                    - generic [ref=f5e59]:
+                      - generic [ref=f5e60]: 漏洞
+                      - generic [ref=f5e61]:
+                        - generic [ref=f5e62]:
+                          - generic [ref=f5e63]: 0/3644
+                          - generic [ref=f5e64]: 急需修复/全部漏洞
+                        - generic [ref=f5e65]:
+                          - generic [ref=f5e66]: "81"
+                          - generic [ref=f5e67]: 风险资产
+                    - generic [ref=f5e68]:
+                      - generic [ref=f5e69]: 弱口令
+                      - generic [ref=f5e70]:
+                        - generic [ref=f5e71]:
+                          - generic [ref=f5e72]: "16"
+                          - generic [ref=f5e73]: 弱口令数
+                        - generic [ref=f5e74]:
+                          - generic [ref=f5e75]: "10"
+                          - generic [ref=f5e76]: 风险资产
+                - generic [ref=f5e77]:
+                  - generic [ref=f5e78]:
+                    - img [ref=f5e79]
+                    - generic [ref=f5e80]: 组件策略检查
+                  - generic [ref=f5e82]:
+                    - generic [ref=f5e83]:
+                      - generic [ref=f5e84]: "2"
+                      - generic [ref=f5e85]: 风险项
+                    - generic [ref=f5e86]:
+                      - generic [ref=f5e87]: "38"
+                      - generic [ref=f5e88]: 风险组件
+              - generic [ref=f5e89]:
+                - heading "威胁运营" [level=2] [ref=f5e91]
+                - generic [ref=f5e92]:
+                  - img
+                  - img
+                  - img
+                  - generic [ref=f5e94]:
+                    - generic [ref=f5e95]:
+                      - paragraph [ref=f5e96]: XDR平台数据采集
+                      - generic [ref=f5e97]:
+                        - generic [ref=f5e98]: XDR接收安全日志
+                        - generic [ref=f5e99]: "12290"
+                        - generic [ref=f5e100]: 条
+                    - generic [ref=f5e101]:
+                      - paragraph [ref=f5e102]: AI辅助告警生成
+                      - generic [ref=f5e103]:
+                        - generic [ref=f5e104]: 有效告警数
+                        - generic [ref=f5e105]: "4145"
+                        - generic [ref=f5e106]: 条
+                    - generic [ref=f5e108]:
+                      - generic [ref=f5e109]:
+                        - generic [ref=f5e110]:
+                          - img [ref=f5e111]
+                          - generic [ref=f5e112]: 安全GPT研判+专家运营
+                        - generic [ref=f5e113]:
+                          - generic [ref=f5e114]: 安全事件
+                          - generic [ref=f5e115]: "391"
+                          - generic [ref=f5e116]: 起
+                      - generic [ref=f5e117]:
+                        - img
+                        - generic [ref=f5e118]: 影响资产
+                        - generic [ref=f5e119]: "0"
+                        - generic [ref=f5e120]: 个
+                    - paragraph [ref=f5e121]: 云端专家7×24H持续守护
+                    - generic [ref=f5e123]:
+                      - generic [ref=f5e124]:
+                        - generic [ref=f5e125]:
+                          - generic [ref=f5e126]: 遏制事件
+                          - generic [ref=f5e127]: "0"
+                        - generic [ref=f5e128]:
+                          - generic [ref=f5e129]: 处置闭环
+                          - generic [ref=f5e130]: "0"
+                      - generic [ref=f5e131]:
+                        - generic [ref=f5e132]: 告警消减率
+                        - generic [ref=f5e133]: 0.9%
+                      - generic [ref=f5e134]:
+                        - generic [ref=f5e135]: 事件闭环率
+                        - generic [ref=f5e136]: 0%
+        - paragraph [ref=f4e174]:
+          - text: 安全体检总体评级：
+          - generic [ref=f4e175]: 差
+        - paragraph [ref=f4e176]:
+          - text: 本次安全体检中，您的核心业务系统「
+          - strong [ref=f4e177]: OA系统
+          - text: 、
+          - strong [ref=f4e178]: ERP系统
+          - text: 、
+          - strong [ref=f4e179]: 邮件系统
+          - text: 等」存在
+          - strong [ref=f4e180]: "1422"
+          - text: 个安全风险，其中【
+          - strong [ref=f4e181]: OA系统
+          - text: 】风险较大，系统下的资产存在
+          - strong [ref=f4e182]: "850"
+          - text: 个高危及以上的安全风险。
+        - heading "3.1 关键风险如下" [level=3] [ref=f4e183]:
+          - generic [ref=f4e184]:
+            - generic [ref=f4e185]: "3.1"
+            - generic [ref=f4e186]: 关键风险如下
+        - generic [ref=f4e187]:
+          - article [ref=f4e188]:
+            - generic [ref=f4e189]:
+              - generic [ref=f4e190]: 威胁运营
+              - heading "企业遭受病毒木马与C2外联事件" [level=4] [ref=f4e191]
+            - generic [ref=f4e192]:
+              - generic [ref=f4e193]:
+                - generic [ref=f4e194]:
+                  - heading "问题描述" [level=6] [ref=f4e195]
+                  - paragraph [ref=f4e196]:
+                    - text: 贵公司共发生
+                    - strong [ref=f4e197]: "0"
+                    - text: 起病毒木马与C2外联事件（其中
+                    - strong
+                    - text: 起事件、
+                    - strong
+                    - text: 起事件），此类事件会造成主机失陷，可能引发员工的财务损失。
+                - generic [ref=f4e198]:
+                  - heading "风险影响" [level=6] [ref=f4e199]
+                  - paragraph [ref=f4e200]: 资产（如)遭受病毒攻击，员工主机失陷，攻击者还可以此为跳板横向渗透，威胁核心业务服务器安全。
+                - generic [ref=f4e201]:
+                  - heading "安全加固策略" [level=6] [ref=f4e202]
+                  - list [ref=f4e203]:
+                    - listitem [ref=f4e204]:
+                      - generic [ref=f4e205]: "1"
+                      - generic [ref=f4e206]:
+                        - paragraph [ref=f4e207]: 网络防护
+                        - list [ref=f4e208]:
+                          - listitem [ref=f4e209]: 开启防火墙云情报网关订阅，并更新到最新的情报库
+                          - listitem [ref=f4e210]: 开启SIP的云端情报检测
+                    - listitem [ref=f4e211]:
+                      - generic [ref=f4e212]: "2"
+                      - generic [ref=f4e213]:
+                        - paragraph [ref=f4e214]: 终端防护
+                        - list [ref=f4e215]:
+                          - listitem [ref=f4e216]: 推动资产安装aES并开启杀毒模块，并更新到最新版本的病毒库
+                    - listitem [ref=f4e217]:
+                      - generic [ref=f4e218]: "3"
+                      - generic [ref=f4e219]:
+                        - paragraph [ref=f4e220]: 主机根除
+                        - list [ref=f4e221]:
+                          - listitem [ref=f4e222]: 完善主机定位方案，提供资产清单，通过导入资产清单到MSS平台，安全事件可直接定位到资产归属责任人
+                          - listitem [ref=f4e223]: 监测到高危事件时，可及时协调主机环境，便于安全专家远程清理、彻底根除恶意程序
+              - complementary [ref=f4e224]:
+                - generic [ref=f4e225]:
+                  - heading "落地情况与建议" [level=6] [ref=f4e226]
+                  - list [ref=f4e227]:
+                    - listitem [ref=f4e228]:
+                      - generic [ref=f4e229]: "1"
+                      - generic [ref=f4e230]:
+                        - paragraph [ref=f4e231]: 网络防护
+                        - list [ref=f4e232]:
+                          - listitem [ref=f4e233]: 您的防火墙目前已开通云情报网关
+                          - listitem [ref=f4e234]: 您的SIP目前已开启云端情报检测
+                          - listitem [ref=f4e235]: 深信服会定期进行安全设备策略检查，保障您的情报网关订阅时刻处于最新有效状态
+                    - listitem [ref=f4e236]:
+                      - generic [ref=f4e237]: "2"
+                      - generic [ref=f4e238]:
+                        - paragraph [ref=f4e239]: 终端防护
+                        - list [ref=f4e240]:
+                          - listitem [ref=f4e241]: 您目前、仍未安装aES，请尽快安装
+                          - listitem [ref=f4e242]: 深信服会定期进行安全设备策略检查，保障您的aES开启、病毒库处于最新状态
+                    - listitem [ref=f4e243]:
+                      - generic [ref=f4e244]: "3"
+                      - generic [ref=f4e245]:
+                        - paragraph [ref=f4e246]: 主机根除
+                        - list [ref=f4e247]:
+                          - listitem [ref=f4e248]: 目前仍有资产：、尚未标注归属责任人信息，请尽快标注
+                          - listitem [ref=f4e249]: 监测到高危事件时，深信服云端专家会第一时间与您沟通，您只需协调主机环境即可
+          - article [ref=f4e250]:
+            - generic [ref=f4e251]:
+              - generic [ref=f4e252]: 威胁运营
+              - heading "企业遭受网站攻击与漏洞攻击事件" [level=4] [ref=f4e253]
+            - generic [ref=f4e254]:
+              - generic [ref=f4e255]:
+                - generic [ref=f4e256]:
+                  - heading "问题描述" [level=6] [ref=f4e257]
+                  - paragraph [ref=f4e258]:
+                    - text: 当前贵公司累计发生
+                    - strong [ref=f4e259]: "22"
+                    - text: 起网站攻击与漏洞攻击，其中
+                    - strong [ref=f4e260]: "0"
+                    - text: 起攻击成功
+                - generic [ref=f4e261]:
+                  - heading "风险影响" [level=6] [ref=f4e262]
+                  - paragraph [ref=f4e263]: 资产（如10.248.38.136)存在高危漏洞一旦被攻击者利用，主机会成为跳板，对其他核心系统进行横向攻击，可能产生业务中断、数据泄露等风险。
+                - generic [ref=f4e264]:
+                  - heading "安全加固策略" [level=6] [ref=f4e265]
+                  - list [ref=f4e266]:
+                    - listitem [ref=f4e267]:
+                      - generic [ref=f4e268]: "1"
+                      - generic [ref=f4e269]:
+                        - paragraph [ref=f4e270]: 漏洞修复
+                        - list [ref=f4e271]:
+                          - listitem [ref=f4e272]: 按照业务核心程度、是否对外、漏洞等级、修复难度等对齐修复方案与落地计划
+                    - listitem [ref=f4e273]:
+                      - generic [ref=f4e274]: "2"
+                      - generic [ref=f4e275]:
+                        - paragraph [ref=f4e276]: 安全防护
+                        - list [ref=f4e277]:
+                          - listitem [ref=f4e278]: 开启防火墙策略防护
+                    - listitem [ref=f4e279]:
+                      - generic [ref=f4e280]: "3"
+                      - generic [ref=f4e281]:
+                        - paragraph [ref=f4e282]: 访问控制
+                        - list [ref=f4e283]:
+                          - listitem [ref=f4e284]: 在防火墙上开启ACL策略，仅允许/禁止特定资产访问
+                    - listitem [ref=f4e285]:
+                      - generic [ref=f4e286]: "4"
+                      - generic [ref=f4e287]:
+                        - paragraph [ref=f4e288]: 暴露面收敛
+                        - list [ref=f4e289]:
+                          - listitem [ref=f4e290]: 根据业务重要性，将非重要服务尽快下线，关闭暴露面
+              - complementary [ref=f4e291]:
+                - generic [ref=f4e292]:
+                  - heading "落地情况与建议" [level=6] [ref=f4e293]
+                  - list [ref=f4e294]:
+                    - listitem [ref=f4e295]:
+                      - generic [ref=f4e296]: "1"
+                      - generic [ref=f4e297]:
+                        - paragraph [ref=f4e298]: 漏洞修复
+                        - list [ref=f4e299]:
+                          - listitem [ref=f4e300]: 漏洞清单与修复方案确定修复优先级，详情参考《漏洞清单.xlsx》。
+                          - listitem [ref=f4e301]: 根据修复落地漏洞清单，对齐修复方案和落地计划
+                          - listitem [ref=f4e302]: 按照方案落地修复，反馈给MSS团队进行漏洞复测闭环
+                          - listitem [ref=f4e303]: 深信服会定期进行漏洞扫描，保障持续发现最新漏洞风险
+                    - listitem [ref=f4e304]:
+                      - generic [ref=f4e305]: "2"
+                      - generic [ref=f4e306]:
+                        - paragraph [ref=f4e307]: 安全防护
+                        - list [ref=f4e308]:
+                          - listitem [ref=f4e309]: 您已开启防火墙策略防护
+                    - listitem [ref=f4e310]:
+                      - generic [ref=f4e311]: "3"
+                      - generic [ref=f4e312]:
+                        - paragraph [ref=f4e313]: 访问控制
+                        - list [ref=f4e314]:
+                          - listitem [ref=f4e315]: 根据您的实际需求，在防火墙上开启ACL策略，仅允许/禁止特定资产访问
+                    - listitem [ref=f4e316]:
+                      - generic [ref=f4e317]: "4"
+                      - generic [ref=f4e318]:
+                        - paragraph [ref=f4e319]: 暴露面收敛
+                        - list [ref=f4e320]:
+                          - listitem [ref=f4e321]:
+                            - text: 经监测分析，您的资产203.0.113.45、198.51.100.22单日安全告警日志超
+                            - strong [ref=f4e322]: "500"
+                            - text: 条，疑似频繁被攻击，请评估影响酌情下线
+                          - listitem [ref=f4e323]: 深信服会定期进行暴露面扫描，保障持续发现最新风险暴露面
+          - article [ref=f4e324]:
+            - generic [ref=f4e325]:
+              - generic [ref=f4e326]: 威胁预防
+              - heading "内外部业务存在高危及以上漏洞" [level=4] [ref=f4e327]
+            - generic [ref=f4e328]:
+              - generic [ref=f4e329]:
+                - generic [ref=f4e330]:
+                  - heading "问题描述" [level=6] [ref=f4e331]
+                  - paragraph [ref=f4e332]:
+                    - text: 当前贵公司内外部业务
+                    - strong
+                    - text: 共发现
+                    - strong [ref=f4e333]: "1534"
+                    - text: 个高危及以上漏洞
+                - generic [ref=f4e334]:
+                  - heading "风险影响" [level=6] [ref=f4e335]
+                  - paragraph [ref=f4e336]: 可能被攻击者利用形成跳板，对核心系统横向攻击。
+                - generic [ref=f4e337]:
+                  - heading "安全加固策略" [level=6] [ref=f4e338]
+                  - list [ref=f4e339]:
+                    - listitem [ref=f4e340]:
+                      - generic [ref=f4e341]: "1"
+                      - generic [ref=f4e342]:
+                        - paragraph [ref=f4e343]: 漏洞修复
+                        - list [ref=f4e344]:
+                          - listitem [ref=f4e345]: 按照业务核心程度、是否对外、漏洞等级、修复难度等对齐修复方案与落地计划
+                    - listitem [ref=f4e346]:
+                      - generic [ref=f4e347]: "2"
+                      - generic [ref=f4e348]:
+                        - paragraph [ref=f4e349]: 安全防护
+                        - list [ref=f4e350]:
+                          - listitem [ref=f4e351]: 开启防火墙策略防护
+                    - listitem [ref=f4e352]:
+                      - generic [ref=f4e353]: "3"
+                      - generic [ref=f4e354]:
+                        - paragraph [ref=f4e355]: 访问控制
+                        - list [ref=f4e356]:
+                          - listitem [ref=f4e357]: 在防火墙上开启ACL策略，仅允许/禁止特定资产访问
+                    - listitem [ref=f4e358]:
+                      - generic [ref=f4e359]: "4"
+                      - generic [ref=f4e360]:
+                        - paragraph [ref=f4e361]: 暴露面收敛
+                        - list [ref=f4e362]:
+                          - listitem [ref=f4e363]: 根据业务重要性，将非重要服务尽快下线，关闭暴露面
+              - complementary [ref=f4e364]:
+                - generic [ref=f4e365]:
+                  - heading "落地情况与建议" [level=6] [ref=f4e366]
+                  - list [ref=f4e367]:
+                    - listitem [ref=f4e368]:
+                      - generic [ref=f4e369]: "1"
+                      - generic [ref=f4e370]:
+                        - paragraph [ref=f4e371]: 漏洞修复
+                        - list [ref=f4e372]:
+                          - listitem [ref=f4e373]: 漏洞清单与修复方案确定修复优先级，详情参考《漏洞清单.xlsx》。
+                          - listitem [ref=f4e374]: 根据修复落地漏洞清单，对齐修复方案和落地计划
+                          - listitem [ref=f4e375]: 按照方案落地修复，反馈给MSS团队进行漏洞复测闭环
+                          - listitem [ref=f4e376]: 深信服会定期进行漏洞扫描，保障持续发现最新漏洞风险
+                    - listitem [ref=f4e377]:
+                      - generic [ref=f4e378]: "2"
+                      - generic [ref=f4e379]:
+                        - paragraph [ref=f4e380]: 安全防护
+                        - list [ref=f4e381]:
+                          - listitem [ref=f4e382]: 您已开启防火墙策略防护
+                    - listitem [ref=f4e383]:
+                      - generic [ref=f4e384]: "3"
+                      - generic [ref=f4e385]:
+                        - paragraph [ref=f4e386]: 访问控制
+                        - list [ref=f4e387]:
+                          - listitem [ref=f4e388]: 根据您的实际需求，在防火墙上开启ACL策略，仅允许/禁止特定资产访问
+                    - listitem [ref=f4e389]:
+                      - generic [ref=f4e390]: "4"
+                      - generic [ref=f4e391]:
+                        - paragraph [ref=f4e392]: 暴露面收敛
+                        - list [ref=f4e393]:
+                          - listitem [ref=f4e394]: 请根据业务影响酌情下线
+                          - listitem [ref=f4e395]: 深信服会定期进行暴露面扫描，保障持续发现最新风险暴露面
+          - article [ref=f4e396]:
+            - generic [ref=f4e397]:
+              - generic [ref=f4e398]: 威胁预防
+              - heading "内外部业务存在大量弱口令" [level=4] [ref=f4e399]
+            - generic [ref=f4e400]:
+              - generic [ref=f4e401]:
+                - generic [ref=f4e402]:
+                  - heading "问题描述" [level=6] [ref=f4e403]
+                  - paragraph [ref=f4e404]:
+                    - text: 当前贵公司内外部业务
+                    - strong
+                    - text: 共发现
+                    - strong [ref=f4e405]: "16"
+                    - text: 个弱口令
+                - generic [ref=f4e406]:
+                  - heading "风险影响" [level=6] [ref=f4e407]
+                  - paragraph [ref=f4e408]: 资产（如192.168.30.190、10.128.165.150、10.128.165.151）存在弱口令，黑客可利用暴力破解等手段轻易获取主机权限，引发一系列严重安全事故
+                - generic [ref=f4e409]:
+                  - heading "安全加固策略" [level=6] [ref=f4e410]
+                  - list [ref=f4e411]:
+                    - listitem [ref=f4e412]:
+                      - generic [ref=f4e413]: "1"
+                      - generic [ref=f4e414]:
+                        - paragraph [ref=f4e415]: 修改弱口令
+                        - list [ref=f4e416]:
+                          - listitem [ref=f4e417]:
+                            - text: 基于业务核心程度、是否对外、影响程度等因素评估，修改为合规强口令（大小写字母、数字与符号组合，长度不小于
+                            - strong [ref=f4e418]: "16"
+                            - text: 位）
+                          - listitem [ref=f4e419]: 重要业务可进行多因素认证，如短信、TOTP令牌等
+                    - listitem [ref=f4e420]:
+                      - generic [ref=f4e421]: "2"
+                      - generic [ref=f4e422]:
+                        - paragraph [ref=f4e423]: 访问控制
+                        - list [ref=f4e424]:
+                          - listitem [ref=f4e425]: 在防火墙上开启ACL策略，仅允许/禁止特定资产访问
+              - complementary [ref=f4e426]:
+                - generic [ref=f4e427]:
+                  - heading "落地情况与建议" [level=6] [ref=f4e428]
+                  - list [ref=f4e429]:
+                    - listitem [ref=f4e430]:
+                      - generic [ref=f4e431]: "1"
+                      - generic [ref=f4e432]:
+                        - paragraph [ref=f4e433]: 修改弱口令
+                        - list [ref=f4e434]:
+                          - listitem [ref=f4e435]: 建议优先修改资产：10.128.165.26、192.168.30.190、10.128.165.28的弱口令，并添加多因素认证。因为这些资产属于核心业务。完整弱口令明细参考《弱口令清单.xlsx》
+                          - listitem [ref=f4e436]: 深信服会定期进行弱口令扫描，保障持续发现最新弱口令风险
+                    - listitem [ref=f4e437]:
+                      - generic [ref=f4e438]: "2"
+                      - generic [ref=f4e439]:
+                        - paragraph [ref=f4e440]: 访问控制
+                        - list [ref=f4e441]:
+                          - listitem [ref=f4e442]: 根据您的实际需求，在防火墙上开启ACL策略，仅允许/禁止特定资产访问
+          - article [ref=f4e443]:
+            - generic [ref=f4e444]:
+              - generic [ref=f4e445]: 威胁预防
+              - heading "互联网业务存在大量风险暴露面" [level=4] [ref=f4e446]
+            - generic [ref=f4e447]:
+              - generic [ref=f4e448]:
+                - generic [ref=f4e449]:
+                  - heading "问题描述" [level=6] [ref=f4e450]
+                  - paragraph [ref=f4e451]:
+                    - text: 当前贵公司互联网业务共发现
+                    - strong [ref=f4e452]: "0"
+                    - text: 个风险暴露面。包含
+                    - strong [ref=f4e453]: "0"
+                    - text: 个Web服务与
+                    - strong [ref=f4e454]: "0"
+                    - text: 个非Web服务
+                - generic [ref=f4e455]:
+                  - heading "风险影响" [level=6] [ref=f4e456]
+                  - paragraph [ref=f4e457]: 服务直接暴露在公网，极易被黑客扫描探测，作为入侵突破口发起攻击。
+                - generic [ref=f4e458]:
+                  - heading "安全加固策略" [level=6] [ref=f4e459]
+                  - list [ref=f4e460]:
+                    - listitem [ref=f4e461]:
+                      - generic [ref=f4e462]: "1"
+                      - generic [ref=f4e463]:
+                        - paragraph [ref=f4e464]: 暴露面收敛
+                        - list [ref=f4e465]:
+                          - listitem [ref=f4e466]: 基于业务核心程度、是否对外、关闭影响等因素评估，关闭相关服务。
+                    - listitem [ref=f4e467]:
+                      - generic [ref=f4e468]: "2"
+                      - generic [ref=f4e469]:
+                        - paragraph [ref=f4e470]: 访问控制
+                        - list [ref=f4e471]:
+                          - listitem [ref=f4e472]: 在防火墙上开启ACL策略。
+              - complementary [ref=f4e473]:
+                - generic [ref=f4e474]:
+                  - heading "落地情况与建议" [level=6] [ref=f4e475]
+                  - list [ref=f4e476]:
+                    - listitem [ref=f4e477]:
+                      - generic [ref=f4e478]: "1"
+                      - generic [ref=f4e479]:
+                        - paragraph [ref=f4e480]: 暴露面收敛
+                        - list [ref=f4e481]:
+                          - listitem [ref=f4e482]: 基于业务核心程度、是否对外、关闭影响等因素评估，关闭相关服务。完整暴露面明细参考《暴露面清单.xlsx》
+                          - listitem [ref=f4e483]: 深信服会定期进行暴露面扫描，保障持续发现最新风险暴露面
+                    - listitem [ref=f4e484]:
+                      - generic [ref=f4e485]: "2"
+                      - generic [ref=f4e486]:
+                        - paragraph [ref=f4e487]: 访问控制
+                        - list [ref=f4e488]:
+                          - listitem [ref=f4e489]: 在防火墙上开启ACL策略，允许/禁止特定资产访问
+          - article [ref=f4e490]:
+            - generic [ref=f4e491]:
+              - generic [ref=f4e492]: 防护有效性
+              - heading "核心资产与安全组件存在安全防护能力不足" [level=4] [ref=f4e493]
+            - generic [ref=f4e494]:
+              - generic [ref=f4e495]:
+                - generic [ref=f4e496]:
+                  - heading "问题描述" [level=6] [ref=f4e497]
+                  - paragraph [ref=f4e498]:
+                    - text: 核心资产中存在
+                    - strong [ref=f4e499]: "3"
+                    - text: 个资产尚未安装aES
+                    - text: 发现安全组件策略配置存在异常
+                    - strong [ref=f4e500]: "0"
+                    - text: 个
+                - generic [ref=f4e501]:
+                  - heading "风险影响" [level=6] [ref=f4e502]
+                  - paragraph [ref=f4e503]: 核心资产防护能力不足，一旦遭受安全攻击，对应业务可能产生中断、数据泄露的严重后果。
+                - generic [ref=f4e504]:
+                  - heading "安全加固策略" [level=6] [ref=f4e505]
+                  - list [ref=f4e506]:
+                    - listitem [ref=f4e507]:
+                      - generic [ref=f4e508]: "1"
+                      - generic [ref=f4e509]:
+                        - paragraph [ref=f4e510]: 终端防护
+                        - list [ref=f4e511]:
+                          - listitem [ref=f4e512]: 推动资产安装aES并开启杀毒模块，并更新到最新版本的病毒库
+                    - listitem [ref=f4e513]:
+                      - generic [ref=f4e514]: "2"
+                      - generic [ref=f4e515]:
+                        - paragraph [ref=f4e516]: 安全策略优化
+                        - list [ref=f4e517]:
+                          - listitem [ref=f4e518]: 基于安全策略检查的结果，逐步优化安全组件的策略配置
+              - complementary [ref=f4e519]:
+                - generic [ref=f4e520]:
+                  - heading "落地情况与建议" [level=6] [ref=f4e521]
+                  - list [ref=f4e522]:
+                    - listitem [ref=f4e523]:
+                      - generic [ref=f4e524]: "1"
+                      - generic [ref=f4e525]:
+                        - paragraph [ref=f4e526]: 终端防护
+                        - list [ref=f4e527]:
+                          - listitem [ref=f4e528]: 您目前10.128.160.200、10.128.165.10仍未安装aES，请尽快安装
+                          - listitem [ref=f4e529]: 深信服会定期进行安全设备策略检查，保障您的aES开启、病毒库处于最新状态
+                    - listitem [ref=f4e530]:
+                      - generic [ref=f4e531]: "2"
+                      - generic [ref=f4e532]:
+                        - paragraph [ref=f4e533]: 安全策略优化
+                        - list [ref=f4e534]:
+                          - listitem [ref=f4e535]: 基于安全策略检查的结果，逐步优化安全组件的策略配置，详情可参考《策略检查清单.xlsx》
+                          - listitem [ref=f4e536]: 深信服会定期进行安全策略检查，保障持续发现安全组件策略配置异常
+        - heading "3.2 风险资产 TOP5" [level=3] [ref=f4e537]:
+          - generic [ref=f4e538]:
+            - generic [ref=f4e539]: "3.2"
+            - generic [ref=f4e540]: 风险资产 TOP5
+        - heading "Top5资产的风险类型" [level=5] [ref=f4e543]
+        - table [ref=f4e547]:
+          - rowgroup [ref=f4e548]:
+            - row "风险资产 风险数 风险详情" [ref=f4e549]:
+              - columnheader "风险资产" [ref=f4e550]
+              - columnheader "风险数" [ref=f4e551]
+              - columnheader "风险详情" [ref=f4e552]
+          - rowgroup [ref=f4e553]:
+            - row "203.0.113.45 已托管 VPN 系统 32 总计安全事件11个，其中，病毒木马&C2外联8起，网站攻击&漏洞攻击3起，其他事件0起 该资产共发现在5个高危及以上漏洞 该资产共发现10个弱口令 该资产共发现6个风险暴露面。含3个非Web服务（如SSH、RDP等）与3个Web服务（如nginx、apache） 该资产已安装aES" [ref=f4e554]:
+              - cell "203.0.113.45 已托管 VPN 系统" [ref=f4e555]:
+                - generic [ref=f4e556]:
+                  - generic [ref=f4e557]: 203.0.113.45
+                  - generic [ref=f4e558]: 已托管
+                - generic [ref=f4e559]: VPN 系统
+              - cell "32" [ref=f4e560]:
+                - strong [ref=f4e561]: "32"
+              - cell "总计安全事件11个，其中，病毒木马&C2外联8起，网站攻击&漏洞攻击3起，其他事件0起 该资产共发现在5个高危及以上漏洞 该资产共发现10个弱口令 该资产共发现6个风险暴露面。含3个非Web服务（如SSH、RDP等）与3个Web服务（如nginx、apache） 该资产已安装aES" [ref=f4e562]:
+                - text: 总计安全事件11个，其中，病毒木马&C2外联8起，网站攻击&漏洞攻击3起，其他事件0起
+                - text: 该资产共发现在5个高危及以上漏洞
+                - text: 该资产共发现10个弱口令
+                - text: 该资产共发现6个风险暴露面。含3个非Web服务（如SSH、RDP等）与3个Web服务（如nginx、apache）
+                - text: 该资产已安装aES
+            - row "198.51.100.22 未托管 Web 门户 22 总计安全事件4个，其中，病毒木马&C2外联0起，网站攻击&漏洞攻击4起，其他事件0起 该资产共发现在4个高危及以上漏洞 该资产共发现9个弱口令 该资产共发现5个风险暴露面。含2个非Web服务（如SSH、RDP等）与3个Web服务（如nginx、apache） 该资产尚未安装aES" [ref=f4e563]:
+              - cell "198.51.100.22 未托管 Web 门户" [ref=f4e564]:
+                - generic [ref=f4e565]:
+                  - generic [ref=f4e566]: 198.51.100.22
+                  - generic [ref=f4e567]: 未托管
+                - generic [ref=f4e568]: Web 门户
+              - cell "22" [ref=f4e569]:
+                - strong [ref=f4e570]: "22"
+              - cell "总计安全事件4个，其中，病毒木马&C2外联0起，网站攻击&漏洞攻击4起，其他事件0起 该资产共发现在4个高危及以上漏洞 该资产共发现9个弱口令 该资产共发现5个风险暴露面。含2个非Web服务（如SSH、RDP等）与3个Web服务（如nginx、apache） 该资产尚未安装aES" [ref=f4e571]:
+                - text: 总计安全事件4个，其中，病毒木马&C2外联0起，网站攻击&漏洞攻击4起，其他事件0起
+                - text: 该资产共发现在4个高危及以上漏洞
+                - text: 该资产共发现9个弱口令
+                - text: 该资产共发现5个风险暴露面。含2个非Web服务（如SSH、RDP等）与3个Web服务（如nginx、apache）
+                - text: 该资产尚未安装aES
+        - paragraph [ref=f4e572]:
+          - text: 综上，贵公司当前的安全建设水位有一定差距，随时可能面临数据泄露、系统破坏导致业务中断以及由此带来的经济损失、信誉损害、公信力下降等更为致命的风险。修复方案重点针对
+          - strong [ref=f4e573]: VPN 系统
+          - text: 、
+          - strong [ref=f4e574]: Web 门户
+          - text: 。
+      - generic [ref=f4e575]:
+        - heading "4. 风险详情" [level=2] [ref=f4e576]
+        - paragraph [ref=f4e577]: 风险汇总如下：
+        - paragraph [ref=f4e578]:
+          - text: 近期处理告警共计
+          - strong [ref=f4e579]: "4145"
+          - text: 个，其中监测并响应有效安全事件
+          - strong [ref=f4e580]: "391"
+          - text: 起（严重事件
+          - strong [ref=f4e581]: "0"
+          - text: 起、高危事件
+          - strong [ref=f4e582]: "0"
+          - text: 起），其中托管资产事件
+          - strong [ref=f4e583]: "0"
+          - text: 起，涉及资产
+          - strong [ref=f4e584]: "0"
+          - text: 个；事件遏制
+          - strong [ref=f4e585]: "0"
+          - text: 起（其中托管资产事件遏制
+          - strong [ref=f4e586]: "0"
+          - text: 起）；已闭环
+          - strong [ref=f4e587]: "0"
+          - text: 起，处置中
+          - strong [ref=f4e588]: "0"
+          - text: 起（闭环率
+          - strong [ref=f4e589]: 0%
+          - text: ）。
+        - paragraph [ref=f4e590]:
+          - text: 互联网业务总计发现风险
+          - strong [ref=f4e591]: "0"
+          - text: 个（风险暴露面
+          - strong [ref=f4e592]: "0"
+          - text: 个、漏洞
+          - strong [ref=f4e593]: "0"
+          - text: 个、弱口令
+          - strong [ref=f4e594]: "0"
+          - text: 个），其中高危及以上风险
+          - strong [ref=f4e595]: "0"
+          - text: 个。
+        - paragraph [ref=f4e596]:
+          - text: 内网核心业务总计发现风险
+          - strong [ref=f4e597]: "3660"
+          - text: 个（漏洞
+          - strong [ref=f4e598]: "3644"
+          - text: 个、弱口令
+          - strong [ref=f4e599]: "16"
+          - text: 个），其中高危及以上风险
+          - strong [ref=f4e600]: "1534"
+          - text: 个。
+        - paragraph [ref=f4e601]:
+          - text: 安全组件策略配置共发现异常项
+          - strong [ref=f4e602]: "10"
+          - text: 个（AF
+          - strong [ref=f4e603]: "2"
+          - text: 个、aES
+          - strong [ref=f4e604]: "4"
+          - text: 个、STA
+          - strong [ref=f4e605]: "2"
+          - text: 个、SIP
+          - strong [ref=f4e606]: "2"
+          - text: 个）。
+        - heading "4.1 威胁运营" [level=3] [ref=f4e607]:
+          - generic [ref=f4e608]:
+            - generic [ref=f4e609]: "4.1"
+            - generic [ref=f4e610]: 威胁运营
+        - paragraph [ref=f4e611]: 威胁运营是深信服通过 AI 智能数据解析、告警分析研判结合 7*24H 专家快速响应遏制能力，保障核心资产的安全事件能够快速闭环。
+        - heading "4.1.1 运营总览" [level=4] [ref=f4e612]
+        - iframe [ref=f4e617]:
+          - generic [ref=f6e3]:
+            - banner [ref=f6e4]: MDR运营全景 v3 · Figma 335:4535
+            - img
+            - img
+            - img
+            - img
+            - img
+            - img
+            - img
+            - img
+            - generic [ref=f6e5]:
+              - paragraph [ref=f6e6]: 深信服设备
+              - paragraph [ref=f6e7]: 第三方设备
+              - generic [ref=f6e8]:
+                - generic [ref=f6e9]:
+                  - generic [ref=f6e10]: AF
+                  - generic [ref=f6e11]: "37"
+                - generic [ref=f6e12]:
+                  - generic [ref=f6e13]: aES
+                  - generic [ref=f6e14]: "47"
+                - generic [ref=f6e15]:
+                  - generic [ref=f6e16]: SIP
+                  - generic [ref=f6e17]: "3"
+                - generic [ref=f6e18]:
+                  - generic [ref=f6e19]: STA
+                  - generic [ref=f6e20]: "2"
+                - generic [ref=f6e21]:
+                  - generic [ref=f6e22]: 其它
+                  - generic [ref=f6e23]: "7"
+              - generic [ref=f6e24]:
+                - generic [ref=f6e25]: 合计
+                - generic [ref=f6e26]: "106"
+              - generic [ref=f6e27]:
+                - paragraph [ref=f6e28]: XDR平台数据采集
+                - generic [ref=f6e29]:
+                  - generic [ref=f6e30]: XDR接收安全日志
+                  - generic [ref=f6e31]: "12290"
+                  - generic [ref=f6e32]: 条
+              - generic [ref=f6e33]:
+                - paragraph [ref=f6e34]: AI辅助告警生成
+                - generic [ref=f6e35]:
+                  - generic [ref=f6e36]: 生成有效告警
+                  - generic [ref=f6e37]: "4145"
+                  - generic [ref=f6e38]: 条
+              - generic [ref=f6e40]:
+                - generic [ref=f6e41]:
+                  - img [ref=f6e42]
+                  - generic [ref=f6e43]: 安全GPT研判+专家运营
+                - generic [ref=f6e44]:
+                  - generic [ref=f6e45]: 安全事件
+                  - generic [ref=f6e46]: "391"
+                  - generic [ref=f6e47]: 起
+              - generic [ref=f6e48]:
+                - generic [ref=f6e49]: 告警消减率
+                - generic [ref=f6e50]: 0.9%
+              - paragraph [ref=f6e51]: 云端专家7×24H持续守护
+              - generic [ref=f6e52]:
+                - generic [ref=f6e54]: 威胁遏制
+                - generic [ref=f6e56]: 运营调优
+                - generic [ref=f6e58]: 事件推送
+                - generic [ref=f6e60]: 事件闭环
+              - paragraph [ref=f6e61]: 实时威胁对抗
+              - paragraph [ref=f6e63]: 遏制事件 0 起
+              - paragraph [ref=f6e64]: 事件快速处置
+              - generic [ref=f6e65]:
+                - paragraph [ref=f6e66]: 处置闭环 0 起
+                - paragraph [ref=f6e68]: 事件闭环率 0%
+        - paragraph [ref=f4e618]: 总览如下：
+        - paragraph [ref=f4e619]:
+          - text: 【
+          - strong [ref=f4e620]: XDR平台数据接入
+          - text: 】总计接入安全设备
+          - strong [ref=f4e621]: "202"
+          - text: 个，其中深信服设备
+          - strong [ref=f4e622]: "96"
+          - text: 个（AF
+          - strong [ref=f4e623]: "37"
+          - text: 个、aES
+          - strong [ref=f4e624]: "47"
+          - text: 个、SIP
+          - strong [ref=f4e625]: "3"
+          - text: 个、STA
+          - strong [ref=f4e626]: "2"
+          - text: 个、其他
+          - strong [ref=f4e627]: "7"
+          - text: 个），第三方设备
+          - strong [ref=f4e628]: "106"
+          - text: 个；经深信服 AI 智能数据解析，数据全部接入 XDR 平台，总计接收安全日志
+          - strong [ref=f4e629]: "12290"
+          - text: 条。
+        - paragraph [ref=f4e630]:
+          - text: 【
+          - strong [ref=f4e631]: AI辅助告警生成
+          - text: 】经深信服云端 AI 智能分析，生成有效告警
+          - strong [ref=f4e632]: "4145"
+          - text: 条。
+        - paragraph [ref=f4e633]:
+          - text: 【
+          - strong [ref=f4e634]: 安全GPT研判
+          - text: 】经深信服安全 GPT 研判，生成安全事件
+          - strong [ref=f4e635]: "391"
+          - text: 起（告警消减率
+          - strong [ref=f4e636]: 0.9%
+          - text: ），其中严重事件
+          - strong [ref=f4e637]: "0"
+          - text: 起、高危事件
+          - strong [ref=f4e638]: "0"
+          - text: 起。
+        - paragraph [ref=f4e639]:
+          - text: 【
+          - strong [ref=f4e640]: 云端专家7*24H持续守护
+          - text: 】所有托管资产的安全事件（
+          - strong [ref=f4e641]: "0"
+          - text: 起）由云端专家结合 AI 进行 7*24H 实时响应。响应包含：
+        - generic [ref=f4e642]:
+          - paragraph [ref=f4e643]:
+            - text: 实时威胁对抗：对威胁进行实时监测和快速遏制，遏制事件
+            - strong [ref=f4e644]: "0"
+            - text: 起。
+          - paragraph [ref=f4e645]:
+            - text: 事件快速处置：对入侵成功事件快速应急响应，及时发现和处置了
+            - strong [ref=f4e646]: "0"
+            - text: 起安全事件；事件平均响应时间
+            - strong [ref=f4e647]: "0"
+            - text: 分钟，事件闭环率
+            - strong [ref=f4e648]: 0%
+            - text: 。
+        - heading "4.1.2 安全事件分布" [level=4] [ref=f4e649]
+        - generic [ref=f4e651]:
+          - heading "安全事件类型分布" [level=5] [ref=f4e653]
+          - heading "业务系统安全事件分布" [level=5] [ref=f4e658]
+        - paragraph [ref=f4e662]: 近期较多，后续深信服会重点关注病毒防护。
+        - paragraph [ref=f4e663]:
+          - strong
+          - text: 遭受攻击比较严重，后续深信服会重点关注上述业务系统的事件响应。
+        - heading "4.1.3 高危及以上安全事件" [level=4] [ref=f4e664]
+        - paragraph [ref=f4e665]: 高危安全事件是指攻击者获取系统的控制权后，安装恶意软件（如后门程序），潜伏于目标系统中并对其进行长期控制，导致关键业务系统被破坏，甚至造成服务中断。典型的高危事件类型有恶意文件（勒索病毒、钓鱼附件等）、黑客工具（后门工具、代理工具、渗透工具等）、漏洞攻击（系统漏洞攻击、中间件漏洞攻击等）、内网爆破（RDP爆破、SMB爆破、数据库爆破等）、网站攻击（WebShell上传成功、代码注入成功、反序列化攻击成功等）。
+        - paragraph [ref=f4e666]: 以下为高危及以上安全事件，详情见《安全事件清单.xlsx》，也可访问 XDR 平台-->威胁分析-->安全事件处理。
+        - heading "C2外联" [level=5] [ref=f4e667]
+        - table [ref=f4e668]:
+          - rowgroup [ref=f4e669]:
+            - row "外联IoC 受影响主机 最近发生时间 处置状态" [ref=f4e670]:
+              - columnheader "外联IoC" [ref=f4e671]
+              - columnheader "受影响主机" [ref=f4e672]
+              - columnheader "最近发生时间" [ref=f4e673]
+              - columnheader "处置状态" [ref=f4e674]
+          - rowgroup [ref=f4e675]:
+            - row "暂无 C2 外联事件" [ref=f4e676]:
+              - cell "暂无 C2 外联事件" [ref=f4e677]
+        - generic [ref=f4e678]:
+          - generic [ref=f4e679]: 风险危害
+          - paragraph [ref=f4e680]: 主机失陷后与恶意 C2 服务器建立外联，攻击者可远程控制主机、窃取数据或发起进一步攻击，存在持续控制风险。出现C2外联表明主机可能已被专业攻击者控制，常被用作横向移动与持久化驻留的跳板。
+        - heading "病毒木马" [level=5] [ref=f4e681]
+        - paragraph [ref=f4e682]:
+          - text: 本次体检共发现病毒木马事件
+          - strong [ref=f4e683]: "0"
+          - text: 起，存在该风险的主机列表举例如下：
+        - table [ref=f4e684]:
+          - rowgroup [ref=f4e685]:
+            - row "病毒Hash 受影响主机 最近发生时间 处置状态" [ref=f4e686]:
+              - columnheader "病毒Hash" [ref=f4e687]
+              - columnheader "受影响主机" [ref=f4e688]
+              - columnheader "最近发生时间" [ref=f4e689]
+              - columnheader "处置状态" [ref=f4e690]
+          - rowgroup [ref=f4e691]:
+            - row "暂无病毒木马事件" [ref=f4e692]:
+              - cell "暂无病毒木马事件" [ref=f4e693]
+        - generic [ref=f4e694]:
+          - generic [ref=f4e695]: 风险危害
+          - paragraph [ref=f4e696]: 病毒木马是一种结合了病毒和木马特性的恶意软件，影响包括系统控制权丧失、数据泄露、业务中断和修复难度较大。计算机感染该病毒后容易成为远控肉鸡，危害程度随时可能进一步恶化，最终造成窃取敏感数据、执行恶意操作、投递勒索病毒等更严重危害。
+        - heading "漏洞利用" [level=5] [ref=f4e697]
+        - paragraph [ref=f4e698]:
+          - text: 本次体检共发现漏洞利用事件
+          - strong [ref=f4e699]: "22"
+          - text: 起，存在该风险的主机列表举例如下：
+        - table [ref=f4e700]:
+          - rowgroup [ref=f4e701]:
+            - row "事件名称 受影响主机 最近发生时间 处置状态" [ref=f4e702]:
+              - columnheader "事件名称" [ref=f4e703]
+              - columnheader "受影响主机" [ref=f4e704]
+              - columnheader "最近发生时间" [ref=f4e705]
+              - columnheader "处置状态" [ref=f4e706]
+          - rowgroup [ref=f4e707]:
+            - row "暂无漏洞利用事件" [ref=f4e708]:
+              - cell "暂无漏洞利用事件" [ref=f4e709]
+        - generic [ref=f4e710]:
+          - generic [ref=f4e711]: 风险危害
+          - paragraph [ref=f4e712]: 漏洞利用涉及攻击者实际利用漏洞进行攻击，可能通过恶意输入或特定工具来实现。攻击者的目标是执行恶意代码或获取系统控制权，可能导致数据泄露、系统崩溃和业务中断。修复和预防措施成本高昂，并对企业造成严重影响。
+        - heading "4.1.4 典型案例" [level=4] [ref=f4e713]
+        - iframe [ref=f4e717]:
+          - generic [ref=f7e4]:
+            - paragraph [ref=f7e5]: 银狐攻击链 v1 · Figma 376:10594
+            - heading "银狐木马钓鱼攻击链还原" [level=3] [ref=f7e6]
+            - paragraph [ref=f7e7]: 基于 MITRE ATT&CK 杀伤链框架构建通用攻防时序模型，同步还原攻击者入侵行为链路、平台自动化智能研判流程与云端专家托管运营全处置链路，直观呈现入侵时序与安全响应时效对照关系。
+            - generic [ref=f7e8]:
+              - img
+              - article [ref=f7e9]:
+                - generic [ref=f7e10]: 阶段一：初始访问
+                - generic [ref=f7e11]:
+                  - generic [ref=f7e12]: 06-26 17:05
+                  - generic [ref=f7e13]: 10.226.101.198 漏洞攻击公网暴露面1次
+              - article [ref=f7e14]:
+                - generic [ref=f7e15]: 阶段二：持久化
+                - generic [ref=f7e16]:
+                  - generic [ref=f7e17]: 06-26 17:05
+                  - generic [ref=f7e18]: 10.226.101.198 创建账号1次
+                - generic [ref=f7e19]:
+                  - generic [ref=f7e20]: 06-26 17:05
+                  - generic [ref=f7e21]: 10.226.101.198 滥用合法帐号2次
+              - article [ref=f7e22]:
+                - generic [ref=f7e23]: 阶段三：授权
+                - generic [ref=f7e25]: 06-26 17:05
+                - generic [ref=f7e26]:
+                  - generic [ref=f7e27]: 06-26 17:05 10.226.101.198
+                  - generic [ref=f7e28]: 10.226.101.198 滥用合法帐号2次
+              - article [ref=f7e29]:
+                - generic [ref=f7e30]: 阶段四：防御规避
+                - generic [ref=f7e31]:
+                  - generic [ref=f7e32]: 06-26 17:05
+                  - generic [ref=f7e33]: 10.226.101.198 创建账号1次
+                - generic [ref=f7e34]:
+                  - generic [ref=f7e35]: 06-26 17:05
+                  - generic [ref=f7e36]: 10.226.101.198 滥用合法帐号2次
+              - article [ref=f7e37]:
+                - generic [ref=f7e38]: 日志采集
+                - generic [ref=f7e39]:
+                  - generic [ref=f7e40]: 06-26 16:44
+                  - generic [ref=f7e41]: aES上报日志，XDR接收安全日志并上传到数据湖
+              - article [ref=f7e42]:
+                - generic [ref=f7e43]: 触发告警
+                - generic [ref=f7e44]:
+                  - generic [ref=f7e45]: 06-26 16:44
+                  - generic [ref=f7e46]: 安全GPT接收日志并首次生成告警，完成安全告警解读
+                  - generic [ref=f7e47]: 06-26 16:44 后总计生成了3条告警
+              - article [ref=f7e48]:
+                - generic [ref=f7e49]: 生成事件
+                - generic [ref=f7e50]:
+                  - generic [ref=f7e51]: 06-26 16:44
+                  - generic [ref=f7e52]: XDR关联分析引擎接收并首次生成安全事件，事件入库并确认
+              - article [ref=f7e53]:
+                - generic [ref=f7e54]: 威胁遏制
+                - generic [ref=f7e55]:
+                  - generic [ref=f7e56]: 06-26 16:44
+                  - generic [ref=f7e57]: 云端安全专家完成遏制，联动防火墙封堵攻击 IP 10.226.101.198
+              - article [ref=f7e58]:
+                - generic [ref=f7e59]: 安全事件闭环
+                - generic [ref=f7e60]:
+                  - generic [ref=f7e61]: 06-26 16:44
+                  - generic [ref=f7e62]: 云端安全专家完成处置并标记为已闭环
+              - contentinfo [ref=f7e63]:
+                - generic [ref=f7e64]: 攻击方行为
+                - generic [ref=f7e66]: 安全运营响应
+                - generic [ref=f7e68]: 事件闭环
+        - paragraph [ref=f4e718]: 详情可访问 XDR 平台-->安全威胁分析-->安全事件处理-->事件详情-->时间线；响应时延详情可访问 XDR 平台-->安全威胁分析-->安全事件处理-->时延情况（鼠标悬浮）。
+        - table [ref=f4e719]:
+          - rowgroup [ref=f4e720]:
+            - row "潜在损失 漏洞利用攻击如果未及时发现和对抗，可能导致核心系统敏感数据泄露、主机被控挖矿、数据勒索加密等重大危害事件" [ref=f4e721]:
+              - columnheader "潜在损失" [ref=f4e722]
+              - columnheader "漏洞利用攻击如果未及时发现和对抗，可能导致核心系统敏感数据泄露、主机被控挖矿、数据勒索加密等重大危害事件" [ref=f4e723]
+          - rowgroup [ref=f4e724]:
+            - row "潜在损失规避评估（影响面） 2个高危可利用漏洞*100万元≈200万元（基于行业公开事例评估测算，单个漏洞利用攻击入侵成功导致的平均安全损失约100万元）" [ref=f4e725]:
+              - cell "潜在损失规避评估（影响面）" [ref=f4e726]
+              - cell "2个高危可利用漏洞*100万元≈200万元（基于行业公开事例评估测算，单个漏洞利用攻击入侵成功导致的平均安全损失约100万元）" [ref=f4e727]:
+                - strong [ref=f4e728]: "2"
+                - text: 个高危可利用漏洞*100万元≈
+                - strong [ref=f4e729]: "200"
+                - text: 万元（基于行业公开事例评估测算，单个漏洞利用攻击入侵成功导致的平均安全损失约
+                - strong [ref=f4e730]: "100"
+                - text: 万元）
+            - row "实际案例损失情况 当前规模化的 RaaS 攻击手段主要探测识别 1DAY 高危可利用漏洞后进行自动化利用攻击。 捷豹路虎遭勒索攻击致全球系统瘫痪 日期：2025.9 至 2025.10.8 事件概要：\"Scattered Lapsus$ Hunters\" 黑客组织利用 SAP NetWeaver（CVE-2025-31324）远程执行漏洞入侵内部网络，部署勒索软件并窃取数据。 影响描述：全球 IT 系统关闭，生产、销售、售后服务全面瘫痪；33,000 名员工被安排休假；财务损失达 1.96 亿英镑；10 月 8 日才完成系统重启。 基于国内安全咨询机构及厂商综合披露的数据显示，国内政企勒索支付的中位数为 100 万元" [ref=f4e731]:
+              - cell "实际案例损失情况" [ref=f4e732]
+              - cell "当前规模化的 RaaS 攻击手段主要探测识别 1DAY 高危可利用漏洞后进行自动化利用攻击。 捷豹路虎遭勒索攻击致全球系统瘫痪 日期：2025.9 至 2025.10.8 事件概要：\"Scattered Lapsus$ Hunters\" 黑客组织利用 SAP NetWeaver（CVE-2025-31324）远程执行漏洞入侵内部网络，部署勒索软件并窃取数据。 影响描述：全球 IT 系统关闭，生产、销售、售后服务全面瘫痪；33,000 名员工被安排休假；财务损失达 1.96 亿英镑；10 月 8 日才完成系统重启。 基于国内安全咨询机构及厂商综合披露的数据显示，国内政企勒索支付的中位数为 100 万元" [ref=f4e733]:
+                - text: 当前规模化的 RaaS 攻击手段主要探测识别
+                - strong [ref=f4e734]: "1"
+                - text: DAY 高危可利用漏洞后进行自动化利用攻击。
+                - strong [ref=f4e735]: 捷豹路虎遭勒索攻击致全球系统瘫痪
+                - text: 日期：
+                - strong [ref=f4e736]: "2025.9"
+                - text: 至 2025.10.8
+                - text: 事件概要："Scattered Lapsus$ Hunters" 黑客组织利用 SAP NetWeaver（CVE-2025-31324）远程执行漏洞入侵内部网络，部署勒索软件并窃取数据。
+                - text: 影响描述：全球 IT 系统关闭，生产、销售、售后服务全面瘫痪；
+                - strong [ref=f4e737]: 33,000
+                - text: 名员工被安排休假；财务损失达
+                - strong [ref=f4e738]: "1.96"
+                - text: 亿英镑；
+                - strong [ref=f4e739]: "10"
+                - text: 月
+                - strong [ref=f4e740]: "8"
+                - text: 日才完成系统重启。
+                - text: 基于国内安全咨询机构及厂商综合披露的数据显示，国内政企勒索支付的中位数为
+                - strong [ref=f4e741]: "100"
+                - text: 万元
+        - heading "4.2 威胁预防" [level=3] [ref=f4e742]:
+          - generic [ref=f4e743]:
+            - generic [ref=f4e744]: "4.2"
+            - generic [ref=f4e745]: 威胁预防
+        - paragraph [ref=f4e746]: 威胁预防是深信服通过内外部安全组件在事前帮助客户发现互联网业务与内网资产的风险。本次体检优先关注脆弱性问题，常见的脆弱性问题有风险暴露面、软件漏洞、弱口令等。
+        - heading "4.2.1 互联网业务" [level=4] [ref=f4e747]
+        - paragraph [ref=f4e748]:
+          - text: 互联网业务风险整体较大，存在大量对外暴露的端口与服务。其中有
+          - strong [ref=f4e749]: "0"
+          - text: 个资产暴露了
+          - strong [ref=f4e750]: "0"
+          - text: 个端口，存在
+          - strong [ref=f4e751]: "0"
+          - text: 个漏洞。
+        - heading "风险暴露面" [level=5] [ref=f4e752]
+        - paragraph [ref=f4e753]:
+          - text: 共发现互联网暴露面
+          - strong [ref=f4e754]: "0"
+          - text: 个，其中风险暴露面
+          - strong [ref=f4e755]: "0"
+          - text: 个；关联资产
+          - strong [ref=f4e756]: "0"
+          - text: 个，其中风险资产
+          - strong [ref=f4e757]: "0"
+          - text: 个。分布如下：
+        - paragraph [ref=f4e758]: 注：暴露的端口和业务后台页面可能会被攻击者探测并利用。
+        - generic [ref=f4e759]:
+          - heading "总体暴露面分布" [level=5] [ref=f4e761]
+          - generic [ref=f4e765]:
+            - generic [ref=f4e766]:
+              - heading "Web服务风险分布 top5" [level=5] [ref=f4e767]
+              - generic [ref=f4e768]:
+                - img [ref=f4e769]
+                - generic [ref=f4e772]: 暂无数据
+            - generic [ref=f4e773]:
+              - heading "非Web服务风险分布 top5" [level=5] [ref=f4e774]
+              - generic [ref=f4e775]:
+                - img [ref=f4e776]
+                - generic [ref=f4e779]: 暂无数据
+          - generic [ref=f4e780]:
+            - heading "风险暴露 Top5 资产 · 暴露服务构成" [level=5] [ref=f4e781]
+            - generic [ref=f4e782]:
+              - img [ref=f4e783]
+              - generic [ref=f4e786]: 暂无数据
+        - paragraph [ref=f4e787]: 暴露面详情见《暴露面清单.xlsx》
+        - heading "漏洞" [level=5] [ref=f4e788]
+        - paragraph [ref=f4e789]:
+          - text: 本次体检共发现互联网漏洞
+          - strong [ref=f4e790]: "0"
+          - text: 个（严重
+          - strong [ref=f4e791]: "0"
+          - text: 个、高危
+          - strong [ref=f4e792]: "0"
+          - text: 个、中危
+          - strong [ref=f4e793]: "0"
+          - text: 个、低危
+          - strong [ref=f4e794]: "0"
+          - text: 个），关联资产
+          - strong [ref=f4e795]: "0"
+          - text: 个。
+        - paragraph [ref=f4e796]:
+          - text: 从漏洞修复优先级视角统计，急需修复
+          - strong [ref=f4e797]: "0"
+          - text: 个、尽快修复
+          - strong [ref=f4e798]: "0"
+          - text: 个、建议修复
+          - strong [ref=f4e799]: "0"
+          - text: 个。
+        - paragraph [ref=f4e800]: 互联网漏洞风险资产TOP 5如下：
+        - table [ref=f4e801]:
+          - rowgroup [ref=f4e802]:
+            - row "序号 风险资产 漏洞修复优先级" [ref=f4e803]:
+              - columnheader "序号" [ref=f4e804]
+              - columnheader "风险资产" [ref=f4e805]
+              - columnheader "漏洞修复优先级" [ref=f4e806]
+          - rowgroup
+        - paragraph [ref=f4e807]: 互联网漏洞详情见《漏洞清单.xlsx》
+        - heading "弱口令" [level=5] [ref=f4e808]
+        - paragraph [ref=f4e809]:
+          - text: 本次体检共发现
+          - strong [ref=f4e810]: "0"
+          - text: 个资产存在弱口令
+          - strong [ref=f4e811]: "0"
+          - text: 个，分布如下：
+        - generic [ref=f4e812]:
+          - generic [ref=f4e813]:
+            - generic [ref=f4e814]:
+              - generic [ref=f4e815]: 🔑 弱口令发现
+              - generic [ref=f4e817]:
+                - generic [ref=f4e818]: "0"
+                - generic [ref=f4e819]: 弱口令数
+            - generic [ref=f4e820]:
+              - generic [ref=f4e821]: 🏢 业务影响
+              - generic [ref=f4e823]:
+                - generic [ref=f4e824]: "0"
+                - generic [ref=f4e825]: 风险资产
+          - generic [ref=f4e826]:
+            - heading "弱口令风险 — 资产分布" [level=5] [ref=f4e827]
+            - generic [ref=f4e828]:
+              - img [ref=f4e829]
+              - generic [ref=f4e832]: 暂无数据
+        - paragraph [ref=f4e833]: 弱口令详情见《弱口令.xlsx》
+        - heading "4.2.2 内网业务" [level=4] [ref=f4e834]
+        - paragraph [ref=f4e835]: 当前内网业务整体风险可控，可优先修复高危风险后，再来修复内网相关风险。
+        - heading "漏洞" [level=5] [ref=f4e836]
+        - paragraph [ref=f4e837]:
+          - text: 本次体检共发现内网漏洞
+          - strong [ref=f4e838]: "3644"
+          - text: 个（严重
+          - strong [ref=f4e839]: "486"
+          - text: 个、高危
+          - strong [ref=f4e840]: "1048"
+          - text: 个、中危
+          - strong [ref=f4e841]: "1444"
+          - text: 个、低危
+          - strong [ref=f4e842]: "666"
+          - text: 个），关联业务
+          - strong [ref=f4e843]: "0"
+          - text: 个，关联资产
+          - strong [ref=f4e844]: "81"
+          - text: 个。
+        - paragraph [ref=f4e845]:
+          - text: 从漏洞修复优先级视角统计，急需修复
+          - strong [ref=f4e846]: "0"
+          - text: 个、尽快修复
+          - strong [ref=f4e847]: "2978"
+          - text: 个、建议修复
+          - strong [ref=f4e848]: "666"
+          - text: 个。
+        - paragraph [ref=f4e849]: 业务系统TOP 5如下：
+        - table [ref=f4e850]:
+          - rowgroup [ref=f4e851]:
+            - row "序号 风险资产 漏洞修复优先级" [ref=f4e852]:
+              - columnheader "序号" [ref=f4e853]
+              - columnheader "风险资产" [ref=f4e854]
+              - columnheader "漏洞修复优先级" [ref=f4e855]
+          - rowgroup
+        - paragraph [ref=f4e856]: 内网漏洞风险资产TOP 5如下：
+        - table [ref=f4e857]:
+          - rowgroup [ref=f4e858]:
+            - row "序号 风险资产 漏洞修复优先级" [ref=f4e859]:
+              - columnheader "序号" [ref=f4e860]
+              - columnheader "风险资产" [ref=f4e861]
+              - columnheader "漏洞修复优先级" [ref=f4e862]
+          - rowgroup [ref=f4e863]:
+            - row "1 10.128.165.151 急需修复：0个 尽快修复：1117个 建议修复：62个" [ref=f4e864]:
+              - cell "1" [ref=f4e865]
+              - cell "10.128.165.151" [ref=f4e866]
+              - cell "急需修复：0个 尽快修复：1117个 建议修复：62个" [ref=f4e867]:
+                - generic [ref=f4e868]:
+                  - text: 急需修复：
+                  - strong [ref=f4e869]: "0"
+                  - text: 个
+                - generic [ref=f4e870]:
+                  - text: 尽快修复：
+                  - strong [ref=f4e871]: "1117"
+                  - text: 个
+                - generic [ref=f4e872]:
+                  - text: 建议修复：
+                  - strong [ref=f4e873]: "62"
+                  - text: 个
+            - row "2 10.128.165.53 急需修复：0个 尽快修复：760个 建议修复：54个" [ref=f4e874]:
+              - cell "2" [ref=f4e875]
+              - cell "10.128.165.53" [ref=f4e876]
+              - cell "急需修复：0个 尽快修复：760个 建议修复：54个" [ref=f4e877]:
+                - generic [ref=f4e878]:
+                  - text: 急需修复：
+                  - strong [ref=f4e879]: "0"
+                  - text: 个
+                - generic [ref=f4e880]:
+                  - text: 尽快修复：
+                  - strong [ref=f4e881]: "760"
+                  - text: 个
+                - generic [ref=f4e882]:
+                  - text: 建议修复：
+                  - strong [ref=f4e883]: "54"
+                  - text: 个
+            - row "3 10.128.160.200 急需修复：0个 尽快修复：183个 建议修复：52个" [ref=f4e884]:
+              - cell "3" [ref=f4e885]
+              - cell "10.128.160.200" [ref=f4e886]
+              - cell "急需修复：0个 尽快修复：183个 建议修复：52个" [ref=f4e887]:
+                - generic [ref=f4e888]:
+                  - text: 急需修复：
+                  - strong [ref=f4e889]: "0"
+                  - text: 个
+                - generic [ref=f4e890]:
+                  - text: 尽快修复：
+                  - strong [ref=f4e891]: "183"
+                  - text: 个
+                - generic [ref=f4e892]:
+                  - text: 建议修复：
+                  - strong [ref=f4e893]: "52"
+                  - text: 个
+            - row "4 10.128.160.241 急需修复：0个 尽快修复：60个 建议修复：9个" [ref=f4e894]:
+              - cell "4" [ref=f4e895]
+              - cell "10.128.160.241" [ref=f4e896]
+              - cell "急需修复：0个 尽快修复：60个 建议修复：9个" [ref=f4e897]:
+                - generic [ref=f4e898]:
+                  - text: 急需修复：
+                  - strong [ref=f4e899]: "0"
+                  - text: 个
+                - generic [ref=f4e900]:
+                  - text: 尽快修复：
+                  - strong [ref=f4e901]: "60"
+                  - text: 个
+                - generic [ref=f4e902]:
+                  - text: 建议修复：
+                  - strong [ref=f4e903]: "9"
+                  - text: 个
+            - row "5 10.128.160.83 急需修复：0个 尽快修复：58个 建议修复：14个" [ref=f4e904]:
+              - cell "5" [ref=f4e905]
+              - cell "10.128.160.83" [ref=f4e906]
+              - cell "急需修复：0个 尽快修复：58个 建议修复：14个" [ref=f4e907]:
+                - generic [ref=f4e908]:
+                  - text: 急需修复：
+                  - strong [ref=f4e909]: "0"
+                  - text: 个
+                - generic [ref=f4e910]:
+                  - text: 尽快修复：
+                  - strong [ref=f4e911]: "58"
+                  - text: 个
+                - generic [ref=f4e912]:
+                  - text: 建议修复：
+                  - strong [ref=f4e913]: "14"
+                  - text: 个
+        - paragraph [ref=f4e914]: 内网漏洞详情见《漏洞清单.xlsx》，也可访问 XDR 平台-->风险管理-->脆弱性-->漏洞
+        - heading "弱口令" [level=5] [ref=f4e915]
+        - paragraph [ref=f4e916]:
+          - text: 本次体检共发现
+          - strong [ref=f4e917]: "10"
+          - text: 个资产存在弱口令
+          - strong [ref=f4e918]: "16"
+          - text: 个，分布如下：
+        - generic [ref=f4e919]:
+          - generic [ref=f4e920]:
+            - generic [ref=f4e921]:
+              - generic [ref=f4e922]: 🔑 弱口令发现
+              - generic [ref=f4e924]:
+                - generic [ref=f4e925]: "16"
+                - generic [ref=f4e926]: 弱口令数
+            - generic [ref=f4e927]:
+              - generic [ref=f4e928]: 🏢 业务影响
+              - generic [ref=f4e929]:
+                - generic [ref=f4e930]:
+                  - generic [ref=f4e931]: "0"
+                  - generic [ref=f4e932]: 风险业务
+                - generic [ref=f4e933]:
+                  - generic [ref=f4e934]: "10"
+                  - generic [ref=f4e935]: 风险资产
+          - generic [ref=f4e936]:
+            - generic [ref=f4e937]:
+              - heading "弱口令风险 — 业务系统分布" [level=5] [ref=f4e938]
+              - generic [ref=f4e939]:
+                - img [ref=f4e940]
+                - generic [ref=f4e943]: 暂无数据
+            - heading "弱口令风险 — 资产分布" [level=5] [ref=f4e945]
+        - paragraph [ref=f4e949]: 弱口令详情见《弱口令.xlsx》，也可访问 XDR 平台-->风险管理-->脆弱性-->弱口令
+        - heading "4.2.3 防护有效性" [level=4] [ref=f4e950]
+        - heading "安全组件策略检查" [level=5] [ref=f4e951]
+        - paragraph [ref=f4e952]:
+          - text: 评估期间，深信服安全服务团队对接入的深信服安全组件进行策略检查，涉及检查项
+          - strong [ref=f4e953]: "0"
+          - text: 个，发现安全组件策略配置异常项
+          - strong [ref=f4e954]: "0"
+          - text: 个，建议尽快修复。
+        - generic [ref=f4e956]:
+          - generic [ref=f4e957]:
+            - generic [ref=f4e958]: 📋 策略检查项
+            - generic [ref=f4e959]:
+              - text: "0"
+              - generic [ref=f4e960]: /0
+            - generic [ref=f4e961]: 风险项/全部检查项
+          - generic [ref=f4e962]:
+            - generic [ref=f4e963]: 📦 涉及组件
+            - generic [ref=f4e964]:
+              - text: "0"
+              - generic [ref=f4e965]: /0
+            - generic [ref=f4e966]: 风险组件/全部组件
+        - paragraph [ref=f4e967]: 组件全部检查项风险统计：
+        - table [ref=f4e968]:
+          - rowgroup [ref=f4e969]:
+            - row "序号 组件类型 组件名称 全部检查项（风险项）" [ref=f4e970]:
+              - columnheader "序号" [ref=f4e971]
+              - columnheader "组件类型" [ref=f4e972]
+              - columnheader "组件名称" [ref=f4e973]
+              - columnheader "全部检查项（风险项）" [ref=f4e974]
+          - rowgroup [ref=f4e975]:
+            - row "暂无策略检查数据" [ref=f4e976]:
+              - cell "暂无策略检查数据" [ref=f4e977]
+        - paragraph [ref=f4e978]: 各组件策略检查异常项：
+        - table [ref=f4e979]:
+          - rowgroup [ref=f4e980]:
+            - row "序号 组件名称 防护策略 状态 异常描述 风险说明" [ref=f4e981]:
+              - columnheader "序号" [ref=f4e982]
+              - columnheader "组件名称" [ref=f4e983]
+              - columnheader "防护策略" [ref=f4e984]
+              - columnheader "状态" [ref=f4e985]
+              - columnheader "异常描述" [ref=f4e986]
+              - columnheader "风险说明" [ref=f4e987]
+          - rowgroup [ref=f4e988]:
+            - row "暂无策略检查异常项" [ref=f4e989]:
+              - cell "暂无策略检查异常项" [ref=f4e990]
+        - paragraph [ref=f4e991]: 策略检查详情见《策略检查清单.xlsx》
+      - generic [ref=f4e992]:
+        - heading "5. 附录" [level=2] [ref=f4e993]
+        - heading "5.1 评估原则" [level=3] [ref=f4e994]:
+          - generic [ref=f4e995]:
+            - generic [ref=f4e996]: "5.1"
+            - generic [ref=f4e997]: 评估原则
+        - paragraph [ref=f4e998]: 本次评估工作中严格遵循以下原则：
+        - table [ref=f4e999]:
+          - rowgroup [ref=f4e1000]:
+            - row "原则 说明" [ref=f4e1001]:
+              - columnheader "原则" [ref=f4e1002]
+              - columnheader "说明" [ref=f4e1003]
+          - rowgroup [ref=f4e1004]:
+            - row "规范性原则 遵循《信息安全运营评估规范》和国内外有关安全标准，规范工作过程和文档。" [ref=f4e1005]:
+              - cell "规范性原则" [ref=f4e1006]
+              - cell "遵循《信息安全运营评估规范》和国内外有关安全标准，规范工作过程和文档。" [ref=f4e1007]
+            - row "最小影响原则 尽可能小的影响被评估系统和网络的正常运行。" [ref=f4e1008]:
+              - cell "最小影响原则" [ref=f4e1009]
+              - cell "尽可能小的影响被评估系统和网络的正常运行。" [ref=f4e1010]
+            - row "保密性原则 双方签署保密协议，在评估前和评估过程中对评估数据严格保密，评估结束后严禁将评估中的数据用于任何有损被评估方利益的用途。" [ref=f4e1011]:
+              - cell "保密性原则" [ref=f4e1012]
+              - cell "双方签署保密协议，在评估前和评估过程中对评估数据严格保密，评估结束后严禁将评估中的数据用于任何有损被评估方利益的用途。" [ref=f4e1013]
+        - heading "5.2 评估目标" [level=3] [ref=f4e1014]:
+          - generic [ref=f4e1015]:
+            - generic [ref=f4e1016]: "5.2"
+            - generic [ref=f4e1017]: 评估目标
+        - paragraph [ref=f4e1018]: 通过开展安全评估工作，全面了解贵单位信息系统的安全现状，并分析出目前的不足之处，为贵单位加强对信息系统的安全防护提供方向，且对已经入侵的潜伏威胁进行深度识别分析，降低现有安全隐患导致的安全事件发生概率，遏制风险的进一步蔓延，保障业务系统安全。
+        - heading "5.3 评估范围" [level=3] [ref=f4e1019]:
+          - generic [ref=f4e1020]:
+            - generic [ref=f4e1021]: "5.3"
+            - generic [ref=f4e1022]: 评估范围
+        - paragraph [ref=f4e1023]: 本次评估范围为贵公司网络环境中安全组件所能监测覆盖到的所有资产。
+        - heading "5.4 评估手段" [level=3] [ref=f4e1024]:
+          - generic [ref=f4e1025]:
+            - generic [ref=f4e1026]: "5.4"
+            - generic [ref=f4e1027]: 评估手段
+        - paragraph [ref=f4e1028]: 本次评估主要采用了日志分析、漏洞扫描、资产识别、互联网暴露面梳理、网络架构分析等手段，保证了评估的全面性。通过对网络环境、资产、脆弱性、现阶段存在的风险进行分析，客观地根据所有资产面临的风险状况提出安全需求，并通过针对性地选择和实施某些安全控制措施来满足安全需求，从而达到降低风险的目的。
+        - heading "5.5 安全评级" [level=3] [ref=f4e1029]:
+          - generic [ref=f4e1030]:
+            - generic [ref=f4e1031]: "5.5"
+            - generic [ref=f4e1032]: 安全评级
+        - heading "体检总体评级" [level=5] [ref=f4e1033]
+        - table [ref=f4e1034]:
+          - rowgroup [ref=f4e1035]:
+            - row "总体评级 风险程度 定义" [ref=f4e1036]:
+              - columnheader "总体评级" [ref=f4e1037]
+              - columnheader "风险程度" [ref=f4e1038]
+              - columnheader "定义" [ref=f4e1039]
+          - rowgroup [ref=f4e1040]:
+            - row "优 低危风险 优表明整体风险程度较低，综合评分在 90~100" [ref=f4e1041]:
+              - cell "优" [ref=f4e1042]:
+                - generic [ref=f4e1043]: 优
+              - cell "低危风险" [ref=f4e1044]
+              - cell "优表明整体风险程度较低，综合评分在 90~100" [ref=f4e1045]:
+                - text: 优表明整体风险程度较低，综合评分在
+                - strong [ref=f4e1046]: "90"
+                - text: ~
+                - strong [ref=f4e1047]: "100"
+            - row "良 中危风险 良表明整体风险程度居中，但风险可控，稍加治理即可达到优秀评级，综合评分在 80~89" [ref=f4e1048]:
+              - cell "良" [ref=f4e1049]:
+                - generic [ref=f4e1050]: 良
+              - cell "中危风险" [ref=f4e1051]
+              - cell "良表明整体风险程度居中，但风险可控，稍加治理即可达到优秀评级，综合评分在 80~89" [ref=f4e1052]:
+                - text: 良表明整体风险程度居中，但风险可控，稍加治理即可达到优秀评级，综合评分在
+                - strong [ref=f4e1053]: "80"
+                - text: ~
+                - strong [ref=f4e1054]: "89"
+            - row "中 高危风险 中表明整体风险程度较高，处于失控边缘，若再不修复即将失陷，爆发安全问题，综合评分在 60~79" [ref=f4e1055]:
+              - cell "中" [ref=f4e1056]:
+                - generic [ref=f4e1057]: 中
+              - cell "高危风险" [ref=f4e1058]
+              - cell "中表明整体风险程度较高，处于失控边缘，若再不修复即将失陷，爆发安全问题，综合评分在 60~79" [ref=f4e1059]:
+                - text: 中表明整体风险程度较高，处于失控边缘，若再不修复即将失陷，爆发安全问题，综合评分在
+                - strong [ref=f4e1060]: "60"
+                - text: ~
+                - strong [ref=f4e1061]: "79"
+            - row "差 严重风险 差表明内外部风险极大，已经爆发安全问题，急需修复，综合评分在 60 分以下" [ref=f4e1062]:
+              - cell "差" [ref=f4e1063]:
+                - generic [ref=f4e1064]: 差
+              - cell "严重风险" [ref=f4e1065]
+              - cell "差表明内外部风险极大，已经爆发安全问题，急需修复，综合评分在 60 分以下" [ref=f4e1066]:
+                - text: 差表明内外部风险极大，已经爆发安全问题，急需修复，综合评分在
+                - strong [ref=f4e1067]: "60"
+                - text: 分以下
+        - paragraph [ref=f4e1068]: 附：评分根据已产生的安全事件、主动风险发现所感知到的所有风险，基于风险类型与风险资产重要性综合打分
+        - heading "安全事件评级" [level=5] [ref=f4e1069]
+        - table [ref=f4e1070]:
+          - rowgroup [ref=f4e1071]:
+            - row "风险等级 定义" [ref=f4e1072]:
+              - columnheader "风险等级" [ref=f4e1073]
+              - columnheader "定义" [ref=f4e1074]
+          - rowgroup [ref=f4e1075]:
+            - row "严重 若被标记为严重，表示存在针对目标或破坏核心基础架构，导致多个服务中断，导致多个系统破坏或危害关键基础架构的增加的黑客攻击，病毒或其他恶意网络活动的高风险。在此级别上，漏洞利用的破坏或破坏程度很高，或者严重破坏或破坏的可能性很高。" [ref=f4e1076]:
+              - cell "严重" [ref=f4e1077]:
+                - generic [ref=f4e1078]: 严重
+              - cell "若被标记为严重，表示存在针对目标或破坏核心基础架构，导致多个服务中断，导致多个系统破坏或危害关键基础架构的增加的黑客攻击，病毒或其他恶意网络活动的高风险。在此级别上，漏洞利用的破坏或破坏程度很高，或者严重破坏或破坏的可能性很高。" [ref=f4e1080]
+            - row "高危 若被标记为高危，表示由于黑客入侵，病毒或其他恶意活动增加了危害系统或降低服务质量的重大风险。在此级别上，已知的漏洞正在以中等程度的损坏或破坏来利用，或者发生重大损坏或破坏的可能性很高。" [ref=f4e1081]:
+              - cell "高危" [ref=f4e1082]:
+                - generic [ref=f4e1083]: 高危
+              - cell "若被标记为高危，表示由于黑客入侵，病毒或其他恶意活动增加了危害系统或降低服务质量的重大风险。在此级别上，已知的漏洞正在以中等程度的损坏或破坏来利用，或者发生重大损坏或破坏的可能性很高。" [ref=f4e1085]
+            - row "中危 若被标记为中危，表示存在黑客攻击、病毒或其他恶意网络活动，造成系统局部功能受影响、少量信息异常的一般风险。在此级别上，漏洞利用仅造成轻微损坏，或者发生一般性损坏的可能性较高。" [ref=f4e1086]:
+              - cell "中危" [ref=f4e1087]:
+                - generic [ref=f4e1088]: 中危
+              - cell "若被标记为中危，表示存在黑客攻击、病毒或其他恶意网络活动，造成系统局部功能受影响、少量信息异常的一般风险。在此级别上，漏洞利用仅造成轻微损坏，或者发生一般性损坏的可能性较高。" [ref=f4e1090]
+            - row "低危 若被标记为低危，表示除了已知的黑客活动，已知的病毒或其他已知恶意活动的正常关注之外，没有异常活动存在。" [ref=f4e1091]:
+              - cell "低危" [ref=f4e1092]:
+                - generic [ref=f4e1093]: 低危
+              - cell "若被标记为低危，表示除了已知的黑客活动，已知的病毒或其他已知恶意活动的正常关注之外，没有异常活动存在。" [ref=f4e1095]
+        - heading "漏洞危害程度评级" [level=5] [ref=f4e1096]
+        - paragraph [ref=f4e1097]: 基于 CVSS（Common Vulnerability Scoring System）2.0 与 3.0 进行等级标准定义
+        - table [ref=f4e1098]:
+          - rowgroup [ref=f4e1099]:
+            - row "风险等级 定义" [ref=f4e1100]:
+              - columnheader "风险等级" [ref=f4e1101]
+              - columnheader "定义" [ref=f4e1102]
+          - rowgroup [ref=f4e1103]:
+            - row "严重 CVSS 3.0：9.0-10.0" [ref=f4e1104]:
+              - cell "严重" [ref=f4e1105]:
+                - generic [ref=f4e1106]: 严重
+              - cell "CVSS 3.0：9.0-10.0" [ref=f4e1108]
+            - row "高危 CVSS 2.0：7.0-10.0；CVSS 3.0：7.0-8.9" [ref=f4e1109]:
+              - cell "高危" [ref=f4e1110]:
+                - generic [ref=f4e1111]: 高危
+              - cell "CVSS 2.0：7.0-10.0；CVSS 3.0：7.0-8.9" [ref=f4e1113]
+            - row "中危 CVSS 2.0：4.0-6.9；CVSS 3.0：4.0-6.9" [ref=f4e1114]:
+              - cell "中危" [ref=f4e1115]:
+                - generic [ref=f4e1116]: 中危
+              - cell "CVSS 2.0：4.0-6.9；CVSS 3.0：4.0-6.9" [ref=f4e1118]
+            - row "低危 CVSS 2.0：0.1-3.9；CVSS 3.0：0.1-3.9" [ref=f4e1119]:
+              - cell "低危" [ref=f4e1120]:
+                - generic [ref=f4e1121]: 低危
+              - cell "CVSS 2.0：0.1-3.9；CVSS 3.0：0.1-3.9" [ref=f4e1123]
+        - heading "漏洞修复优先级" [level=5] [ref=f4e1124]
+        - generic [ref=f4e1130]:
+          - generic [ref=f4e1131]: 急需修复 (高)
+          - generic [ref=f4e1133]: 尽快修复 (中)
+          - generic [ref=f4e1135]: 建议修复 (低)
+      - region "空状态组件参考（仅供开发，生产可移除）" [ref=f4e1137]:
+        - heading "附录 · 空状态组件参考" [level=2] [ref=f4e1138]
+        - paragraph [ref=f4e1139]: 以下块展示无数据时的标准样式。开发在数据为空时显示对应组件，有数据时隐藏。本区块仅作设计交付参考，打印时不输出。
+        - heading "通用空状态" [level=5] [ref=f4e1140]
+        - generic [ref=f4e1141]:
+          - paragraph [ref=f4e1142]: 暂无相关数据
+          - paragraph [ref=f4e1143]: 本期体检范围内未发现需展示的内容
+        - heading "表格空状态" [level=5] [ref=f4e1144]
+        - table [ref=f4e1145]:
+          - rowgroup [ref=f4e1146]:
+            - row "事件名称 受影响主机 处置状态" [ref=f4e1147]:
+              - columnheader "事件名称" [ref=f4e1148]
+              - columnheader "受影响主机" [ref=f4e1149]
+              - columnheader "处置状态" [ref=f4e1150]
+          - rowgroup [ref=f4e1151]:
+            - row "本期未发现高危及以上安全事件" [ref=f4e1152]:
+              - cell "本期未发现高危及以上安全事件" [ref=f4e1153]
+        - heading "图表空状态" [level=5] [ref=f4e1154]
+        - status [ref=f4e1156]:
+          - img [ref=f4e1157]
+          - paragraph [ref=f4e1158]: 暂无该类风险
+        - heading "评级缺失" [level=5] [ref=f4e1159]
+        - paragraph [ref=f4e1160]:
+          - text: 安全体检总体评级：
+          - generic [ref=f4e1161]: —
+      - generic [ref=f4e1162]:
+        - paragraph [ref=f4e1163]: 安全体检报告 2.0 · 设计预览稿 · 示例数据 · 严禁用于实际业务决策
+        - paragraph [ref=f4e1164]: 视觉规范：SeerDesign · 图表引擎：ECharts 5.5 · 打开方式：浏览器直接打开本 HTML 文件
