@@ -3,14 +3,14 @@
 const assert = require('assert');
 
 async function main() {
-  const xdrClientPath = require.resolve('../src/xdr_asset_client');
-  const originalCacheEntry = require.cache[xdrClientPath];
+  const msswClientPath = require.resolve('../src/mssw_client');
+  const originalCacheEntry = require.cache[msswClientPath];
   const fetchCalls = [];
 
   try {
-    require.cache[xdrClientPath] = {
-      id: xdrClientPath,
-      filename: xdrClientPath,
+    require.cache[msswClientPath] = {
+      id: msswClientPath,
+      filename: msswClientPath,
       loaded: true,
       exports: {
         fetchMsswAssetOverview: async (options) => {
@@ -182,9 +182,9 @@ async function main() {
   console.log('data_client.test.js passed');
   } finally {
     if (originalCacheEntry) {
-      require.cache[xdrClientPath] = originalCacheEntry;
+      require.cache[msswClientPath] = originalCacheEntry;
     } else {
-      delete require.cache[xdrClientPath];
+      delete require.cache[msswClientPath];
     }
   }
 }

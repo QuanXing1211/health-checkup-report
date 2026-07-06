@@ -2,7 +2,7 @@
 
 const path = require('path');
 const https = require('https');
-const { readMsswCookieInfo, buildMsswExportHeaders, DEFAULT_MSSW_BASE_URL } = require(path.join(__dirname, '..', 'src', 'xdr_asset_client'));
+const { readMsswCookieInfo, buildMsswExportHeaders, DEFAULT_MSSW_BASE_URL } = require(path.join(__dirname, '..', 'src', 'mssw_client'));
 
 async function main() {
   const cookiePath = process.env['USERPROFILE'] + '\\Downloads\\mssw_cookies.txt';

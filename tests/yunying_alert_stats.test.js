@@ -9,7 +9,7 @@ const {
   extractGptSubResultFromResponse,
   buildIncidentGptTableRequestBody,
   THREAT_ACTOR_NAMES
-} = require('../src/xdr_asset_client');
+} = require('../src/mssw_client');
 
 // Test matchThreatActor
 assert.strictEqual(matchThreatActor(''), '', '空字符串不匹配');

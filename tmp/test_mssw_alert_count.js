@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { readMsswCookieInfo, fetchMsswAlertTableCount, DEFAULT_MSSW_BASE_URL } = require(path.join(__dirname, '..', 'src', 'xdr_asset_client'));
+const { readMsswCookieInfo, fetchMsswAlertTableCount, DEFAULT_MSSW_BASE_URL } = require(path.join(__dirname, '..', 'src', 'mssw_client'));
 
 async function main() {
   const cookiePath = process.env['USERPROFILE'] + '\\Downloads\\mssw_cookies.txt';

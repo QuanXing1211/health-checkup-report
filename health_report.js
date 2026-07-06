@@ -130,7 +130,7 @@ async function main() {
   // 从资产表和事件表提取托管资产安全事件统计（不阻断主流程）
   const resolvedAssetFilePath = await resolveAssetFilePath({
     options,
-    xdrExports,
+    tableExports,
     logger
   });
   const assetFilePath = resolvedAssetFilePath;
@@ -248,7 +248,7 @@ async function main() {
     }
   }
 
-  const preventionEnabled = await shouldRunPreventionStage(options, xdrExports);
+  const preventionEnabled = await shouldRunPreventionStage(options, tableExports);
   if (preventionEnabled) {
     if (!incidentFilePath) {
       throw new Error('威胁预防数据计算失败: 缺少事件表，请检查本次事件表导出结果');
@@ -305,11 +305,11 @@ async function main() {
       vulnPath: preventionTables.vuln.filePath,
       logger
     });
-    if (xdrExports.incident) {
-      xdrExports.incident.filePath = archivedFiles.incidentPath;
+    if (tableExports.incident) {
+      tableExports.incident.filePath = archivedFiles.incidentPath;
     }
-    if (xdrExports.asset) {
-      xdrExports.asset.filePath = archivedFiles.assetPath;
+    if (tableExports.asset) {
+      tableExports.asset.filePath = archivedFiles.assetPath;
     }
     preventionTables.exposure.filePath = archivedFiles.exposurePath;
     preventionTables.weakpwd.filePath = archivedFiles.weakpwdPath;
@@ -412,7 +412,7 @@ async function main() {
 
   outputResult({
     ...result,
-    xdrExports,
+    xdrExports: tableExports,
     word_path: wordExport ? wordExport.wordPath : null,
     branch1Artifacts: branch1Result
       ? {
@@ -515,24 +515,24 @@ function logWith(logger, message) {
   }
 }
 
-async function summarizeExportedIncidentStatus(xdrExports, logger) {
-  const incidentFilePath = xdrExports && xdrExports.incident ? xdrExports.incident.filePath : '';
+async function summarizeExportedIncidentStatus(tableExports, logger) {
+  const incidentFilePath = tableExports && tableExports.incident ? tableExports.incident.filePath : '';
   if (!incidentFilePath) {
     return null;
   }
 
   logWith(logger, `开始统计事件表处置状态: ${incidentFilePath}`);
   const stats = await summarizeIncidentStatus(incidentFilePath);
-  if (Number(xdrExports.incident.totalEvents) > 0) {
-    stats.totalEvents = Number(xdrExports.incident.totalEvents);
+  if (Number(tableExports.incident.totalEvents) > 0) {
+    stats.totalEvents = Number(tableExports.incident.totalEvents);
     stats.closeRate = stats.totalEvents ? Math.round((stats.closedEvents / stats.totalEvents) * 100) : 0;
   }
   logWith(logger, `事件表统计完成: 事件数 ${stats.totalEvents} 起，严重 ${stats.severeEvents} 起，高危 ${stats.highEvents} 起，涉及到的资产数 ${stats.uniqueAssetCount} 个，已闭环 ${stats.closedEvents} 起，已遏制 ${stats.containedEvents} 起，处置中 ${stats.processingEvents} 起，闭环率 ${stats.closeRate}%`);
   return stats;
 }
 
-async function summarizeExportedAssetStatus(xdrExports, logger) {
-  const assetFilePath = xdrExports && xdrExports.asset ? xdrExports.asset.filePath : '';
+async function summarizeExportedAssetStatus(tableExports, logger) {
+  const assetFilePath = tableExports && tableExports.asset ? tableExports.asset.filePath : '';
   if (!assetFilePath) {
     return null;
   }
@@ -724,15 +724,15 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-async function shouldRunPreventionStage(options, xdrExports) {
+async function shouldRunPreventionStage(options, tableExports) {
   return Boolean(
     options['cookie-path']
-    || (options['mssw-cookie-path'] && await resolveIncidentFilePath(options, xdrExports))
+    || (options['mssw-cookie-path'] && await resolveIncidentFilePath(options, tableExports))
   );
 }
 
-async function resolveIncidentFilePath(options, xdrExports) {
-  const exportedPath = xdrExports && xdrExports.incident ? xdrExports.incident.filePath : '';
+async function resolveIncidentFilePath(options, tableExports) {
+  const exportedPath = tableExports && tableExports.incident ? tableExports.incident.filePath : '';
   if (exportedPath) {
     return exportedPath;
   }
@@ -740,8 +740,8 @@ async function resolveIncidentFilePath(options, xdrExports) {
   return findLatestWorkbook(getTmpExportDir(), /incident|事件/i);
 }
 
-async function resolveAssetFilePath({ options, xdrExports, logger }) {
-  const exportedPath = xdrExports && xdrExports.asset ? xdrExports.asset.filePath : '';
+async function resolveAssetFilePath({ options, tableExports, logger }) {
+  const exportedPath = tableExports && tableExports.asset ? tableExports.asset.filePath : '';
   if (exportedPath) {
     return exportedPath;
   }

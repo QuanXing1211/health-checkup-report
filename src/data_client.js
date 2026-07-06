@@ -1,6 +1,6 @@
 'use strict';
 
-const { fetchMsswAssetOverview } = require('./xdr_asset_client');
+const { fetchMsswAssetOverview } = require('./mssw_client');
 
 async function collectReportData(input) {
   if (input.msswCookiePath) {

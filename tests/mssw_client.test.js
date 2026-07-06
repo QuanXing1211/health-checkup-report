@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const { classifyDeviceType, DEVICE_TYPE_CATEGORIES, resolveDefaultProjectTimeRangeFromResponse } = require('../src/xdr_asset_client');
+const { classifyDeviceType, DEVICE_TYPE_CATEGORIES, resolveDefaultProjectTimeRangeFromResponse } = require('../src/mssw_client');
 
 function localTimestamp(year, month, day, hour = 0, minute = 0, second = 0) {
   return new Date(year, month - 1, day, hour, minute, second, 0).getTime();
@@ -51,4 +51,4 @@ assert.throws(
   /service_info/
 );
 
-console.log('xdr_asset_client.test.js passed');
+console.log('mssw_client.test.js passed');
