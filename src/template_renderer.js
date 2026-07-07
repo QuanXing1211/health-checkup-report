@@ -24,7 +24,15 @@ const DATA_FIELD_MAP = {
 const SECTION_RENDERERS = {
   'assetLedger.summary': renderAssetLedgerSummary,
   'riskOverview.summary': renderRiskOverviewSummary,
-  'riskOverview.topRiskAssetsSummary': renderTopRiskAssetsSummary
+  'riskOverview.topRiskAssetsSummary': renderTopRiskAssetsSummary,
+  'riskDetail.internetSummary': renderInternetRiskSummary,
+  'riskDetail.intranetSummary': renderIntranetRiskSummary,
+  'internet.vuln.levelDetail': renderInternetVulnLevelDetail,
+  'internet.vuln.prioritySummary': renderInternetVulnPrioritySummary,
+  'internet.vuln.topAssetsBlock': renderInternetVulnTopAssetsBlock,
+  'intranet.vuln.levelDetail': renderIntranetVulnLevelDetail,
+  'intranet.vuln.prioritySummary': renderIntranetVulnPrioritySummary,
+  'intranet.vuln.topBlocksGroup': renderIntranetVulnTopBlocksGroup
 };
 
 const REPEAT_RENDERERS = {
@@ -466,6 +474,141 @@ function escapeHtml(value) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function renderInternetRiskSummary(data) {
+  const rd = (data.risk_detail && data.risk_detail.internet) || {};
+  const main = (
+    `互联网业务总计发现风险 <strong>${num(rd.total)}</strong> 个` +
+    `（风险暴露面 <strong>${num(rd.exposure)}</strong> 个、` +
+    `漏洞 <strong>${num(rd.vuln)}</strong> 个、` +
+    `弱口令 <strong>${num(rd.weak_pwd)}</strong> 个）`
+  );
+  const tail = rd.high_above
+    ? `，其中高危及以上风险 <strong>${num(rd.high_above)}</strong> 个。`
+    : `。`;
+  return paragraph(main + tail);
+}
+
+function renderIntranetRiskSummary(data) {
+  const rd = (data.risk_detail && data.risk_detail.intranet) || {};
+  const main = (
+    `内网核心业务总计发现风险 <strong>${num(rd.total)}</strong> 个` +
+    `（漏洞 <strong>${num(rd.vuln)}</strong> 个、` +
+    `弱口令 <strong>${num(rd.weak_pwd)}</strong> 个）`
+  );
+  const tail = rd.high
+    ? `，其中高危及以上风险 <strong>${num(rd.high)}</strong> 个。`
+    : `。`;
+  return paragraph(main + tail);
+}
+
+function renderInternetVulnLevelDetail(data) {
+  const v = (data.internet && data.internet.vuln) || {};
+  if (!v.total) return '';
+  return (
+    `（严重 <strong>${num(v.critical)}</strong> 个、` +
+    `高危 <strong>${num(v.high)}</strong> 个、` +
+    `中危 <strong>${num(v.medium)}</strong> 个、` +
+    `低危 <strong>${num(v.low)}</strong> 个）`
+  );
+}
+
+function renderInternetVulnPrioritySummary(data) {
+  const v = (data.internet && data.internet.vuln) || {};
+  if (!v.total) return '';
+  return paragraph(
+    `从漏洞修复优先级视角统计，` +
+    `急需修复 <strong>${num(v.priority_urgent)}</strong> 个、` +
+    `尽快修复 <strong>${num(v.priority_soon)}</strong> 个、` +
+    `建议修复 <strong>${num(v.priority_suggest)}</strong> 个。`
+  );
+}
+
+function renderInternetVulnTopAssetsBlock(data) {
+  const v = (data.internet && data.internet.vuln) || {};
+  if (!v.total) return '';
+
+  const rows = Array.isArray(v.top_rows) ? v.top_rows : [];
+  const tableRows = rows.map((r, i) =>
+    '<tr>' +
+    `<td>${i + 1}</td>` +
+    `<td>${escapeHtml(r.asset)}</td>` +
+    '<td class="sr-vuln-priority-stats">' +
+    `<div>急需修复：<strong>${num(r.urgent)}</strong>个</div>` +
+    `<div>尽快修复：<strong>${num(r.soon)}</strong>个</div>` +
+    `<div>建议修复：<strong>${num(r.suggest)}</strong>个</div>` +
+    '</td></tr>'
+  ).join('');
+
+  return (
+    '<p class="report-body sr-p">互联网漏洞风险资产TOP 5如下：</p>\n' +
+    '<table class="report-table sr-tbl" id="tbl-internet-vuln-top">' +
+    '<thead><tr><th>序号</th><th>风险资产</th><th>漏洞修复优先级</th></tr></thead>' +
+    `<tbody>${tableRows}</tbody></table>`
+  );
+}
+
+function renderIntranetVulnLevelDetail(data) {
+  const v = (data.intranet && data.intranet.vuln) || {};
+  if (!v.total) return '';
+  return (
+    `（严重 <strong>${num(v.critical)}</strong> 个、` +
+    `高危 <strong>${num(v.high)}</strong> 个、` +
+    `中危 <strong>${num(v.medium)}</strong> 个、` +
+    `低危 <strong>${num(v.low)}</strong> 个）`
+  );
+}
+
+function renderIntranetVulnPrioritySummary(data) {
+  const v = (data.intranet && data.intranet.vuln) || {};
+  if (!v.total) return '';
+  return paragraph(
+    `从漏洞修复优先级视角统计，` +
+    `急需修复 <strong>${num(v.priority_urgent)}</strong> 个、` +
+    `尽快修复 <strong>${num(v.priority_soon)}</strong> 个、` +
+    `建议修复 <strong>${num(v.priority_suggest)}</strong> 个。`
+  );
+}
+
+function renderIntranetVulnTopBlocksGroup(data) {
+  const v = (data.intranet && data.intranet.vuln) || {};
+  if (!v.total) return '';
+
+  const bizRows = Array.isArray(v.biz_top_rows) ? v.biz_top_rows : [];
+  const bizTableRows = bizRows.map((r, i) =>
+    '<tr>' +
+    `<td>${i + 1}</td>` +
+    `<td>${escapeHtml(r.asset)}</td>` +
+    '<td class="sr-vuln-priority-stats">' +
+    `<div>急需修复：<strong>${num(r.urgent)}</strong>个</div>` +
+    `<div>尽快修复：<strong>${num(r.soon)}</strong>个</div>` +
+    `<div>建议修复：<strong>${num(r.suggest)}</strong>个</div>` +
+    '</td></tr>'
+  ).join('');
+
+  const assetRows = Array.isArray(v.asset_top_rows) ? v.asset_top_rows : [];
+  const assetTableRows = assetRows.map((r, i) =>
+    '<tr>' +
+    `<td>${i + 1}</td>` +
+    `<td>${escapeHtml(r.asset)}</td>` +
+    '<td class="sr-vuln-priority-stats">' +
+    `<div>急需修复：<strong>${num(r.urgent)}</strong>个</div>` +
+    `<div>尽快修复：<strong>${num(r.soon)}</strong>个</div>` +
+    `<div>建议修复：<strong>${num(r.suggest)}</strong>个</div>` +
+    '</td></tr>'
+  ).join('');
+
+  return (
+    '<p class="report-body sr-p">业务系统TOP 5如下：</p>\n' +
+    '<table class="report-table sr-tbl" id="tbl-biz-vuln-top">' +
+    '<thead><tr><th>序号</th><th>风险资产</th><th>漏洞修复优先级</th></tr></thead>' +
+    `<tbody>${bizTableRows}</tbody></table>\n` +
+    '<p class="report-body sr-p">内网漏洞风险资产TOP 5如下：</p>\n' +
+    '<table class="report-table sr-tbl" id="tbl-intra-vuln-top">' +
+    '<thead><tr><th>序号</th><th>风险资产</th><th>漏洞修复优先级</th></tr></thead>' +
+    `<tbody>${assetTableRows}</tbody></table>`
+  );
 }
 
 module.exports = {
