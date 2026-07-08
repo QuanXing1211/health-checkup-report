@@ -25,6 +25,7 @@ const SECTION_RENDERERS = {
   'assetLedger.summary': renderAssetLedgerSummary,
   'riskOverview.summary': renderRiskOverviewSummary,
   'riskOverview.topRiskAssetsSummary': renderTopRiskAssetsSummary,
+  'riskDetails.caseStudy': renderCaseStudySection,
   'riskDetail.internetSummary': renderInternetRiskSummary,
   'riskDetail.intranetSummary': renderIntranetRiskSummary,
   'internet.vuln.levelDetail': renderInternetVulnLevelDetail,
@@ -238,6 +239,50 @@ function renderTopRiskAssetsSummary(data) {
   return `综上，贵公司当前的安全建设水位有一定差距，随时可能面临数据泄露、系统破坏导致业务中断以及由此带来的经济损失、信誉损害、公信力下降等更为致命的风险。修复方案重点针对 ${targetText}。`;
 }
 
+function renderCaseStudySection(data) {
+  const caseStudy = (data && data.riskDetails && data.riskDetails.caseStudy) || {};
+  const attackTimeline = Array.isArray(caseStudy.attackTimeline) ? caseStudy.attackTimeline : [];
+  const defenseTimeline = Array.isArray(caseStudy.defenseTimeline) ? caseStudy.defenseTimeline : [];
+
+  if (!attackTimeline.length && !defenseTimeline.length) {
+    return [
+      '<div class="sr-attack-chain">',
+      '<div class="tm">',
+      '<div class="tm-row">',
+      '<div class="tm-left"></div>',
+      '<div class="tm-dot gn"></div>',
+      '<div class="tm-right">',
+      '<div class="tm-card def">',
+      '<div class="tm-tag">典型案例</div>',
+      '<div class="tm-desc">暂无典型案例数据</div>',
+      '<span class="tm-arrow"></span>',
+      '</div>',
+      '</div>',
+      '</div>',
+      '</div>',
+      '</div>'
+    ].join('');
+  }
+
+  const attackGroups = groupAttackTimelineByStage(attackTimeline);
+  const rowCount = Math.max(attackGroups.length, defenseTimeline.length);
+  const rows = [];
+
+  for (let index = 0; index < rowCount; index += 1) {
+    const attackGroup = attackGroups[index];
+    const defenseItem = defenseTimeline[index];
+    rows.push([
+      '<div class="tm-row">',
+      attackGroup ? renderAttackTimelineColumn(attackGroup, index) : '<div class="tm-left"></div>',
+      `<div class="tm-dot ${resolveCaseStudyDotClass(attackGroup, defenseItem)}"></div>`,
+      defenseItem ? renderDefenseTimelineColumn(defenseItem) : '<div class="tm-right"></div>',
+      '</div>'
+    ].join(''));
+  }
+
+  return `<div class="sr-attack-chain"><div class="tm">${rows.join('')}</div></div>`;
+}
+
 function renderTopRiskAssetRows(rows) {
   if (!Array.isArray(rows) || !rows.length) {
     return '<tr><td colspan="3">暂无风险资产 TOP5 数据</td></tr>';
@@ -429,6 +474,97 @@ function managedStatusLevel(text) {
   if (/未托管|未纳管/.test(text)) return 'medium';
   if (/已托管|已纳管/.test(text)) return 'success';
   return 'info';
+}
+
+function groupAttackTimelineByStage(rows) {
+  const groups = [];
+  const groupMap = new Map();
+
+  rows.forEach((row) => {
+    if (!row) return;
+    const stageId = String(row.stageId || '').trim();
+    const stageName = String(row.stageName || '').trim();
+    const key = `${stageId}::${stageName}`;
+    if (!groupMap.has(key)) {
+      const group = { stageId, stageName, items: [] };
+      groupMap.set(key, group);
+      groups.push(group);
+    }
+    groupMap.get(key).items.push(row);
+  });
+
+  return groups;
+}
+
+function renderAttackTimelineColumn(group, index) {
+  const stageName = String(group.stageName || group.stageId || '未知阶段').trim();
+  const stageLabel = `阶段${formatChineseStageIndex(index + 1)}：${escapeHtml(stageName)}`;
+  const entries = group.items.map((item) => {
+    const time = formatCaseStudyTimestamp(item && item.timestamp);
+    const narrative = escapeHtml(String((item && item.narrative) || '').trim());
+    return [
+      time ? `<div class="tm-time">${time}</div>` : '',
+      narrative ? `<div class="tm-desc">${narrative}</div>` : ''
+    ].join('');
+  }).join('');
+
+  return [
+    '<div class="tm-left">',
+    '<div class="tm-card atk">',
+    `<div class="tm-tag">${stageLabel}</div>`,
+    entries || '<div class="tm-desc">暂无攻击侧时间线</div>',
+    '<span class="tm-arrow"></span>',
+    '</div>',
+    '</div>'
+  ].join('');
+}
+
+function renderDefenseTimelineColumn(item) {
+  const label = escapeHtml(String((item && item.label) || '防守时间线').trim());
+  const time = formatCaseStudyTimestamp(item && item.timestamp);
+
+  return [
+    '<div class="tm-right">',
+    '<div class="tm-card def">',
+    `<div class="tm-tag">${label}</div>`,
+    time ? `<div class="tm-time">${time}</div>` : '',
+    '<span class="tm-arrow"></span>',
+    '</div>',
+    '</div>'
+  ].join('');
+}
+
+function resolveCaseStudyDotClass(attackGroup, defenseItem) {
+  if (attackGroup) return 'rd';
+  if (defenseItem) return 'bl';
+  return 'gn';
+}
+
+function formatCaseStudyTimestamp(value) {
+  const timestamp = Number(value);
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return '';
+  const date = new Date(timestamp * 1000);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${month}-${day} ${hours}:${minutes}`;
+}
+
+function formatChineseStageIndex(index) {
+  const numerals = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+  if (index <= 10) {
+    return numerals[index] || String(index);
+  }
+  if (index < 20) {
+    return `十${numerals[index - 10] || ''}`;
+  }
+  if (index === 20) {
+    return '二十';
+  }
+  return String(index);
 }
 
 function injectReportData(html, data) {

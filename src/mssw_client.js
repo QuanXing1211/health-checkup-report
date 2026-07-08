@@ -14,7 +14,8 @@ const {
   extractIncidentDirectStats,
   extractIncidentAssetInfo,
   extractC2ConnectionExamples,
-  extractVirusTrojanExamples
+  extractVirusTrojanExamples,
+  extractCaseStudyCandidates
 } = require('./incident_excel_stats');
 
 const DEFAULT_MSSW_BASE_URL = normalizeBaseUrl('pre.soar.sangfor.com');
@@ -39,6 +40,15 @@ const MSSW_ASSET_DOWNLOAD_ENDPOINT = '/apps/asset/view/asset/download_file';
 const MSSW_ASSET_COUNT_ENDPOINT = '/apps/asset/view/asset/asset_view/count?_method=GET';
 const MSSW_INCIDENT_TABLE_ENDPOINT = '/gateway/mss-mdr/web/api/mssw/mss-mdr/v1/incident_table';
 const MSSW_LOG_SEARCH_COUNT_ENDPOINT = '/gateway/log-search-center-service/datalake/v1/ckCount';
+const ATTCK_COUNT_ENDPOINT = '/ngsoc/INCIDENT/api/v1/incidents/attckCount';
+const INCIDENT_TABLE_QUERY_ENDPOINT = '/ngsoc/INCIDENT/api/v1/table/query/incidentTableQueryHandler';
+const CASE_STUDY_SEVERITY_ORDER = ['严重', '高危', '中危', '低危'];
+const CASE_STUDY_INCIDENT_SERVICE_INFO = {
+  appName: 'incident',
+  servletContextPath: '/',
+  serviceType: 'table',
+  handler: 'incidentTableQueryHandler'
+};
 
 // devType 到分类名称的映射
 const DEVICE_TYPE_CATEGORIES = {
@@ -154,6 +164,16 @@ function normalizeBaseUrl(value) {
   }
 }
 
+function normalizeAbsoluteUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    return new URL(raw.includes('://') ? raw : `https://${raw}`).toString().replace(/\/$/, '');
+  } catch (error) {
+    return '';
+  }
+}
+
 function cookiePairsToString(pairs) {
   return pairs
     .filter((item) => item && item.name && item.value !== undefined)
@@ -226,17 +246,22 @@ function normalizeCookieContent(rawContent) {
       return {
         cookieString: cookiePairsToString(parsed),
         csrfToken: null,
-        xdrBaseUrl: inferXdrBaseUrlFromCookiePairs(parsed)
+        xdrBaseUrl: inferXdrBaseUrlFromCookiePairs(parsed),
+        alertQueryBaseUrl: ''
       };
     }
 
     const cookieString = parsed.cookie || parsed.cookieString || parsed.Cookie || parsed.cookiesText;
     const xdrBaseUrl = normalizeBaseUrl(parsed.xdrBaseUrl || parsed.baseUrl || parsed.domain);
+    const alertQueryBaseUrl = normalizeAbsoluteUrl(
+      parsed.alertQueryBaseUrl || parsed.alertBaseUrl || parsed.alert_table_base_url || parsed.alertQueryUrlBase
+    );
     if (typeof cookieString === 'string' && cookieString.trim()) {
       return {
         cookieString: cookieString.trim(),
         csrfToken: parsed.csrfToken || parsed.xCsrftoken || parsed['x-csrf-token'] || null,
-        xdrBaseUrl
+        xdrBaseUrl,
+        alertQueryBaseUrl
       };
     }
 
@@ -244,7 +269,8 @@ function normalizeCookieContent(rawContent) {
       return {
         cookieString: cookiePairsToString(parsed.cookies),
         csrfToken: parsed.csrfToken || parsed.xCsrftoken || parsed['x-csrf-token'] || null,
-        xdrBaseUrl: xdrBaseUrl || inferXdrBaseUrlFromCookiePairs(parsed.cookies)
+        xdrBaseUrl: xdrBaseUrl || inferXdrBaseUrlFromCookiePairs(parsed.cookies),
+        alertQueryBaseUrl
       };
     }
 
@@ -254,7 +280,8 @@ function normalizeCookieContent(rawContent) {
   return {
     cookieString: content,
     csrfToken: null,
-    xdrBaseUrl: ''
+    xdrBaseUrl: '',
+    alertQueryBaseUrl: ''
   };
 }
 
@@ -274,6 +301,7 @@ async function readXdrCookieInfo(cookiePath) {
     cookieString,
     csrfToken: normalized.csrfToken || extractCsrfToken(cookieString),
     xdrBaseUrl: normalized.xdrBaseUrl || '',
+    alertQueryBaseUrl: normalized.alertQueryBaseUrl || '',
     xdrBaseUrlCandidates: unique([
       normalized.xdrBaseUrl,
       ...inferXdrBaseUrlsFromText(rawContent)
@@ -840,6 +868,199 @@ function buildAlertCountRequestBody({ begin, end }) {
     enableHistory: true
   };
 }
+
+function buildCaseStudyAlertQueryRequestBody({ begin, end, incidentId, stageId, techniqueId }) {
+  const tacticValue = `${stageId}.${techniqueId}`;
+  return {
+    extensionParams: null,
+    spl: {
+      mappedSpl: `filter uuId in { "${incidentId}" } | attckTactics = "${tacticValue}"`,
+      originalSpl: `filter uuId in { "${incidentId}" } | attckTactics = "${tacticValue}"`,
+      extensionParams: {
+        frontRender: [],
+        mappedInputSpl: `attckTactics = "${tacticValue}"`,
+        originalInputSpl: `attckTactics = "${tacticValue}"`
+      }
+    },
+    serviceInfo: ALERT_TABLE_SERVICE_INFO,
+    globalCondition: {
+      branchIds: [],
+      time: {
+        timeField: 'lastTime',
+        begin: { type: 'absolute', value: begin },
+        end: { type: 'absolute', value: end }
+      }
+    },
+    table: {
+      enable: true,
+      viewName: 'AlertSubView',
+      aggregationStrategies: [],
+      tableFields: buildAlertTableFields(),
+      pageNum: 1,
+      pageSize: 10,
+      serviceInfo: ALERT_TABLE_SERVICE_INFO,
+      subTable: null,
+      rightClicked: false,
+      selectAllPage: false,
+      routers: [],
+      rightActions: [],
+      extensionParams: {},
+      tag: null
+    },
+    viewName: 'AlertSubView',
+    model: 'simple',
+    autoRefresh: true,
+    viewInstanceId: ALERT_VIEW_INSTANCE_ID,
+    enableHistory: false
+  };
+}
+
+function buildIncidentCaseStudyQueryRequestBody({ begin, end, incidentId }) {
+  return {
+    extensionParams: null,
+    spl: {
+      mappedSpl: `filter uuId in { "${incidentId}" }`,
+      originalSpl: `filter uuId in { "${incidentId}" }`,
+      extensionParams: {
+        frontRender: [],
+        mappedInputSpl: '',
+        originalInputSpl: ''
+      }
+    },
+    serviceInfo: CASE_STUDY_INCIDENT_SERVICE_INFO,
+    globalCondition: {
+      branchIds: [],
+      time: {
+        timeField: 'endTime',
+        begin: { type: 'absolute', value: begin },
+        end: { type: 'absolute', value: end }
+      }
+    },
+    table: {
+      enable: true,
+      viewName: 'IncidentView',
+      aggregationStrategies: null,
+      tableFields: [
+        { field: 'uuId', show: true, selected: true, sort: 'disable', columnWidth: 280, fixed: null, dataType: 'value' },
+        { field: 'logTraceInfo', show: true, selected: true, sort: 'disable', columnWidth: 150, fixed: null, dataType: 'value' },
+        { field: 'endTime', show: true, selected: true, sort: 'desc', columnWidth: 160, fixed: null, dataType: 'value' }
+      ],
+      pageNum: 1,
+      pageSize: 10,
+      serviceInfo: CASE_STUDY_INCIDENT_SERVICE_INFO,
+      subTable: null,
+      rightClicked: false,
+      selectAllPage: false,
+      routers: [],
+      rightActions: [],
+      extensionParams: {},
+      tag: null
+    },
+    viewName: 'IncidentView',
+    model: 'simple',
+    autoRefresh: false,
+    viewInstanceId: 'case-study-incident-view',
+    enableHistory: true
+  };
+}
+
+function severityRank(value) {
+  const index = CASE_STUDY_SEVERITY_ORDER.indexOf(String(value || '').trim());
+  return index === -1 ? CASE_STUDY_SEVERITY_ORDER.length : index;
+}
+
+function buildEmptyCaseStudy(candidateCount = 0, matchedCount = 0) {
+  return {
+    selectedIncidentId: '',
+    selectedSourceType: '',
+    selectedSeverity: '',
+    candidateCount: Number(candidateCount || 0),
+    matchedCount: Number(matchedCount || 0),
+    attackTimeline: [],
+    defenseTimeline: []
+  };
+}
+
+function parseAlertQueryBaseUrl(cookieInfo) {
+  const explicit = normalizeAbsoluteUrl(cookieInfo && cookieInfo.alertQueryBaseUrl);
+  if (explicit) {
+    return explicit;
+  }
+
+  const candidates = Array.isArray(cookieInfo && cookieInfo.xdrBaseUrlCandidates)
+    ? cookieInfo.xdrBaseUrlCandidates
+    : [];
+  const fallbackHost = candidates[0] || cookieInfo.xdrBaseUrl || '';
+  if (!fallbackHost) {
+    return '';
+  }
+
+  return normalizeAbsoluteUrl(`https://${fallbackHost}`);
+}
+
+function buildXdrAlertHeaders(cookieInfo, alertQueryBaseUrl) {
+  const baseUrl = new URL(alertQueryBaseUrl);
+  return {
+    host: baseUrl.host,
+    accept: 'application/json, text/plain, */*',
+    'accept-language': 'zh-CN,zh;q=0.9',
+    'content-type': 'application/json',
+    cookie: cookieInfo.cookieString,
+    origin: baseUrl.origin,
+    referer: `${baseUrl.origin}/`,
+    'sec-ch-ua': '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    'x-requested-with': 'XMLHttpRequest',
+    'x-csrf-token': cookieInfo.csrfToken
+  };
+}
+
+function buildMsswTableQueryHeaders(cookieInfo, msswBaseUrl, companyId) {
+  return buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+}
+
+function extractCellValue(cell) {
+  if (cell === null || cell === undefined) return '';
+  if (typeof cell !== 'object') return cell;
+  if (cell.renderValue !== undefined && cell.renderValue !== null) return cell.renderValue;
+  if (cell.originalValue !== undefined && cell.originalValue !== null) return cell.originalValue;
+  return '';
+}
+
+function extractArrayCellValues(cell) {
+  if (!cell || typeof cell !== 'object') return [];
+  const data = Array.isArray(cell.data) ? cell.data : [];
+  return data
+    .map((item) => {
+      if (item && typeof item === 'object') {
+        return item.renderValue !== undefined && item.renderValue !== null
+          ? item.renderValue
+          : item.originalValue;
+      }
+      return item;
+    })
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+}
+
+function determineVoiceMode(hostIp, dstIpValues) {
+  const normalizedHostIp = String(hostIp || '').trim();
+  if (!normalizedHostIp) return '主动';
+  return dstIpValues.includes(normalizedHostIp) ? '被动' : '主动';
+}
+
+function buildAttackNarrative(hostIp, stageName, techniqueName, voiceMode) {
+  const prefix = String(hostIp || '').trim();
+  const suffix = `${String(stageName || '').trim()}${String(techniqueName || '').trim()}`;
+  if (!prefix) return suffix;
+  if (voiceMode === '被动') return `${prefix}被${suffix}`;
+  return `${prefix}${suffix}`;
+}
 // GPT 定性结论威胁家族名称列表
 const THREAT_ACTOR_NAMES = [
   '勒索', '银狐', '黑猫', '金眼狗', '海莲花', '幼象', '响尾蛇',
@@ -982,6 +1203,202 @@ async function confirmHostCompromiseIncident(cookieInfo, msswBaseUrl, companyId,
   if (hasMaliciousEntity(dnsResponse)) return true;
 
   return false;
+}
+
+async function fetchIncidentAttckCount(cookieInfo, msswBaseUrl, companyId, incidentId) {
+  const headers = buildMsswTableQueryHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${ATTCK_COUNT_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify([incidentId])
+  });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0' && code !== undefined && code !== null) {
+    throw new Error(`ATT&CK 时间线查询失败 (${incidentId}): ${response.message || response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+  return response;
+}
+
+async function queryCaseStudyAlertRow(cookieInfo, alertQueryBaseUrl, range, incidentId, stageId, techniqueId) {
+  const headers = buildXdrAlertHeaders(cookieInfo, alertQueryBaseUrl);
+  const url = `${alertQueryBaseUrl}${ALERT_QUERY_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildCaseStudyAlertQueryRequestBody({
+      begin: range.begin,
+      end: range.end,
+      incidentId,
+      stageId,
+      techniqueId
+    }))
+  });
+
+  assertXdrApiSuccess(response, '典型案例攻击侧查询');
+  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+  const list = Array.isArray(data.data) ? data.data : [];
+  return list[0] || null;
+}
+
+async function queryCaseStudyIncidentTimeline(cookieInfo, msswBaseUrl, companyId, range, incidentId) {
+  const headers = buildMsswTableQueryHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${INCIDENT_TABLE_QUERY_ENDPOINT}`;
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildIncidentCaseStudyQueryRequestBody({
+      begin: range.begin,
+      end: range.end,
+      incidentId
+    }))
+  });
+
+  assertXdrApiSuccess(response, '典型案例防守侧查询');
+  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+  const list = Array.isArray(data.data) ? data.data : [];
+  return list[0] || null;
+}
+
+function extractAttckTechniqueHits(response) {
+  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+  const tactics = Array.isArray(data.attckTacticVoList) ? data.attckTacticVoList : [];
+  const hits = [];
+
+  for (const tactic of tactics) {
+    if (!tactic || tactic.isHit !== true) continue;
+    const techniques = Array.isArray(tactic.attckTechniques) ? tactic.attckTechniques : [];
+    if (!techniques.length) continue;
+
+    for (const technique of techniques) {
+      if (!technique || !technique.id) continue;
+      hits.push({
+        stageId: String(tactic.id || '').trim(),
+        stageName: String(tactic.chineseName || '').trim(),
+        techniqueId: String(technique.id || '').trim(),
+        techniqueName: String(technique.chineseName || '').trim()
+      });
+    }
+  }
+
+  return hits;
+}
+
+function buildDefenseTimelineFromIncidentRow(row) {
+  if (!row || typeof row !== 'object') return [];
+  const logTraceInfo = row.logTraceInfo && typeof row.logTraceInfo === 'object' ? row.logTraceInfo : {};
+  const renderValue = Array.isArray(logTraceInfo.renderValue) ? logTraceInfo.renderValue : [];
+  return renderValue
+    .map((item) => ({
+      timestamp: Number(item && item.value || 0),
+      label: String(item && item.label || '').trim()
+    }))
+    .filter((item) => Number.isFinite(item.timestamp) && item.timestamp > 0 && item.label)
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+async function fetchIncidentCaseStudy(options = {}) {
+  const candidateCount = (
+    (Array.isArray(options.c2Ids) ? options.c2Ids.length : 0) +
+    (Array.isArray(options.virusIds) ? options.virusIds.length : 0) +
+    (Array.isArray(options.exploitIds) ? options.exploitIds.length : 0)
+  );
+
+  if (!options.incidentFilePath) {
+    return buildEmptyCaseStudy(candidateCount, 0);
+  }
+
+  const candidateResult = await extractCaseStudyCandidates(options.incidentFilePath, {
+    c2Ids: options.c2Ids,
+    virusIds: options.virusIds,
+    exploitIds: options.exploitIds
+  });
+  const matchedCandidates = Array.isArray(candidateResult.matchedCandidates)
+    ? candidateResult.matchedCandidates
+    : [];
+  const matchedCount = matchedCandidates.length;
+
+  if (!matchedCount) {
+    return buildEmptyCaseStudy(candidateResult.candidateCount || candidateCount, 0);
+  }
+
+  const topSeverityRank = Math.min(...matchedCandidates.map((item) => severityRank(item.severity)));
+  const topSeverityCandidates = matchedCandidates.filter((item) => severityRank(item.severity) === topSeverityRank);
+  const selected = topSeverityCandidates[Math.floor(Math.random() * topSeverityCandidates.length)];
+  if (!selected || !selected.incidentId) {
+    return buildEmptyCaseStudy(candidateResult.candidateCount || candidateCount, matchedCount);
+  }
+
+  const result = buildEmptyCaseStudy(candidateResult.candidateCount || candidateCount, matchedCount);
+  result.selectedIncidentId = selected.incidentId;
+  result.selectedSourceType = selected.sourceType || '';
+  result.selectedSeverity = selected.severity || '';
+
+  let techniqueHits = [];
+  try {
+    const attckResponse = await fetchIncidentAttckCount(
+      options.msswCookieInfo,
+      options.msswBaseUrl,
+      options.companyId,
+      selected.incidentId
+    );
+    techniqueHits = extractAttckTechniqueHits(attckResponse);
+  } catch (error) {
+    return result;
+  }
+  if (!techniqueHits.length) {
+    return result;
+  }
+
+  const attackTimeline = [];
+  for (const hit of techniqueHits) {
+    let alertRow = null;
+    try {
+      alertRow = await queryCaseStudyAlertRow(
+        options.xdrCookieInfo,
+        options.alertQueryBaseUrl,
+        options.range,
+        selected.incidentId,
+        hit.stageId,
+        hit.techniqueId
+      );
+    } catch (error) {
+      continue;
+    }
+    if (!alertRow) continue;
+
+    const hostIp = String(extractCellValue(alertRow.hostIp) || '').trim();
+    const dstIpValues = extractArrayCellValues(alertRow.dstIp);
+    const voiceMode = determineVoiceMode(hostIp, dstIpValues);
+
+    attackTimeline.push({
+      timestamp: Number(extractCellValue(alertRow.lastTime) || 0),
+      stageId: hit.stageId,
+      stageName: hit.stageName,
+      techniqueId: hit.techniqueId,
+      techniqueName: hit.techniqueName,
+      hostIp,
+      voiceMode,
+      narrative: buildAttackNarrative(hostIp, hit.stageName, hit.techniqueName, voiceMode)
+    });
+  }
+
+  result.attackTimeline = attackTimeline
+    .filter((item) => Number.isFinite(item.timestamp) && item.timestamp > 0)
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  try {
+    const incidentRow = await queryCaseStudyIncidentTimeline(
+      options.msswCookieInfo,
+      options.msswBaseUrl,
+      options.companyId,
+      options.range,
+      selected.incidentId
+    );
+    result.defenseTimeline = buildDefenseTimelineFromIncidentRow(incidentRow);
+  } catch (error) {
+    result.defenseTimeline = [];
+  }
+
+  return result;
 }
 
 async function fetchMsswIncidentGptStats(cookieInfo, msswBaseUrl, companyId, startTimeMs, endTimeMs, logger, incidentFilePath) {
@@ -2101,6 +2518,7 @@ async function fetchMsswAssetOverview(options = {}) {
     },
     threatActorStats: []
   };
+  let caseStudy = buildEmptyCaseStudy();
 
   try {
     const timeRange = resolveIncidentTimeRange(timeOptions);
@@ -2160,6 +2578,34 @@ async function fetchMsswAssetOverview(options = {}) {
     }
   }
 
+  try {
+    const xdrCookieInfo = options.xdrCookiePath ? await readXdrCookieInfo(options.xdrCookiePath) : null;
+    const alertQueryBaseUrl = xdrCookieInfo ? parseAlertQueryBaseUrl(xdrCookieInfo) : '';
+    if (xdrCookieInfo && !xdrCookieInfo.alertQueryBaseUrl && alertQueryBaseUrl) {
+      logInfo(logger, `典型案例告警查询未提供完整 alertQueryBaseUrl，已回退到 ${alertQueryBaseUrl}`);
+    }
+    if (options.xdrCookiePath && !alertQueryBaseUrl) {
+      logInfo(logger, '典型案例告警查询缺少 alertQueryBaseUrl，已跳过攻击侧时间线查询');
+    } else if (options.incidentFilePath && xdrCookieInfo && alertQueryBaseUrl) {
+      const timeRange = resolveIncidentTimeRange(timeOptions);
+      caseStudy = await fetchIncidentCaseStudy({
+        incidentFilePath: options.incidentFilePath,
+        c2Ids: incidentGptStats.hostCompromise?.confirmedIncidentIds || [],
+        virusIds: incidentGptStats.virusTrojan?.confirmedIncidentIds || [],
+        exploitIds: Array.isArray(options.exploitIncidentIds) ? options.exploitIncidentIds : [],
+        msswCookieInfo: cookieInfo,
+        xdrCookieInfo,
+        msswBaseUrl: xdrBaseUrl,
+        alertQueryBaseUrl,
+        companyId,
+        range: timeRange
+      });
+      logInfo(logger, `典型案例已提取: incident=${caseStudy.selectedIncidentId || '无'}, attack=${caseStudy.attackTimeline.length}, defense=${caseStudy.defenseTimeline.length}`);
+    }
+  } catch (error) {
+    logInfo(logger, `提取典型案例失败（不影响主流程）: ${error.message}`);
+  }
+
   let securityLogTotal = 0;
   let alertTotal = 0;
   let alertReductionRate = 0;
@@ -2187,6 +2633,7 @@ async function fetchMsswAssetOverview(options = {}) {
       alertTotal,
       alertReductionRate,
       closeRate: alertReductionRate,
+      caseStudy,
       highRiskIncidentExamples: {
         viruses: Array.isArray(incidentGptStats.virusTrojanExamples)
           ? incidentGptStats.virusTrojanExamples

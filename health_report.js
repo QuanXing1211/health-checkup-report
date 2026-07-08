@@ -158,6 +158,7 @@ async function main() {
     incidentStatusStats,
     incidentFilePath: incidentFilePath || undefined,
     assetFilePath: resolvedAssetFilePath || undefined,
+    exploitIncidentIds: exploitStats && Array.isArray(exploitStats.incidentIds) ? exploitStats.incidentIds : [],
     logger
   });
 

@@ -278,6 +278,33 @@ async function extractIncidentTypeStats(incidentExcelPath) {
   };
 }
 
+async function extractCaseStudyCandidates(incidentExcelPath, options = {}) {
+  if (!incidentExcelPath) {
+    return {
+      candidateCount: 0,
+      matchedCandidates: []
+    };
+  }
+
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'extract_case_study_candidates.py');
+  const stdout = await execPythonWithArgs(
+    scriptPath,
+    [
+      encodePath(incidentExcelPath),
+      JSON.stringify(Array.isArray(options.c2Ids) ? options.c2Ids : []),
+      JSON.stringify(Array.isArray(options.virusIds) ? options.virusIds : []),
+      JSON.stringify(Array.isArray(options.exploitIds) ? options.exploitIds : [])
+    ],
+    '提取典型案例候选事件失败'
+  );
+  const parsed = JSON.parse(stdout);
+
+  return {
+    candidateCount: Number(parsed.candidateCount || 0),
+    matchedCandidates: Array.isArray(parsed.matchedCandidates) ? parsed.matchedCandidates : []
+  };
+}
+
 module.exports = {
   summarizeIncidentStatus,
   removeIncidentRows,
@@ -290,5 +317,6 @@ module.exports = {
   extractVulnExploitExamples,
   summarizeManagedAssetIncidents,
   extractExploitStats,
-  extractIncidentTypeStats
+  extractIncidentTypeStats,
+  extractCaseStudyCandidates
 };

@@ -15,10 +15,12 @@ async function collectReportData(input) {
         endDate: input.end || ''
       },
       msswCookiePath: input.msswCookiePath,
+      xdrCookiePath: input.xdrCookiePath,
       msswBaseUrl: input.msswBaseUrl,
       customerId: input.customerId,
       incidentFilePath: input.incidentFilePath,
-      assetFilePath: input.assetFilePath
+      assetFilePath: input.assetFilePath,
+      exploitIncidentIds: input.exploitIncidentIds
     });
 
     let merged = deepMerge(baseData, overviewData);
