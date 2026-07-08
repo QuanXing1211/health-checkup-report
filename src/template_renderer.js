@@ -220,6 +220,7 @@ function renderKeyRiskRows(rows) {
   ].join('')).join('');
 }
 
+
 function renderTopRiskAssetsSummary(data) {
   const rows = Array.isArray(data && data.riskOverview && data.riskOverview.topRiskAssets)
     ? data.riskOverview.topRiskAssets.filter(Boolean)

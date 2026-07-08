@@ -1569,7 +1569,8 @@ function buildMsswIncidentExportRequestBody({ begin, end, companyId, fields }) {
     is_all: 0,
     my_customer: 0,
     event_id_list: [],
-    fields: fields || MSSW_INCIDENT_EXPORT_FIELDS
+    fields: fields || MSSW_INCIDENT_EXPORT_FIELDS,
+    export_ioc_intelligence: true
   };
 }
 
@@ -2389,6 +2390,41 @@ async function fetchMsswLogCountByTable(cookieInfo, msswBaseUrl, companyId, tabl
   return total;
 }
 
+/**
+ * 调用 Python 脚本删除事件表中的"外网IP地址"、"域名"、"文件"三列。
+ * @param {string} inputPath 事件表 xlsx 文件路径
+ * @returns {Promise<{filePath: string}>} 处理后的文件路径
+ */
+async function removeIncidentSensitiveColumns(inputPath, outputDir) {
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'remove_incident_columns.py');
+  const resolvedOutputDir = outputDir || getTmpExportDir();
+  await fsp.mkdir(resolvedOutputDir, { recursive: true });
+
+  return new Promise((resolve, reject) => {
+    execFile('python3', [scriptPath, encodePath(inputPath), encodePath(resolvedOutputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (error, stdout, stderr) => {
+      if (error) {
+        execFile('python', [scriptPath, encodePath(inputPath), encodePath(resolvedOutputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2) => {
+          if (err2) {
+            reject(new Error(`删除事件表敏感列失败 (python3: ${error.message}, python: ${err2.message})`));
+            return;
+          }
+          try {
+            resolve(JSON.parse(stdout2));
+          } catch (e) {
+            reject(new Error(`解析删除敏感列结果失败: ${stdout2.slice(0, 500)}`));
+          }
+        });
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch (e) {
+        reject(new Error(`解析删除敏感列结果失败: ${stdout.slice(0, 500)}`));
+      }
+    });
+  });
+}
+
 async function fetchMsswSecurityLogCount(cookieInfo, msswBaseUrl, companyId, options) {
   // 分两次查: tableId=62(网络安全日志) + tableId=26(终端安全日志)，求和
   const { begin, end } = resolveIncidentTimeRange(options);
@@ -2469,5 +2505,6 @@ module.exports = {
   fetchMsswAssetCore,
   fetchMsswAssetReadyToOutbound,
   fetchMsswFalsePositiveIncidentIds,
-  processRiskListTable
+  processRiskListTable,
+  removeIncidentSensitiveColumns
 };

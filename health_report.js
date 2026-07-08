@@ -7,7 +7,7 @@ const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails } = require('./src/incident_excel_stats');
-const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate } = require('./src/mssw_client');
+const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
 const { rankBusinessSystems } = require('./src/business_system_ranking');
@@ -57,9 +57,11 @@ async function main() {
     throw new Error(`Unsupported command: ${command}`);
   }
 
-  requireArgs(options, ['customer', 'mssw-cookie-path', 'xdr-cookie-path']);
+  requireArgs(options, ['customer', 'mssw-cookie-path']);
 
-  await readXdrCookieInfo(options['xdr-cookie-path']);
+  if (options['xdr-cookie-path']) {
+    await readXdrCookieInfo(options['xdr-cookie-path']);
+  }
 
   await exportMsswDeviceList({
     msswCookiePath: options['mssw-cookie-path'],
@@ -109,7 +111,7 @@ async function main() {
   // 从事件表提取漏洞利用统计（不阻断主流程）
   let exploitStats = null;
   let vulnExploitExamples = [];
-  const incidentFilePath = await resolveIncidentFilePath(options, tableExports);
+  let incidentFilePath = await resolveIncidentFilePath(options, tableExports);
   if (incidentFilePath) {
     try {
       exploitStats = await extractExploitStats(incidentFilePath);
@@ -296,6 +298,15 @@ async function main() {
     reportData = mergeBranch1ReportPatch(reportData, branch1Result.reportPatch);
     logger('分支1 JSON 已合并到 report-data');
 
+    // 最后落盘前删除事件表中的"外网IP地址"、"域名"、"文件"三列
+    try {
+      const strippedResult = await removeIncidentSensitiveColumns(incidentFilePath, getTmpExportDir());
+      logger(`事件表已删除敏感列: ${strippedResult.filePath}`);
+      incidentFilePath = strippedResult.filePath;  // 使用剥离后的文件作为最终落盘文件  // eslint-disable-line no-param-reassign
+    } catch (error) {
+      logger(`删除事件表敏感列失败（不阻断主流程）: ${error.message}`);
+    }
+
     const archivedFiles = await archiveRiskListFiles({
       root,
       incidentPath: incidentFilePath,
@@ -430,7 +441,7 @@ function printHelp() {
 Options:
   --customer <name>              Customer name (用于自动查询 company_id)
   --mssw-cookie-path <path>      Required for generate and MSSW data flow
-  --xdr-cookie-path <path>       Required for generate, currently only validated/pass-through
+  --xdr-cookie-path <path>       Optional, XDR cookie file path
   --start <YYYY-MM-DD>           Optional report start date
   --end <YYYY-MM-DD>             Optional report end date
   --cookie-path <path>           SOAR cookie file path (soar.sangfor.com.cn)

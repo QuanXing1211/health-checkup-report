@@ -49,7 +49,6 @@ function buildZeroReportData(source) {
   zero.riskOverview = zero.riskOverview || {};
   zero.riskOverview.coreBusinessSystemRanking = ['', '', ''];
   zero.riskOverview.topRiskAssets = [];
-  zero.riskOverview.keyRisks = [];
   zero.riskOverview.incidentGptStats = zero.riskOverview.incidentGptStats || {};
   zero.riskOverview.incidentGptStats.hostCompromise = zero.riskOverview.incidentGptStats.hostCompromise || {};
   zero.riskOverview.incidentGptStats.virusTrojan = zero.riskOverview.incidentGptStats.virusTrojan || {};

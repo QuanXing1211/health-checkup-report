@@ -311,26 +311,6 @@ function enrichReportData(reportData) {
     'ip'
   );
 
-  reportData.riskOverview.keyRisks = ensureArrayObjects(
-    reportData.riskOverview.keyRisks,
-    [
-      {
-        risk: '【威胁运营】病毒木马与 C2 外联事件',
-        description: '检测到多个终端存在恶意样本落地与外联行为。',
-        impact: '可能导致主机失陷、横向移动与核心系统进一步暴露。',
-        strategy: ['优先处置已确认病毒样本', '补齐 aES 覆盖', '核查责任人归属'],
-        status: ['2 起已遏制', '3 起处置中']
-      },
-      {
-        risk: '【漏洞风险】核心业务系统高危漏洞集中',
-        description: 'OA、ERP、邮件系统存在较多高危及以上漏洞。',
-        impact: '攻击者可能借助公开利用链直接获取系统权限。',
-        strategy: ['优先修复互联网暴露资产', '建立分批补丁窗口'],
-        status: ['高危及以上 850 项', '重点资产 5 台']
-      }
-    ]
-  );
-
   reportData.riskDetails.securityLogTotal = positiveNumberOr(reportData.riskDetails.securityLogTotal, reportData.riskOverview.securityLogTotal);
   reportData.riskDetails.alertTotal = positiveNumberOr(reportData.riskDetails.alertTotal, reportData.riskOverview.alertTotal);
   reportData.riskDetails.alertReductionRate = numberOr(reportData.riskDetails.alertReductionRate, reportData.riskOverview.alertReductionRate);

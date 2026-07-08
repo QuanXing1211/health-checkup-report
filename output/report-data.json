@@ -1,12 +1,14 @@
 {
   "projectBackground": {
     "customerName": "测试001",
-    "startDate": "2026-05-31",
+    "startDate": "2026-01-31",
     "endDate": "2026-06-29",
-    "customerId": "67262236"
+    "customerId": "67262236",
+    "title": "安全体检报告",
+    "generatedAt": "2026-07-06T00:00:00.000Z"
   },
   "assetLedger": {
-    "ready_to_outbound": 11,
+    "ready_to_outbound": 296,
     "manage_asset": 5167,
     "typeDistribution": [
       {
@@ -74,18 +76,62 @@
         "total": 0,
         "confirmedIncidentIds": []
       },
-      "threatActorStats": [],
-      "c2ConnectionExamples": [],
-      "virusTrojanExamples": []
+      "threatActorStats": [
+        {
+          "name": "C2外联",
+          "count": 0
+        },
+        {
+          "name": "病毒木马",
+          "count": 0
+        }
+      ],
+      "threatTypeRanking": [],
+      "c2ConnectionExamples": [
+        {
+          "ioc": "malicious-c2.example.com",
+          "affectedAsset": "10.128.165.151",
+          "lastOccurredAt": "2026-06-19 09:21:55",
+          "disposalStatus": "处置中"
+        },
+        {
+          "ioc": "198.51.100.77",
+          "affectedAsset": "10.128.165.53",
+          "lastOccurredAt": "2026-06-22 17:03:11",
+          "disposalStatus": "已遏制"
+        }
+      ],
+      "virusTrojanExamples": [
+        {
+          "md5": "e3b0c44298fc1c149afbf4c8996fb924",
+          "affectedAsset": "10.128.160.200",
+          "lastOccurredAt": "2026-06-18 13:05:09",
+          "disposalStatus": "处置完成"
+        },
+        {
+          "md5": "9d5ed678fe57bcca610140957afab571",
+          "affectedAsset": "10.128.160.83",
+          "lastOccurredAt": "2026-06-20 18:42:00",
+          "disposalStatus": "处置中"
+        }
+      ],
+      "virusAttackAsset": "10.128.160.200",
+      "nonAesCoveredAssets": [
+        "10.128.160.200",
+        "10.128.165.10"
+      ],
+      "unlabeledAssets": [
+        "10.128.165.151",
+        "10.128.165.53"
+      ]
     },
-    "securityLogTotal": 12290,
-    "alertTotal": 4145,
+    "securityLogTotal": 986744,
+    "alertTotal": 5127,
     "alertReductionRate": 0.9,
-    "closeRate": 0,
-    "closedEvents": 0,
-    "containedEvents": 0,
+    "closeRate": 25,
+    "closedEvents": 96,
+    "containedEvents": 100,
     "totalEvents": 391,
-    "affectedAssetCount": 0,
     "exploitStats": {
       "total": 22,
       "highRiskAsset": "10.248.38.136",
@@ -101,53 +147,371 @@
         "incident-4612e47d-e4f6-4158-9cd5-5db684dacf92",
         "incident-4ea570b1-8f63-416d-8b95-d1ba614ef1ef",
         "incident-5fe8d764-3933-4d5c-a4b3-e257cae2fb34",
-        "incident-619430e8-b1bd-4da2-8cc5-8621a1ab28bf",
-        "incident-ab8beac5-179b-4815-982a-88fe6298c980",
+        "incident-e96cd248-f179-4328-ab04-b796f0f9840a",
         "incident-1d3c6883-bf07-4390-917b-3926ebb253ae",
+        "incident-4bc524ae-05ac-4c9e-932e-e747c5f39db6",
+        "incident-a1f8b187-6954-429d-827f-816e26613fe1",
+        "incident-619430e8-b1bd-4da2-8cc5-8621a1ab28bf",
         "incident-91f0ede0-46f6-4fbd-9110-11b8f74cc0fa",
         "incident-03061041-0496-40c7-8997-4ef1b21158dd",
-        "incident-e026d05a-d729-4067-9582-7be8f2aaf29b",
-        "incident-9c091a80-053b-4d9b-9ebc-8913a8dfa250",
-        "incident-e96cd248-f179-4328-ab04-b796f0f9840a",
-        "incident-4bc524ae-05ac-4c9e-932e-e747c5f39db6",
         "incident-c2c485ea-0046-49f6-ab40-dc05cff4eaa5",
-        "incident-a1f8b187-6954-429d-827f-816e26613fe1",
+        "incident-9c091a80-053b-4d9b-9ebc-8913a8dfa250",
+        "incident-ab8beac5-179b-4815-982a-88fe6298c980",
+        "incident-e026d05a-d729-4067-9582-7be8f2aaf29b",
         "incident-9fb1568b-6a3e-43e8-b3df-25f279876928"
       ]
     },
-    "devices": 202
+    "devices": 204,
+    "coreBusinessSystemRanking": [
+      "OA系统",
+      "ERP系统",
+      "邮件系统",
+      "Web门户",
+      "VPN系统"
+    ],
+    "maxRiskSystem": "OA系统",
+    "securityRiskTotal": 367,
+    "highAndAboveRiskCount": 366,
+    "riskAssetCount": 236,
+    "riskBusinessCount": 0,
+    "topRiskAssets": [
+      {
+        "ip": "10.128.165.151",
+        "managedStatus": "已托管",
+        "businessSystem": "OA系统",
+        "riskCount": 337,
+        "riskDetails": {
+          "totalEvents": 0,
+          "c2Events": 0,
+          "virusTrojanEvents": 0,
+          "vulnExploitEvents": 0,
+          "highAndAboveVulnerabilities": 336,
+          "weakPasswords": 1,
+          "totalExposures": 0,
+          "webExposures": 0,
+          "nonWebExposures": 0,
+          "webComponentExamples": [],
+          "nonWebServiceExamples": [],
+          "malwareAndC2Events": 0,
+          "otherEvents": 0,
+          "hasAes": false,
+          "detailLines": [
+            "该资产共发现在336个高危及以上漏洞",
+            "该资产共发现1个弱口令",
+            "该资产尚未安装aES"
+          ]
+        },
+        "detailLines": [
+          "该资产共发现在336个高危及以上漏洞",
+          "该资产共发现1个弱口令",
+          "该资产尚未安装aES"
+        ]
+      },
+      {
+        "ip": "10.128.165.53",
+        "managedStatus": "未托管",
+        "businessSystem": "ERP系统",
+        "riskCount": 103,
+        "riskDetails": {
+          "totalEvents": 0,
+          "c2Events": 0,
+          "virusTrojanEvents": 0,
+          "vulnExploitEvents": 0,
+          "highAndAboveVulnerabilities": 103,
+          "weakPasswords": 0,
+          "totalExposures": 0,
+          "webExposures": 0,
+          "nonWebExposures": 0,
+          "webComponentExamples": [],
+          "nonWebServiceExamples": [],
+          "malwareAndC2Events": 0,
+          "otherEvents": 0,
+          "hasAes": false,
+          "detailLines": [
+            "该资产共发现在103个高危及以上漏洞",
+            "该资产尚未安装aES"
+          ]
+        },
+        "detailLines": [
+          "该资产共发现在103个高危及以上漏洞",
+          "该资产尚未安装aES"
+        ]
+      },
+      {
+        "ip": "10.128.160.200",
+        "managedStatus": "已托管",
+        "businessSystem": "邮件系统",
+        "riskCount": 22,
+        "riskDetails": {
+          "totalEvents": 0,
+          "c2Events": 0,
+          "virusTrojanEvents": 0,
+          "vulnExploitEvents": 0,
+          "highAndAboveVulnerabilities": 22,
+          "weakPasswords": 0,
+          "totalExposures": 0,
+          "webExposures": 0,
+          "nonWebExposures": 0,
+          "webComponentExamples": [],
+          "nonWebServiceExamples": [],
+          "malwareAndC2Events": 0,
+          "otherEvents": 0,
+          "hasAes": false,
+          "detailLines": [
+            "该资产共发现在22个高危及以上漏洞",
+            "该资产尚未安装aES"
+          ]
+        },
+        "detailLines": [
+          "该资产共发现在22个高危及以上漏洞",
+          "该资产尚未安装aES"
+        ]
+      },
+      {
+        "ip": "10.245.224.255",
+        "managedStatus": "未托管",
+        "businessSystem": "Web门户",
+        "riskCount": 23,
+        "riskDetails": {
+          "totalEvents": 23,
+          "c2Events": 0,
+          "virusTrojanEvents": 0,
+          "vulnExploitEvents": 0,
+          "highAndAboveVulnerabilities": 0,
+          "weakPasswords": 0,
+          "totalExposures": 0,
+          "webExposures": 0,
+          "nonWebExposures": 0,
+          "webComponentExamples": [],
+          "nonWebServiceExamples": [],
+          "malwareAndC2Events": 0,
+          "otherEvents": 23,
+          "hasAes": true,
+          "detailLines": [
+            "总计安全事件23个，其中，病毒木马&C2外联0起，网站攻击&漏洞攻击0起，其他事件23起",
+            "该资产已安装aES"
+          ]
+        },
+        "detailLines": [
+          "总计安全事件23个，其中，病毒木马&C2外联0起，网站攻击&漏洞攻击0起，其他事件23起",
+          "该资产已安装aES"
+        ]
+      },
+      {
+        "ip": "192.168.50.2",
+        "managedStatus": "未托管",
+        "businessSystem": "VPN系统",
+        "riskCount": 13,
+        "riskDetails": {
+          "totalEvents": 13,
+          "c2Events": 0,
+          "virusTrojanEvents": 0,
+          "vulnExploitEvents": 0,
+          "highAndAboveVulnerabilities": 0,
+          "weakPasswords": 0,
+          "totalExposures": 0,
+          "webExposures": 0,
+          "nonWebExposures": 0,
+          "webComponentExamples": [],
+          "nonWebServiceExamples": [],
+          "malwareAndC2Events": 0,
+          "otherEvents": 13,
+          "hasAes": false,
+          "detailLines": [
+            "总计安全事件13个，其中，病毒木马&C2外联0起，网站攻击&漏洞攻击0起，其他事件13起",
+            "该资产尚未安装aES"
+          ]
+        },
+        "detailLines": [
+          "总计安全事件13个，其中，病毒木马&C2外联0起，网站攻击&漏洞攻击0起，其他事件13起",
+          "该资产尚未安装aES"
+        ]
+      }
+    ],
+    "affectedAssetCount": 270,
+    "keyRisks": [
+      {
+        "risk": "【威胁运营】病毒木马与 C2 外联事件",
+        "description": "检测到多个终端存在恶意样本落地与外联行为。",
+        "impact": "可能导致主机失陷、横向移动与核心系统进一步暴露。",
+        "strategy": [
+          "优先处置已确认病毒样本",
+          "补齐 aES 覆盖",
+          "核查责任人归属"
+        ],
+        "status": [
+          "2 起已遏制",
+          "3 起处置中"
+        ]
+      },
+      {
+        "risk": "【漏洞风险】核心业务系统高危漏洞集中",
+        "description": "OA、ERP、邮件系统存在较多高危及以上漏洞。",
+        "impact": "攻击者可能借助公开利用链直接获取系统权限。",
+        "strategy": [
+          "优先修复互联网暴露资产",
+          "建立分批补丁窗口"
+        ],
+        "status": [
+          "高危及以上 366 项",
+          "重点资产 5 台"
+        ]
+      },
+      {
+        "risk": "【暴露面风险】核心业务对外暴露面较多",
+        "description": "互联网侧存在较多开放端口与 Web 服务暴露。",
+        "impact": "增大了攻击者可探测与利用的攻击面。",
+        "strategy": [
+          "收敛非必要对外端口",
+          "启用 WAF 防护",
+          "加固 Web 服务配置"
+        ],
+        "status": [
+          "暴露资产 954 个",
+          "需优先收敛高风险端口"
+        ]
+      }
+    ]
   },
   "riskDetails": {
-    "securityLogTotal": 12290,
-    "alertTotal": 4145,
+    "securityLogTotal": 986744,
+    "alertTotal": 5127,
     "alertReductionRate": 0.9,
-    "closeRate": 0,
+    "closeRate": 25,
     "highRiskIncidentExamples": {
-      "viruses": [],
-      "c2Connections": [],
-      "vulnExploits": []
+      "viruses": [
+        {
+          "md5": "44d88612fea8a8f36de82e1278abb02f",
+          "affectedAsset": "10.128.160.200",
+          "lastOccurredAt": "2026-06-18 13:05:09",
+          "disposalStatus": "处置完成"
+        },
+        {
+          "md5": "098f6bcd4621d373cade4e832627b4f6",
+          "affectedAsset": "10.128.160.83",
+          "lastOccurredAt": "2026-06-20 18:42:00",
+          "disposalStatus": "处置中"
+        }
+      ],
+      "c2Connections": [
+        {
+          "ioc": "malicious-c2.example.com",
+          "affectedAsset": "10.128.165.151",
+          "lastOccurredAt": "2026-06-19 09:21:55",
+          "disposalStatus": "处置中"
+        },
+        {
+          "ioc": "198.51.100.77",
+          "affectedAsset": "10.128.165.53",
+          "lastOccurredAt": "2026-06-22 17:03:11",
+          "disposalStatus": "已遏制"
+        }
+      ],
+      "vulnExploits": [
+        {
+          "incidentId": "incident-2d93355e-0fa1-42e9-a43b-424cd7f0269a",
+          "eventName": "主机存在PHP popen函数代码注入等内网横向行为",
+          "affectedAsset": "192.168.163.195",
+          "lastOccurredAt": "2026-06-12 20:08:27",
+          "disposalStatus": "已忽略"
+        },
+        {
+          "incidentId": "incident-4612e47d-e4f6-4158-9cd5-5db684dacf92",
+          "eventName": "主机存在(MS17-010)Microsoft Windows SMB服务端信息泄露漏洞(CVE-2017-0147)",
+          "affectedAsset": "192.168.101.97",
+          "lastOccurredAt": "2026-06-16 20:01:30",
+          "disposalStatus": "待处置"
+        },
+        {
+          "incidentId": "incident-e96cd248-f179-4328-ab04-b796f0f9840a",
+          "eventName": "主机存在泛微OA 远程代码执行漏洞攻击",
+          "affectedAsset": "192.168.189.189",
+          "lastOccurredAt": "2026-06-14 20:00:21",
+          "disposalStatus": "已忽略"
+        },
+        {
+          "incidentId": "incident-1d3c6883-bf07-4390-917b-3926ebb253ae",
+          "eventName": "主机存在PHP popen函数代码注入等内网横向行为",
+          "affectedAsset": "192.168.121.246",
+          "lastOccurredAt": "2026-06-12 19:50:57",
+          "disposalStatus": "已忽略"
+        },
+        {
+          "incidentId": "incident-4bc524ae-05ac-4c9e-932e-e747c5f39db6",
+          "eventName": "主机存在元数据查询语句SQL注入攻击",
+          "affectedAsset": "192.168.103.189",
+          "lastOccurredAt": "2026-06-12 21:20:04",
+          "disposalStatus": "已忽略"
+        }
+      ]
     },
     "totalEvents": 391,
-    "severeEvents": 0,
-    "highEvents": 0,
-    "closedEvents": 0,
-    "containedEvents": 0,
-    "processingEvents": 0,
-    "uniqueAssetCount": 0,
-    "managedAssetEvents": 0,
+    "severeEvents": 75,
+    "highEvents": 81,
+    "closedEvents": 96,
+    "containedEvents": 100,
+    "processingEvents": 12,
+    "uniqueAssetCount": 270,
+    "managedAssetEvents": 4,
     "managedAssetContainedEvents": 0,
     "managedAssetDisposedEvents": 0,
     "managedEventCloseRate": 0,
     "managedAssetCount": 200,
     "managedAvgResponseTime": 0,
-    "topEventType": "",
-    "top3BusinessSystems": "",
-    "businessSystemEventDistribution": [],
-    "eventTypeDistribution": [],
-    "devices": 202,
-    "sangfor": 96,
-    "af": 37,
-    "aes": 47,
+    "topEventType": "后门攻击事件",
+    "top3BusinessSystems": "OA系统、ERP系统、邮件系统",
+    "businessSystemEventDistribution": [
+      {
+        "name": "OA系统",
+        "value": 112
+      },
+      {
+        "name": "ERP系统",
+        "value": 87
+      },
+      {
+        "name": "邮件系统",
+        "value": 63
+      },
+      {
+        "name": "Web门户",
+        "value": 41
+      },
+      {
+        "name": "VPN系统",
+        "value": 32
+      }
+    ],
+    "eventTypeDistribution": [
+      {
+        "name": "后门攻击事件",
+        "value": 336
+      },
+      {
+        "name": "漏洞利用",
+        "value": 22
+      },
+      {
+        "name": "挖矿病毒事件",
+        "value": 10
+      },
+      {
+        "name": "其他网络攻击事件",
+        "value": 7
+      },
+      {
+        "name": "木马事件",
+        "value": 7
+      },
+      {
+        "name": "其他",
+        "value": 9
+      }
+    ],
+    "devices": 204,
+    "sangfor": 98,
+    "af": 38,
+    "aes": 48,
     "sip": 3,
     "sta": 2,
     "other_sf": 7,
@@ -173,25 +537,25 @@
     "intranet": {
       "vuln": {
         "priority_urgent": 0,
-        "total": 3644,
-        "risk_assets": 81
+        "total": 487,
+        "risk_assets": 23
       },
       "weak_pwd": {
-        "risk_assets": 10,
-        "total": 16
+        "risk_assets": 11,
+        "total": 17
       }
     }
   },
   "key_risks": {
     "vuln": {
-      "biz_example": "",
-      "high_count": 1534
+      "biz_example": "OA系统、ERP系统",
+      "high_count": 487
     },
     "weak_pwd": {
-      "biz_example": "",
-      "total": 16,
+      "biz_example": "OA系统、Web门户",
+      "total": 17,
       "example_asset": "（如192.168.30.190、10.128.165.150、10.128.165.151）",
-      "priority_assets": "建议优先修改资产：10.128.165.26、192.168.30.190、10.128.165.28的弱口令，并添加多因素认证。",
+      "priority_assets": "建议优先修改资产：10.128.165.26、192.168.30.190、10.128.165.118的弱口令，并添加多因素认证。",
       "priority_assets_reason": "因为这些资产属于核心业务。"
     },
     "exposure": {
@@ -211,10 +575,10 @@
       "high_above": 0
     },
     "intranet": {
-      "vuln": 3644,
-      "weak_pwd": 16,
-      "total": 3660,
-      "high": 1534
+      "vuln": 487,
+      "weak_pwd": 17,
+      "total": 504,
+      "high": 487
     }
   },
   "internet": {
@@ -304,55 +668,99 @@
   },
   "intranet": {
     "vuln": {
-      "total": 3644,
-      "critical": 486,
-      "high": 1048,
-      "medium": 1444,
-      "low": 666,
+      "total": 487,
+      "critical": 487,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
       "related_biz": 0,
-      "related_assets": 81,
+      "related_assets": 23,
       "priority_urgent": 0,
-      "priority_soon": 2978,
-      "priority_suggest": 666,
-      "biz_top_rows": [],
+      "priority_soon": 487,
+      "priority_suggest": 0,
+      "biz_top_rows": [
+        {
+          "biz_name": "OA系统",
+          "urgent": 0,
+          "soon": 185,
+          "suggest": 0
+        },
+        {
+          "biz_name": "ERP系统",
+          "urgent": 0,
+          "soon": 142,
+          "suggest": 0
+        },
+        {
+          "biz_name": "邮件系统",
+          "urgent": 0,
+          "soon": 89,
+          "suggest": 0
+        },
+        {
+          "biz_name": "Web门户",
+          "urgent": 0,
+          "soon": 45,
+          "suggest": 0
+        },
+        {
+          "biz_name": "VPN系统",
+          "urgent": 0,
+          "soon": 26,
+          "suggest": 0
+        }
+      ],
       "asset_top_rows": [
         {
           "asset": "10.128.165.151",
           "urgent": 0,
-          "soon": 1117,
-          "suggest": 62
+          "soon": 336,
+          "suggest": 0
         },
         {
           "asset": "10.128.165.53",
           "urgent": 0,
-          "soon": 760,
-          "suggest": 54
+          "soon": 103,
+          "suggest": 0
         },
         {
           "asset": "10.128.160.200",
           "urgent": 0,
-          "soon": 183,
-          "suggest": 52
+          "soon": 22,
+          "suggest": 0
         },
         {
           "asset": "10.128.160.241",
           "urgent": 0,
-          "soon": 60,
-          "suggest": 9
+          "soon": 6,
+          "suggest": 0
         },
         {
-          "asset": "10.128.160.83",
+          "asset": "192.168.50.98",
           "urgent": 0,
-          "soon": 58,
-          "suggest": 14
+          "soon": 2,
+          "suggest": 0
         }
       ]
     },
     "weak_pwd": {
-      "total_count": 16,
-      "affected_assets": 10,
+      "total_count": 17,
+      "affected_assets": 11,
       "risk_count": 0,
-      "biz_rows": [],
+      "biz_rows": [
+        {
+          "biz_name": "OA系统",
+          "count": 9
+        },
+        {
+          "biz_name": "ERP系统",
+          "count": 5
+        },
+        {
+          "biz_name": "Web门户",
+          "count": 3
+        }
+      ],
       "asset_rows": [
         {
           "asset": "192.168.30.190",
@@ -370,7 +778,7 @@
           "asset": "10.128.165.151",
           "count": 1,
           "asset_name": "",
-          "asset_group": ""
+          "asset_group": "OA系统"
         },
         {
           "asset": "192.168.26.44",
@@ -387,25 +795,17 @@
       ]
     }
   },
-  "appendix": {
-    "businessSystemRanking": {
-      "coreBusinessSystemRanking": [],
-      "maxRiskSystem": null,
-      "securityRiskTotal": 1422,
-      "highAndAboveRiskCount": 850
-    }
-  },
   "scoring": {
-    "total_score": 42.08,
+    "total_score": 41.87,
     "grade": "差",
     "grade_color": "红色",
     "L1": {
-      "资产防护得分": 16.79,
+      "资产防护得分": 16.45,
       "日常运营得分": 80
     },
     "L2": {
       "托管资产得分": 37.3,
-      "组件检测得分": 3.12,
+      "组件检测得分": 2.55,
       "事件得分": 100,
       "勒索风险得分": 50
     },
@@ -414,7 +814,7 @@
       "终端得分": 50.94,
       "服务器权重": 0.75,
       "终端权重": 0.25,
-      "设备离线得分": 6.25,
+      "设备离线得分": 5.1,
       "策略隐患得分": 0,
       "漏洞得分": 0,
       "端口得分": 100,
@@ -440,9 +840,9 @@
         },
         "all_assets": 5167,
         "device": {
-          "activated_count": 96,
-          "offline_count": 90,
-          "total": 171
+          "activated_count": 98,
+          "offline_count": 93,
+          "total": 174
         }
       },
       "event": {
@@ -477,9 +877,9 @@
       },
       "vuln": {
         "urgent_count": 0,
-        "fast_count": 2978,
-        "suggest_count": 666,
-        "total_vulns": 3644
+        "fast_count": 487,
+        "suggest_count": 0,
+        "total_vulns": 487
       },
       "weak_pwd": {
         "high_count": 0,
@@ -540,13 +940,53 @@
     "policy_stats": {
       "total": 0,
       "abnormal_count": 0,
-      "abnormal_by_dev_type": {},
-      "abnormal_by_dev_type_text": "",
-      "abnormal_by_dev_type_bracket": "",
+      "abnormal_by_dev_type": {
+        "aES": 2,
+        "AF": 1,
+        "SIP": 1
+      },
+      "abnormal_by_dev_type_text": "aES 2项，AF 1项，SIP 1项",
+      "abnormal_by_dev_type_bracket": "（aES 2项，AF 1项，SIP 1项）",
       "abnormal_component_count": 0,
       "total_component_count": 0,
-      "by_device": [],
-      "policy_check_example": []
+      "by_device": [
+        {
+          "dev_name": "EDR-核心区-01",
+          "dev_type": "aES",
+          "check_count": 5,
+          "abnormal_count": 2
+        },
+        {
+          "dev_name": "AF-出口边界-01",
+          "dev_type": "AF",
+          "check_count": 4,
+          "abnormal_count": 1
+        },
+        {
+          "dev_name": "SIP-汇聚-01",
+          "dev_type": "SIP",
+          "check_count": 3,
+          "abnormal_count": 1
+        }
+      ],
+      "policy_check_example": [
+        {
+          "dev_name": "EDR-核心区-01",
+          "dev_type": "aES",
+          "name": "终端防护策略",
+          "policy_status": "策略获取失败",
+          "description": "无法拉取终端防护策略最新配置。",
+          "risk_desc": "可能存在高危样本拦截规则缺失。"
+        },
+        {
+          "dev_name": "AF-出口边界-01",
+          "dev_type": "AF",
+          "name": "边界访问控制",
+          "policy_status": "未启用",
+          "description": "出口方向关键拦截策略未生效。",
+          "risk_desc": "可能导致恶意连接与暴露服务未被阻断。"
+        }
+      ]
     }
   }
 }

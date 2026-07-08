@@ -1,0 +1,30 @@
+[
+  {
+    "sessionStart": "2026-07-06T08:45:17.389Z",
+    "sessionEnd": "2026-07-06T08:53:39.358Z",
+    "language": "typescript",
+    "checker": "typescript-checker",
+    "projectDir": "C:/Users/User/Desktop/health-checkup-report"
+  },
+  {
+    "sessionStart": "2026-07-06T08:53:39.804Z",
+    "sessionEnd": "2026-07-06T10:18:27.549Z",
+    "language": "typescript",
+    "checker": "typescript-checker",
+    "projectDir": "C:/Users/User/Desktop/health-checkup-report"
+  },
+  {
+    "sessionStart": "2026-07-06T10:18:27.793Z",
+    "sessionEnd": "2026-07-06T10:18:59.518Z",
+    "language": "typescript",
+    "checker": "typescript-checker",
+    "projectDir": "C:/Users/User/Desktop/health-checkup-report"
+  },
+  {
+    "sessionStart": "2026-07-06T11:24:57.802Z",
+    "sessionEnd": "2026-07-07T03:36:12.528Z",
+    "language": "typescript",
+    "checker": "typescript-checker",
+    "projectDir": "C:/Users/User/Desktop/health-checkup-report"
+  }
+]
