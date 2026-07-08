@@ -439,7 +439,7 @@ def mssw_api8_export_vuln(cookie_str: str, company_id: str, latest_time_range: l
         "attack_type": "",
         "cve": {"op": "=", "val": ""},
         "data_type": ["loophole"],
-        "risk_level": [3],
+        "risk_level": [],
         "scan_type": [],
         "threat_tag": [],
         "custom_headers": {

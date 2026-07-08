@@ -126,7 +126,7 @@ def load_all_data():
     wb_vuln = load_wb("漏洞清单.xlsx")
     wb_weak = load_wb("弱口令清单.xlsx")
     wb_event = load_wb("安全事件表.xlsx")
-    wb_asset = load_wb("资产表.xlsx")
+    wb_asset = load_wb("资产清单.xlsx")
 
     def get_sheet(wb, name):
         """按名称取 Sheet，找不到则降级用第一个 Sheet"""
@@ -143,7 +143,7 @@ def load_all_data():
         "rows_vuln":        get_rows(get_sheet(wb_vuln,  "漏洞")),
         "rows_weak":        get_rows(get_sheet(wb_weak,  "弱口令")),
         "rows_event":       get_rows(get_sheet(wb_event, "事件表")),
-        "rows_asset":       get_rows(get_sheet(wb_asset, "资产表")),
+        "rows_asset":       get_rows(get_sheet(wb_asset, "资产清单")),
     }
 
 
@@ -200,8 +200,12 @@ def prepare_datasets(raw):
         a = s(r.get("风险资产"))
         if a:
             weak_asset_count[a] += 1
+            cur_imp = s(r.get("资产重要性"))
+            # 核心资产判断：同一资产多行，只要有一条是"核心资产"就算核心
             if a not in asset_importance:
-                asset_importance[a] = s(r.get("资产重要性"))
+                asset_importance[a] = cur_imp
+            elif cur_imp == "核心资产":
+                asset_importance[a] = "核心资产"
             if a not in asset_own_group:
                 asset_own_group[a] = s(r.get("所属资产组"))
 
