@@ -728,9 +728,9 @@ def process_mssw_file(file_b_path: str) -> List[dict]:
                 risk_raw = ws.cell(row=row_idx, column=col_map["风险等级"]).value
                 risk_norm = normalize_risk(str(risk_raw or ""))
 
-                # 威胁标签：是否包含"高可利用"
+                # 威胁标签：是否包含"高可利用"（英文: Highly Exploitable Vuln）
                 threat_tag = str(ws.cell(row=row_idx, column=col_map["威胁标签"]).value or "")
-                is_exploitable = "高可利用" in threat_tag
+                is_exploitable = "Highly Exploitable Vuln" in threat_tag
 
                 # MSSW 固定为内网
                 row_data[c_col] = calc_priority(risk_norm, is_internal=True, is_exploitable=is_exploitable)
