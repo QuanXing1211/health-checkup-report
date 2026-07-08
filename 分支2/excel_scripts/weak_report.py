@@ -303,15 +303,6 @@ def api0_search_customer(cookie_str: str, keyword: str) -> list:
         "customer_stratification": [], "protection_type": [], "service_group": [],
         "delivery_method": [], "platform_type": [], "service_status": 0, "my_customer": 0,
     }
-    # 35环境入参（废弃）
-    # payload = {
-    #     "order": "asc", "offset": 0, "limit": 10, "keyword": keyword,
-    #     "share_ids": [], "delivery_channel_id": [], "phase": [],
-    #     "industry": [], "industry_segmentation": [], "auth_status": 2,
-    #     "customer_type": [], "customer_stratification": [],
-    #     "protection_type": [], "delivery_method": [], "platform_type": [],
-    #     "operate_status": [], "service_status": 0, "my_customer": 0,
-    # }
     resp = request_with_retry("POST", url, EASM_BASE_URL, cookie_str, json=payload, timeout=120)
     data = _parse_json(resp, "接口0")
     if data.get('code') != 0:
@@ -471,7 +462,7 @@ def mssw_api9_export_weak_pwd(cookie_str: str, company_id: str, latest_time_rang
         "data_type": ["weak_pwd"],
         "whitelisted_status": [],
         "latest_time_range": latest_time_range,
-        "is_show": 1,
+        "is_show": 0,
         "custom_headers": {
             "asset_info": [
                 {"disabled": True,  "key": "asset",                "label": "风险资产",      "selected": True},

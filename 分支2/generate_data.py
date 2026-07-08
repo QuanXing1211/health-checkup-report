@@ -1,9 +1,8 @@
-import openpyxl
+﻿import openpyxl
 import json
-import os
 from collections import defaultdict
 
-BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tmp", "exports")
+BASE_DIR = "风险清单"
 RISK_LEVEL_ORDER = {"严重": 4, "高危": 3, "中危": 2, "低危": 1}
 
 
@@ -11,32 +10,9 @@ RISK_LEVEL_ORDER = {"严重": 4, "高危": 3, "中危": 2, "低危": 1}
 # 层1：工具函数
 # ════════════════════════════════════════════════════════════════
 
-def find_latest_workbook(keywords):
-    candidates = []
-    if not os.path.isdir(BASE_DIR):
-        raise FileNotFoundError(f"目录不存在: {BASE_DIR}")
-
-    for entry in os.scandir(BASE_DIR):
-        if not entry.is_file() or not entry.name.lower().endswith(".xlsx"):
-            continue
-        lowered = entry.name.lower()
-        if any(keyword.lower() in lowered for keyword in keywords):
-            candidates.append((entry.path, entry.stat().st_mtime))
-
-    if not candidates:
-        raise FileNotFoundError(f"未找到匹配文件: {keywords}")
-
-    candidates.sort(key=lambda item: item[1], reverse=True)
-    return candidates[0][0]
-
-
-def load_wb(filename_or_keywords):
+def load_wb(filename):
     """加载 Excel 工作簿（data_only 模式，读取公式计算结果）"""
-    if isinstance(filename_or_keywords, (list, tuple)):
-        filepath = find_latest_workbook(filename_or_keywords)
-    else:
-        filepath = os.path.join(BASE_DIR, filename_or_keywords)
-    return openpyxl.load_workbook(filepath, data_only=True)
+    return openpyxl.load_workbook(f"{BASE_DIR}/{filename}", data_only=True)
 
 
 def get_rows(ws):
@@ -146,26 +122,28 @@ def fill_forward(rows, field):
 
 def load_all_data():
     """加载所有 Excel 工作簿，返回原始 rows 字典"""
-    wb_exp = load_wb(["exposure", "暴露面"])
-    wb_vuln = load_wb(["vuln", "漏洞"])
-    wb_weak = load_wb(["weakpwd", "弱口令"])
-    wb_event = load_wb(["incident", "事件"])
-    wb_asset = load_wb(["asset", "资产"])
+    wb_exp = load_wb("暴露面清单.xlsx")
+    wb_vuln = load_wb("漏洞清单.xlsx")
+    wb_weak = load_wb("弱口令清单.xlsx")
+    wb_event = load_wb("安全事件表.xlsx")
+    wb_asset = load_wb("资产表.xlsx")
 
-    try:
-        ws_asset_sheet = wb_asset["资产表"]
-    except KeyError:
-        ws_asset_sheet = wb_asset.worksheets[0]
+    def get_sheet(wb, name):
+        """按名称取 Sheet，找不到则降级用第一个 Sheet"""
+        try:
+            return wb[name]
+        except KeyError:
+            return wb.worksheets[0]
 
     return {
         "wb_exp": wb_exp,
         "rows_web_risk":    get_rows(wb_exp["Web服务风险分布"]),
         "rows_nonweb_risk": get_rows(wb_exp["非Web服务风险分布"]),
         "rows_port":        get_rows(wb_exp["端口表"]),
-        "rows_vuln":        get_rows(wb_vuln["漏洞"]),
-        "rows_weak":        get_rows(wb_weak["弱口令"]),
-        "rows_event":       get_rows(wb_event["事件表"]),
-        "rows_asset":       get_rows(ws_asset_sheet),
+        "rows_vuln":        get_rows(get_sheet(wb_vuln,  "漏洞")),
+        "rows_weak":        get_rows(get_sheet(wb_weak,  "弱口令")),
+        "rows_event":       get_rows(get_sheet(wb_event, "事件表")),
+        "rows_asset":       get_rows(get_sheet(wb_asset, "资产表")),
     }
 
 
@@ -427,15 +405,45 @@ def calc_internet_exposure(ds):
     web_count    = len(ds["rows_web_risk"])
     nonweb_count = len(ds["rows_nonweb_risk"])
 
-    # ── dist：暴露面清单中除 3 个 sheet 外每个 sheet 的数据行数 ──
-    EXCLUDED_SHEETS = {"文档说明", "Web服务风险分布", "非Web服务风险分布"}
+    # ── dist：暴露面清单中除指定 sheet 外每个 sheet 的映射名称及数据行数 ──
+    EXCLUDED_SHEETS = {"文档说明", "Web服务风险分布", "非Web服务风险分布", "资产总表"}
+    SHEET_NAME_MAP = {
+        "端口表":            "端口资产",
+        "WEB资产":           "WEB资产",
+        "网络&安全设备":     "网络&安全设备",
+        "子域名":            "子域名资产",
+        "非WEB资产":         "非WEB资产",
+        "SSL证书":           "SSL证书",
+        "IP C段":            "IP资产",
+        "公有云资产":        "云类资产",
+        "根域名":            "根域名资产",
+        "APP资产":           "APP",
+        "公众号&小程序资产": "公众号&小程序",
+    }
+
+    def strip_zero_suffix(name):
+        """去掉 Sheet 名末尾的（0）等括号数字后缀，如：根域名（0）→ 根域名"""
+        if name.endswith("）") and "（" in name:
+            base, _, suffix = name.rpartition("（")
+            if suffix.rstrip("）").isdigit():
+                return base
+        return name
+
     dist_list = []
     for sn in ds["wb_exp"].sheetnames:
-        if sn not in EXCLUDED_SHEETS:
+        base = strip_zero_suffix(sn)
+        if base in EXCLUDED_SHEETS:
+            continue
+        display_name = SHEET_NAME_MAP.get(base, base)
+
+        if display_name == "公众号&小程序":
+            # 按"类型"列拆分为"公众号"和"小程序"分别统计
+            rows = get_rows(ds["wb_exp"][sn])
+            dist_list.append({"name": "公众号", "value": filter_count(rows, "类型", "公众号")})
+            dist_list.append({"name": "小程序", "value": filter_count(rows, "类型", "小程序")})
+        else:
             cnt = count_data_rows(ds["wb_exp"][sn])
-            dist_list.append({
-                "name": sn, "value": cnt,
-            })
+            dist_list.append({"name": display_name, "value": cnt})
 
     # ── web_top5：按组件名称统计 ──
     comp_cnt = defaultdict(int)

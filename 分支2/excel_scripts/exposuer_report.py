@@ -764,6 +764,10 @@ def build_output_excel(file_b: str, file_c: str, output_path: str,
         prefix = name.split('（')[0].split('(')[0].strip()
         print(prefix)
 
+        if prefix == '文档说明':
+            log(f"[C] {name} — 已跳过（文档说明）")
+            continue
+
         dst_ws = _copy_sheet(wb_c[name], wb_new, name)
         log(f"[C] {name}")
 
