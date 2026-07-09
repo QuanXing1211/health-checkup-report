@@ -57,6 +57,11 @@ def configure_module(module, table_type, args):
     module.TEMP_DIR = args.temp_dir
     module.OUTPUT_FILE = args.output_file
 
+    if args.mssw_base_url:
+        if not args.mssw_base_url.startswith('http'):
+            args.mssw_base_url = 'https://' + args.mssw_base_url
+        module.MSSW_BASE_URL = args.mssw_base_url
+
     if table_type == 'exposure':
         module.COOKIES_FILE = args.easm_cookie_path
         return
@@ -75,6 +80,7 @@ def main():
     parser.add_argument('--temp-dir', required=True)
     parser.add_argument('--easm-cookie-path')
     parser.add_argument('--mssw-cookie-path')
+    parser.add_argument('--mssw-base-url')
     args = parser.parse_args()
 
     os.makedirs(args.temp_dir, exist_ok=True)

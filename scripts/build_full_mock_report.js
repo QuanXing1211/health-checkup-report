@@ -195,7 +195,7 @@ function enrichReportData(reportData) {
   reportData.riskOverview.highAndAboveRiskCount = positiveNumberOr(reportData.riskOverview.highAndAboveRiskCount, 850);
   reportData.riskOverview.riskBusinessCount = positiveNumberOr(reportData.riskOverview.riskBusinessCount, 9);
   reportData.riskOverview.riskAssetCount = positiveNumberOr(reportData.riskOverview.riskAssetCount, 146);
-  reportData.riskOverview.affectedAssetCount = positiveNumberOr(reportData.riskOverview.affectedAssetCount, 73);
+  reportData.riskOverview.affectedAssetCount = positiveNumberOr(reportData.riskOverview.affectedAssetCount, 0);
   reportData.riskOverview.devices = positiveNumberOr(reportData.riskOverview.devices, 202);
   reportData.riskOverview.closeRate = positiveNumberOr(reportData.riskOverview.closeRate, 61);
   reportData.riskOverview.closedEvents = positiveNumberOr(reportData.riskOverview.closedEvents, 239);

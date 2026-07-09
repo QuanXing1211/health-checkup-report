@@ -3,9 +3,9 @@
 """
 从事件表 Excel 中直接提取三类事件统计：
 
-1. C2 外联：外网IP / 域名列中存在标记为“严重”的实体
-2. 病毒木马：文件列中存在标记为“严重”的实体
-3. 漏洞利用：安全事件一级分类列值为“漏洞利用”
+1. C2 外联：GPT研判结论 = "主机失陷活动" 且 外网IP / 域名列中存在标记为"恶意"的实体
+2. 病毒木马：GPT研判结论 = "病毒木马活动" 且 文件列中存在标记为"恶意"的实体
+3. 漏洞利用：安全事件一级分类列值为"漏洞利用"
 
 用法:
   extract_incident_direct_stats.py <incident.xlsx>
@@ -28,7 +28,9 @@ from _path_helper import decode_argv
 decode_argv()
 
 
-SEVERE_LABEL = "严重"
+SEVERE_LABEL = "恶意"
+GPT_HOST_COMPROMISE = "主机失陷活动"
+GPT_VIRUS_TROJAN = "病毒木马活动"
 
 
 def normalize(value):
@@ -69,6 +71,7 @@ def main():
     col_map = build_col_map(sheet)
 
     id_col = find_column(col_map, ["事件ID", "事件Id", "incident_id", "incidentId", "id", "ID"])
+    gpt_col = find_column(col_map, ["GPT研判结论"])
     file_col = find_column(col_map, ["文件", "文件MD5", "md5", "file"])
     ext_ip_col = find_column(col_map, ["外网IP地址", "外网IP", "外联IP"])
     domain_col = find_column(col_map, ["域名", "外联域名"])
@@ -89,17 +92,21 @@ def main():
         if not incident_id:
             continue
 
-        severe_files = extract_severe_entities(row[file_col]) if file_col is not None and len(row) > file_col else []
-        severe_iocs = []
-        if ext_ip_col is not None and len(row) > ext_ip_col:
-            severe_iocs.extend(extract_severe_entities(row[ext_ip_col]))
-        if domain_col is not None and len(row) > domain_col:
-            severe_iocs.extend(extract_severe_entities(row[domain_col]))
+        gpt_value = normalize(row[gpt_col]) if gpt_col is not None and len(row) > gpt_col else ""
 
-        if severe_files:
-            virus_trojan_ids.append(incident_id)
-        if severe_iocs:
-            host_compromise_ids.append(incident_id)
+        if gpt_value == GPT_HOST_COMPROMISE:
+            severe_iocs = []
+            if ext_ip_col is not None and len(row) > ext_ip_col:
+                severe_iocs.extend(extract_severe_entities(row[ext_ip_col]))
+            if domain_col is not None and len(row) > domain_col:
+                severe_iocs.extend(extract_severe_entities(row[domain_col]))
+            if severe_iocs:
+                host_compromise_ids.append(incident_id)
+
+        if gpt_value == GPT_VIRUS_TROJAN:
+            severe_files = extract_severe_entities(row[file_col]) if file_col is not None and len(row) > file_col else []
+            if severe_files:
+                virus_trojan_ids.append(incident_id)
 
         class_value = normalize(row[class_col]) if class_col is not None and len(row) > class_col else ""
         if class_value == "漏洞利用":

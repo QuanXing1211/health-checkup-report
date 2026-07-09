@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-读取事件表 Excel 的 GPT研判结论 和 GPT定性结论 列，输出 JSON 供 Node.js 使用。
+读取事件表 Excel 的 GPT研判结论 和 GPT定性标签 列，输出 JSON 供 Node.js 使用。
 
 输出格式:
 {
@@ -25,7 +25,7 @@ decode_argv()
 
 HEADER_INCIDENT_ID = "事件ID"
 HEADER_GPT_RESULT = "GPT研判结论"
-HEADER_GPT_SUB_RESULT = "GPT定性结论"
+HEADER_GPT_SUB_RESULT = "GPT定性标签"
 
 GPT_RESULT_HOST_COMPROMISE = "主机失陷活动"
 GPT_RESULT_VIRUS_TROJAN = "病毒木马活动"

@@ -869,13 +869,14 @@ function buildAlertCountRequestBody({ begin, end }) {
   };
 }
 
-function buildCaseStudyAlertQueryRequestBody({ begin, end, incidentId, stageId, techniqueId }) {
+function buildCaseStudyAlertQueryRequestBody({ begin, end, alertIds, stageId, techniqueId }) {
   const tacticValue = `${stageId}.${techniqueId}`;
+  const alertIdList = Array.isArray(alertIds) ? alertIds.map(id => `"${id}"`).join(' , ') : `"${alertIds}"`;
   return {
     extensionParams: null,
     spl: {
-      mappedSpl: `filter uuId in { "${incidentId}" } | attckTactics = "${tacticValue}"`,
-      originalSpl: `filter uuId in { "${incidentId}" } | attckTactics = "${tacticValue}"`,
+      mappedSpl: `filter uuId in { ${alertIdList} } | attckTactics = "${tacticValue}"`,
+      originalSpl: `filter uuId in { ${alertIdList} } | attckTactics = "${tacticValue}"`,
       extensionParams: {
         frontRender: [],
         mappedInputSpl: `attckTactics = "${tacticValue}"`,
@@ -1205,30 +1206,43 @@ async function confirmHostCompromiseIncident(cookieInfo, msswBaseUrl, companyId,
   return false;
 }
 
-async function fetchIncidentAttckCount(cookieInfo, msswBaseUrl, companyId, incidentId) {
+async function fetchIncidentAttckCount(cookieInfo, msswBaseUrl, companyId, alertIds) {
   const headers = buildMsswTableQueryHeaders(cookieInfo, msswBaseUrl, companyId);
   const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${ATTCK_COUNT_ENDPOINT}`;
   const response = await requestJson(url, {
     headers,
-    body: JSON.stringify([incidentId])
+    body: JSON.stringify(alertIds)
   });
 
   const code = response && response.code;
   if (code !== 0 && code !== '0' && code !== undefined && code !== null) {
-    throw new Error(`ATT&CK 时间线查询失败 (${incidentId}): ${response.message || response.msg || JSON.stringify(response).slice(0, 500)}`);
+    throw new Error(`ATT&CK 时间线查询失败 (${JSON.stringify(alertIds)}): ${response.message || response.msg || JSON.stringify(response).slice(0, 500)}`);
   }
   return response;
 }
 
-async function queryCaseStudyAlertRow(cookieInfo, alertQueryBaseUrl, range, incidentId, stageId, techniqueId) {
-  const headers = buildXdrAlertHeaders(cookieInfo, alertQueryBaseUrl);
-  const url = `${alertQueryBaseUrl}${ALERT_QUERY_ENDPOINT}`;
+async function fetchIncidentAlertIds(cookieInfo, msswBaseUrl, companyId, incidentId) {
+  const headers = buildMsswTableQueryHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${DISPOSAL_TABS_ENDPOINT}/${incidentId}`;
+  const response = await requestJson(url, { headers });
+
+  const code = response && response.code;
+  if (code !== 0 && code !== '0' && code !== undefined && code !== null) {
+    throw new Error(`事件详情查询失败 (${incidentId}): ${response.message || response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
+  return Array.isArray(data.alertIds) ? data.alertIds : [];
+}
+
+async function queryCaseStudyAlertRow(msswCookieInfo, msswBaseUrl, companyId, range, alertIds, stageId, techniqueId) {
+  const headers = buildMsswTableQueryHeaders(msswCookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${ALERT_QUERY_ENDPOINT}`;
   const response = await requestJson(url, {
     headers,
     body: JSON.stringify(buildCaseStudyAlertQueryRequestBody({
       begin: range.begin,
       end: range.end,
-      incidentId,
+      alertIds,
       stageId,
       techniqueId
     }))
@@ -1317,6 +1331,7 @@ async function fetchIncidentCaseStudy(options = {}) {
   const matchedCount = matchedCandidates.length;
 
   if (!matchedCount) {
+    logInfo(options.logger, `[典型案例] 候选池为空: c2=${(options.c2Ids || []).length}, virus=${(options.virusIds || []).length}, exploit=${(options.exploitIds || []).length}`);
     return buildEmptyCaseStudy(candidateResult.candidateCount || candidateCount, 0);
   }
 
@@ -1324,6 +1339,7 @@ async function fetchIncidentCaseStudy(options = {}) {
   const topSeverityCandidates = matchedCandidates.filter((item) => severityRank(item.severity) === topSeverityRank);
   const selected = topSeverityCandidates[Math.floor(Math.random() * topSeverityCandidates.length)];
   if (!selected || !selected.incidentId) {
+    logInfo(options.logger, '[典型案例] selected 无 incidentId，返回空 caseStudy');
     return buildEmptyCaseStudy(candidateResult.candidateCount || candidateCount, matchedCount);
   }
 
@@ -1332,19 +1348,44 @@ async function fetchIncidentCaseStudy(options = {}) {
   result.selectedSourceType = selected.sourceType || '';
   result.selectedSeverity = selected.severity || '';
 
+  logInfo(options.logger, `[典型案例] 选中事件: id=${selected.incidentId}, sourceType=${selected.sourceType}, severity=${selected.severity}, matchedCount=${matchedCount}`);
+
+  let alertIds = [];
   let techniqueHits = [];
   try {
-    const attckResponse = await fetchIncidentAttckCount(
+    // 先查事件详情获取 alertIds，attckCount 接口需要传告警 ID 才有 isHit
+    logInfo(options.logger, `[典型案例] 查询事件详情获取 alertIds: incidentId=${selected.incidentId}`);
+    alertIds = await fetchIncidentAlertIds(
       options.msswCookieInfo,
       options.msswBaseUrl,
       options.companyId,
       selected.incidentId
     );
+    logInfo(options.logger, `[典型案例] alertIds 数量: ${alertIds.length}`);
+
+    if (!alertIds.length) {
+      logInfo(options.logger, '[典型案例] alertIds 为空，跳过 ATT&CK 查询');
+      return result;
+    }
+
+    logInfo(options.logger, `[典型案例] 开始查询 ATT&CK 时间线: alertIds=${alertIds.join(',')}`);
+    const attckResponse = await fetchIncidentAttckCount(
+      options.msswCookieInfo,
+      options.msswBaseUrl,
+      options.companyId,
+      alertIds
+    );
+    const rawTactics = attckResponse?.data?.attckTacticVoList || [];
+    const tacticsWithHit = rawTactics.filter(t => t?.isHit === true);
+    logInfo(options.logger, `[典型案例] tactics=${rawTactics.length}, isHit=${tacticsWithHit.length}, hitList=${tacticsWithHit.map(t => `${t.id}(${t.chineseName})`).join(', ') || '(无)'}`);
     techniqueHits = extractAttckTechniqueHits(attckResponse);
+    logInfo(options.logger, `[典型案例] 提取到技术命中数: ${techniqueHits.length}`);
   } catch (error) {
+    logInfo(options.logger, `[典型案例] ATT&CK 查询失败: ${error.message}`);
     return result;
   }
   if (!techniqueHits.length) {
+    logInfo(options.logger, '[典型案例] techniqueHits 为空，跳过攻击侧时间线查询');
     return result;
   }
 
@@ -1352,18 +1393,24 @@ async function fetchIncidentCaseStudy(options = {}) {
   for (const hit of techniqueHits) {
     let alertRow = null;
     try {
+      logInfo(options.logger, `[典型案例] 查询告警详情: stage=${hit.stageName}(${hit.stageId}), technique=${hit.techniqueName}(${hit.techniqueId}), alertIds=${alertIds.length}`);
       alertRow = await queryCaseStudyAlertRow(
-        options.xdrCookieInfo,
-        options.alertQueryBaseUrl,
+        options.msswCookieInfo,
+        options.msswBaseUrl,
+        options.companyId,
         options.range,
-        selected.incidentId,
+        alertIds,
         hit.stageId,
         hit.techniqueId
       );
     } catch (error) {
+      logInfo(options.logger, `[典型案例] 告警详情查询失败(${hit.techniqueName}): ${error.message}`);
       continue;
     }
-    if (!alertRow) continue;
+    if (!alertRow) {
+      logInfo(options.logger, `[典型案例] 告警详情返回空(${hit.techniqueName})，跳过`);
+      continue;
+    }
 
     const hostIp = String(extractCellValue(alertRow.hostIp) || '').trim();
     const dstIpValues = extractArrayCellValues(alertRow.dstIp);
@@ -1384,8 +1431,10 @@ async function fetchIncidentCaseStudy(options = {}) {
   result.attackTimeline = attackTimeline
     .filter((item) => Number.isFinite(item.timestamp) && item.timestamp > 0)
     .sort((a, b) => a.timestamp - b.timestamp);
+  logInfo(options.logger, `[典型案例] 攻击时间线: ${result.attackTimeline.length} 条`);
 
   try {
+    logInfo(options.logger, `[典型案例] 查询防守侧时间线: incidentId=${selected.incidentId}`);
     const incidentRow = await queryCaseStudyIncidentTimeline(
       options.msswCookieInfo,
       options.msswBaseUrl,
@@ -1394,7 +1443,9 @@ async function fetchIncidentCaseStudy(options = {}) {
       selected.incidentId
     );
     result.defenseTimeline = buildDefenseTimelineFromIncidentRow(incidentRow);
+    logInfo(options.logger, `[典型案例] 防守时间线: ${result.defenseTimeline.length} 条, incidentRow=${incidentRow ? '有' : '无'}`);
   } catch (error) {
+    logInfo(options.logger, `[典型案例] 防守侧时间线查询失败: ${error.message}`);
     result.defenseTimeline = [];
   }
 
@@ -1517,20 +1568,20 @@ async function fetchMsswIncidentGptStats(cookieInfo, msswBaseUrl, companyId, sta
   logInfo(logger, `开始统计已确认事件（病毒木马 ${confirmedVirusTrojanIds.length} + 主机失陷 ${confirmedHostCompromiseIds.length} = ${allIncidentIds.length}）的 GPT 定性结论...`);
 
   if (incidentFilePath) {
-    // 从 Excel 的 GPT定性结论 列直接查找
+    // 从 Excel 的 GPT定性标签 列直接查找
     for (let i = 0; i < allIncidentIds.length; i += 1) {
       const incidentId = allIncidentIds[i];
       const subValue = gptSubResultMap[incidentId] || '';
       if (!subValue) {
-        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: 无 GPT 定性结论`);
+        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: 无 GPT 定性标签`);
         continue;
       }
       const matchedActor = matchThreatActor(subValue);
       if (matchedActor) {
         threatActorCounts[matchedActor] = (threatActorCounts[matchedActor] || 0) + 1;
-        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性=${subValue}, 匹配=${matchedActor}`);
+        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${subValue}, 匹配=${matchedActor}`);
       } else {
-        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性=${subValue}, 未匹配`);
+        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${subValue}, 未匹配`);
       }
     }
   } else {
@@ -1545,12 +1596,12 @@ async function fetchMsswIncidentGptStats(cookieInfo, msswBaseUrl, companyId, sta
         const matchedActor = matchThreatActor(gptSubResultValue);
         if (matchedActor) {
           threatActorCounts[matchedActor] = (threatActorCounts[matchedActor] || 0) + 1;
-          logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性=${gptSubResultValue}, 匹配=${matchedActor}`);
+          logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${gptSubResultValue}, 匹配=${matchedActor}`);
         } else {
-          logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性=${gptSubResultValue}, 未匹配`);
+          logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${gptSubResultValue}, 未匹配`);
         }
       } catch (error) {
-        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId} GPT定性查询失败: ${error.message}`);
+        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId} GPT定性标签查询失败: ${error.message}`);
       }
     }
   }
@@ -1575,12 +1626,6 @@ async function fetchMsswIncidentGptStats(cookieInfo, msswBaseUrl, companyId, sta
   logInfo(logger, `威胁类型 Top2（固定优先级）: ${JSON.stringify(threatTypeRanking)}`);
 
   const combinedTotal = confirmedHostCompromiseIds.length + confirmedVirusTrojanIds.length;
-  const displayThreatActorStats = incidentFilePath
-    ? [
-      { name: 'C2外联', count: confirmedHostCompromiseIds.length },
-      { name: '病毒木马', count: confirmedVirusTrojanIds.length }
-    ]
-    : sortedActors;
 
   return {
     total: combinedTotal,
@@ -1592,7 +1637,7 @@ async function fetchMsswIncidentGptStats(cookieInfo, msswBaseUrl, companyId, sta
       total: confirmedVirusTrojanIds.length,
       confirmedIncidentIds: confirmedVirusTrojanIds
     },
-    threatActorStats: displayThreatActorStats,
+    threatActorStats: sortedActors,
     threatTypeRanking
   };
 }
@@ -2599,7 +2644,8 @@ async function fetchMsswAssetOverview(options = {}) {
         msswBaseUrl: xdrBaseUrl,
         alertQueryBaseUrl,
         companyId,
-        range: timeRange
+        range: timeRange,
+        logger
       });
       logInfo(logger, `典型案例已提取: incident=${caseStudy.selectedIncidentId || '无'}, attack=${caseStudy.attackTimeline.length}, defense=${caseStudy.defenseTimeline.length}`);
     }

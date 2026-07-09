@@ -30,7 +30,7 @@ from _path_helper import decode_argv
 decode_argv()
 
 
-SEVERE_LABEL = "严重"
+SEVERE_LABEL = "恶意"
 LEVEL_PRIORITY = {
     "严重": 4,
     "高危": 3,

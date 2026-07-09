@@ -267,6 +267,7 @@ async function main() {
       end: effectiveTimeRange.end,
       soarCookiePath: options['cookie-path'],
       msswCookiePath: options['mssw-cookie-path'],
+      msswBaseUrl: options['mssw-base-url'],
       outputDir: getTmpExportDir(),
       logger
     });
@@ -442,6 +443,7 @@ function printHelp() {
 Options:
   --customer <name>              Customer name (用于自动查询 company_id)
   --mssw-cookie-path <path>      Required for generate and MSSW data flow
+  --mssw-base-url <host>         MSSW base host (default pre.soar.sangfor.com)
   --xdr-cookie-path <path>       Optional, XDR cookie file path
   --start <YYYY-MM-DD>           Optional report start date
   --end <YYYY-MM-DD>             Optional report end date
@@ -458,6 +460,27 @@ Options:
 }
 
 async function exportConfiguredXdrTables(options) {
+  // ====== MOCK: 使用本地模拟表，注释掉下载部分 ======
+  const mockIncidentPath = path.resolve(__dirname, 'tmp', 'mock_incident_table_v3.xlsx');
+  const mockAssetPath = path.resolve(__dirname, 'tmp', 'mock_asset_table.xlsx');
+
+  // 如果 mock 文件不存在，自动运行 gen_mock_tables.py 生成一次
+  const genScript = path.resolve(__dirname, 'scripts', 'gen_mock_tables.py');
+  const tableMissing = !(await fileExists(mockIncidentPath)) || !(await fileExists(mockAssetPath));
+  if (tableMissing) {
+    logWith(options.logger, '[MOCK] 模拟表缺失，自动生成中...');
+    await execPythonScript(genScript);
+    logWith(options.logger, '[MOCK] 模拟表生成完成');
+  }
+
+  logWith(options.logger, `[MOCK] 使用模拟事件表: ${mockIncidentPath}`);
+  logWith(options.logger, `[MOCK] 使用模拟资产表: ${mockAssetPath}`);
+  return {
+    asset: { filePath: mockAssetPath, filename: 'mock_asset_table.xlsx' },
+    incident: { filePath: mockIncidentPath, filename: 'mock_incident_table.xlsx' }
+  };
+  // ====== 原始下载逻辑（已注释） ======
+  /*
   if (!options.msswCookiePath) {
     return {};
   }
@@ -498,6 +521,7 @@ async function exportConfiguredXdrTables(options) {
   }
 
   return results;
+  */
 }
 
 function createLogger(options = {}) {
@@ -634,6 +658,34 @@ function samePath(left, right) {
 
 function isCrossDeviceError(error) {
   return Boolean(error) && (error.code === 'EXDEV' || error.code === 'EPERM');
+}
+
+async function fileExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function execPythonScript(scriptPath) {
+  const { execFile } = require('child_process');
+  return new Promise((resolve, reject) => {
+    execFile('python', [scriptPath], {
+      encoding: 'utf8',
+      windowsHide: true,
+      maxBuffer: 1024 * 1024,
+      env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' })
+    }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(`Python脚本执行失败: ${stderr || error.message}`));
+        return;
+      }
+      if (stdout) console.error(stdout.trim());
+      resolve();
+    });
+  });
 }
 
 function formatLocalDate(date) {

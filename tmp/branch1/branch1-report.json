@@ -1,25 +1,25 @@
 {
   "reportPatch": {
     "scoring": {
-      "total_score": 41.87,
+      "total_score": 32.73,
       "grade": "差",
       "grade_color": "红色",
       "L1": {
-        "资产防护得分": 16.45,
+        "资产防护得分": 1.22,
         "日常运营得分": 80.0
       },
       "L2": {
-        "托管资产得分": 37.3,
-        "组件检测得分": 2.55,
+        "托管资产得分": 0.0,
+        "组件检测得分": 2.04,
         "事件得分": 100.0,
         "勒索风险得分": 50.0
       },
       "L3": {
-        "服务器得分": 32.75,
-        "终端得分": 50.94,
+        "服务器得分": 0.0,
+        "终端得分": 0.0,
         "服务器权重": 0.75,
         "终端权重": 0.25,
-        "设备离线得分": 5.1,
+        "设备离线得分": 4.08,
         "策略隐患得分": 0.0,
         "漏洞得分": 0,
         "端口得分": 100,
@@ -30,24 +30,24 @@
       "data_summary": {
         "asset": {
           "server": {
-            "both_coverage": 6,
-            "client_only": 83,
-            "net_only": 4,
-            "no_coverage": 191,
-            "total": 284
+            "both_coverage": 0,
+            "client_only": 0,
+            "net_only": 0,
+            "no_coverage": 0,
+            "total": 0
           },
           "pc": {
-            "both_coverage": 8,
-            "client_only": 45,
-            "net_only": 1,
-            "no_coverage": 52,
-            "total": 106
+            "both_coverage": 0,
+            "client_only": 0,
+            "net_only": 0,
+            "no_coverage": 0,
+            "total": 0
           },
-          "all_assets": 5167,
+          "all_assets": 0,
           "device": {
             "activated_count": 98,
-            "offline_count": 93,
-            "total": 174
+            "offline_count": 94,
+            "total": 175
           }
         },
         "event": {
@@ -81,10 +81,10 @@
           "total_events": 0
         },
         "vuln": {
-          "urgent_count": 0,
-          "fast_count": 487,
+          "urgent_count": 14,
+          "fast_count": 8,
           "suggest_count": 0,
-          "total_vulns": 487
+          "total_vulns": 22
         },
         "weak_pwd": {
           "high_count": 0,
@@ -138,9 +138,9 @@
     },
     "protection_effectiveness": {
       "without_aes_asset_stats": {
-        "ips": "10.128.160.200、10.128.165.10",
-        "total": 3,
-        "hide_hint": false
+        "ips": "",
+        "total": 0,
+        "hide_hint": true
       },
       "policy_stats": {
         "total": 0,

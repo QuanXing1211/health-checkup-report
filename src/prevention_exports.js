@@ -56,6 +56,10 @@ async function resolveTablePath(tableType, explicitPath, options, outputDir, tem
     args.push('--mssw-cookie-path', options.msswCookiePath);
   }
 
+  if (options.msswBaseUrl) {
+    args.push('--mssw-base-url', options.msswBaseUrl);
+  }
+
   const stdout = await execPython(args, `${displayName(tableType)} 导出失败`, options.logger);
   const lastLine = stdout.split(/\r?\n/).filter(Boolean).pop() || '{}';
   const parsed = JSON.parse(lastLine);

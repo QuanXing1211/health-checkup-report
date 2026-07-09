@@ -73,7 +73,7 @@ node health_report.js `
 | `riskOverview.totalEvents` | 有效安全事件数 | 导出的事件表 Excel | 直接复用 `riskDetails.totalEvents` |
 | `riskOverview.closedEvents` | 处置闭环数 | 导出的事件表 Excel | 直接复用 `riskDetails.closedEvents`，即 `处置状态 = 处置完成` 的事件行数 |
 | `riskOverview.containedEvents` | 总计遏制数 | 导出的事件表 Excel | 直接复用 `riskDetails.containedEvents`，即 `处置状态 = 已遏制` 或 `处置完成` 的事件行数 |
-| `riskOverview.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 直接复用 `riskDetails.alertReductionRate`；若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果按 0.1 为粒度四舍五入 |
+| `riskOverview.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 直接复用 `riskDetails.alertReductionRate`；若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果保留两位小数 |
 | `riskOverview.closeRate` | 事件闭环率 | 导出的事件表 Excel | 直接复用 `riskDetails.closeRate`，保证与风险详情完全一致 |
 | `riskOverview.riskAssetCount` | 风险资产数 | 风险清单目录中的事件表 Excel + 弱口令表 Excel + 漏洞表 Excel + 暴露面表 Excel + 资产表 Excel | 在五张风险清单归档完成后综合统计：事件表取 `影响资产` 且排除 `处置状态 = 处置完成`；弱口令表取 `风险资产` 且若存在 `处置状态` 列则排除 `处置完成`；漏洞表取 `风险资产`；暴露面表中 `Web服务风险分布` 通过 `访问路径 -> 端口表.Host` 映射资产，`非Web服务风险分布` 直接取 `IP地址/子域名`；最后按资产键去重计数 |
 | `riskOverview.affectedAssetCount` | 影响资产数 | 导出的事件表 Excel | 直接复用 `riskDetails.uniqueAssetCount`；遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址后去重计数 |
@@ -98,7 +98,7 @@ node health_report.js `
 | `riskDetails.containedEvents` | 已遏制事件数 | 导出的事件表 Excel | 读取表头为 `处置状态` 的列，统计值等于 `已遏制` 或 `处置完成` 的事件行数 |
 | `riskDetails.processingEvents` | 处置中事件数 | 导出的事件表 Excel | 读取表头为 `处置状态` 的列，统计值等于 `处置中` 的事件行数 |
 | `riskDetails.closeRate` | 闭环率 | 导出的事件表 Excel | 用 `closedEvents / totalEvents * 100` 计算，四舍五入为整数 |
-| `riskDetails.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果按 0.1 为粒度四舍五入 |
+| `riskDetails.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果保留两位小数 |
 | `riskDetails.uniqueAssetCount` | 涉及到的资产数 | 导出的事件表 Excel | 遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址（如 `10.5.40.62(未归类组)` 取 `10.5.40.62`）后去重计数 |
 | `riskDetails.managedAvgResponseTime` | 托管资产事件平均响应时间 | 导出的资产表 Excel + 事件表 Excel | 先筛出影响资产属于托管资产且 `处置状态 = 处置完成` 的事件，再用 `完成时间 - 事件创建时间` 计算每起事件的响应分钟数，最后求平均并保留 1 位小数；任一时间缺失或无法解析则跳过该事件 |
 | `riskDetails.highRiskIncidentExamples.vulnExploits` | 高危及以上事件举例-漏洞利用类 | 导出的事件表 Excel + `riskOverview.exploitStats.incidentIds` | 回查 `incidentIds` 命中的事件，读取 `等级` 列并按 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条；带出 `事件名称`、`受影响资产`、`最近发生时间`、`处置状态` |

@@ -56,7 +56,7 @@ function applyIncidentStatusStats(reportData, stats) {
     const totalEvts = Number(stats && stats.totalEvents || 0);
     const alertTot = Number(existingRiskDetails.alertTotal || 0);
     if (alertTot > 0 && totalEvts > 0) {
-      computedAlertReductionRate = Math.round((alertTot - totalEvts) / alertTot * 10) / 10;
+      computedAlertReductionRate = Number((((alertTot - totalEvts) / alertTot) * 100).toFixed(2));
     } else {
       computedAlertReductionRate = existingRiskDetails.alertReductionRate || 0;
     }
@@ -82,6 +82,7 @@ function applyIncidentStatusStats(reportData, stats) {
     merged.riskOverview.containedEvents = merged.riskDetails.containedEvents;
     merged.riskOverview.totalEvents = merged.riskDetails.totalEvents;
     merged.riskOverview.alertReductionRate = merged.riskDetails.alertReductionRate;
+    merged.riskOverview.affectedAssetCount = merged.riskDetails.uniqueAssetCount;
   }
 
   return merged;
@@ -96,7 +97,7 @@ function applyAssetStatusStats(reportData, stats) {
     assetLedger: {
       core_asset: Number(stats.core_asset || 0),
       core_managed_asset: Number(stats.core_managed_asset || 0),
-      manage_asset: Number(stats.manage_asset || stats.assetTotal || 0),
+      manage_asset: Number(stats.manage_asset || 0),
       typeDistribution: Array.isArray(stats.typeDistribution) ? stats.typeDistribution : [],
       protectionDistribution: Array.isArray(stats.protectionDistribution) ? stats.protectionDistribution : [],
       internetExposureTotal: Number(stats.internetExposureTotal || 0),
