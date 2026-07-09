@@ -70,7 +70,7 @@ def main():
 
     id_col = find_column(col_map, ["事件ID", "事件Id", "incident_id", "incidentId", "id", "ID"])
     file_col = find_column(col_map, ["文件", "文件MD5", "md5", "file"])
-    ext_ip_col = find_column(col_map, ["外网IP", "外联IP"])
+    ext_ip_col = find_column(col_map, ["外网IP地址", "外网IP", "外联IP"])
     domain_col = find_column(col_map, ["域名", "外联域名"])
     class_col = find_column(col_map, [
         "安全事件一级分类", "事件分类", "incident_threat_class",

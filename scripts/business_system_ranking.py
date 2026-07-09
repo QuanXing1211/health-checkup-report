@@ -16,6 +16,7 @@ import sys
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
 
 from _path_helper import decode_argv
 decode_argv()
@@ -429,10 +430,10 @@ def export_comparison_excel(matched_risks, ranking, output_path):
 
     for idx in range(len(system_order)):
         col = group_start_col(idx)
-        ws.column_dimensions[chr(64 + col)].width = 15
-        ws.column_dimensions[chr(64 + col + 1)].width = 8
-        ws.column_dimensions[chr(64 + col + 2)].width = 10
-        ws.column_dimensions[chr(64 + col + 3)].width = 32
+        ws.column_dimensions[get_column_letter(col)].width = 15
+        ws.column_dimensions[get_column_letter(col + 1)].width = 8
+        ws.column_dimensions[get_column_letter(col + 2)].width = 10
+        ws.column_dimensions[get_column_letter(col + 3)].width = 32
 
     wb.save(output_path)
     log(f'中间表格已导出: {output_path}')

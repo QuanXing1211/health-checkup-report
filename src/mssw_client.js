@@ -2371,7 +2371,8 @@ function resolveDefaultProjectTimeRangeFromResponse(response, reportGeneratedAt)
 
   const minServiceStart = Math.min(...serviceStartList);
   const minServiceEnd = nonNullServiceEnds.length ? Math.min(...nonNullServiceEnds) : null;
-  const effectiveEndMs = minServiceEnd === null ? generatedAt.getTime() : Math.min(generatedAt.getTime(), minServiceEnd);
+  const endOfYesterdayMs = generatedAt.getTime() - 24 * 60 * 60 * 1000;
+  const effectiveEndMs = minServiceEnd === null ? endOfYesterdayMs : Math.min(endOfYesterdayMs, minServiceEnd);
 
   if (minServiceStart > effectiveEndMs) {
     throw new Error('MSSW 服务时间异常: 推导出的开始时间晚于结束时间');

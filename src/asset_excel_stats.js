@@ -16,7 +16,7 @@ async function summarizeAssetTable(excelPath) {
 
   return {
     assetTotal,
-    manage_asset: assetTotal,
+    manage_asset: Number(parsed.manage_asset || 0),
     core_asset: Number(parsed.core_asset || 0),
     core_managed_asset: Number(parsed.core_managed_asset || 0),
     typeDistribution: toNameValueList(parsed.typeDistribution, [
