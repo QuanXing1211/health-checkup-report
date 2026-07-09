@@ -268,6 +268,7 @@ async function main() {
       soarCookiePath: options['cookie-path'],
       msswCookiePath: options['mssw-cookie-path'],
       msswBaseUrl: options['mssw-base-url'],
+      soarBaseUrl: options['soar-base-url'],
       outputDir: getTmpExportDir(),
       logger
     });
@@ -444,6 +445,7 @@ Options:
   --customer <name>              Customer name (用于自动查询 company_id)
   --mssw-cookie-path <path>      Required for generate and MSSW data flow
   --mssw-base-url <host>         MSSW base host (default pre.soar.sangfor.com)
+  --soar-base-url <host>         SOAR base host for EASM interfaces (default soar59.sangfor.com.cn)
   --xdr-cookie-path <path>       Optional, XDR cookie file path
   --start <YYYY-MM-DD>           Optional report start date
   --end <YYYY-MM-DD>             Optional report end date

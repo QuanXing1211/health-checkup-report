@@ -6,7 +6,7 @@
     "customerId": "67262236"
   },
   "assetLedger": {
-    "ready_to_outbound": 329,
+    "ready_to_outbound": 334,
     "manage_asset": 0,
     "typeDistribution": [
       {
@@ -131,14 +131,14 @@
         {
           "incidentId": "incident-c608fb20-d8e3-474b-b827-6b17c3cfc628",
           "ioc": "ddos-agent.net",
-          "affectedAsset": "192.168.24.241",
+          "affectedAsset": "192.168.213.156",
           "lastOccurredAt": "2026-06-01 00:00:00",
           "disposalStatus": "处置完成"
         },
         {
           "incidentId": "incident-f303ded9-35a5-4333-bfc6-8cff61b05333",
           "ioc": "ransom-bot.biz",
-          "affectedAsset": "192.168.100.200",
+          "affectedAsset": "192.168.213.156",
           "lastOccurredAt": "2026-06-24 00:00:00",
           "disposalStatus": "处置完成"
         },
@@ -195,7 +195,7 @@
     "closedEvents": 8,
     "containedEvents": 8,
     "totalEvents": 24,
-    "affectedAssetCount": 18,
+    "affectedAssetCount": 17,
     "exploitStats": {
       "total": 5,
       "highRiskAsset": "10.248.38.136",
@@ -210,13 +210,15 @@
     },
     "devices": 205,
     "coreBusinessSystemRanking": [
+      "业务系统2",
+      "业务系统1",
       "业务系统3",
-      "业务系统1"
+      "业务系统4"
     ],
-    "maxRiskSystem": "业务系统3",
-    "securityRiskTotal": 18,
-    "highAndAboveRiskCount": 10,
-    "riskAssetCount": 29,
+    "maxRiskSystem": "业务系统2",
+    "securityRiskTotal": 20,
+    "highAndAboveRiskCount": 11,
+    "riskAssetCount": 27,
     "riskBusinessCount": 4,
     "topRiskAssets": [
       {
@@ -282,6 +284,36 @@
         ]
       },
       {
+        "ip": "192.168.213.156",
+        "managedStatus": "已托管",
+        "businessSystem": "业务系统2",
+        "riskCount": 4,
+        "riskDetails": {
+          "totalEvents": 4,
+          "c2Events": 4,
+          "virusTrojanEvents": 0,
+          "vulnExploitEvents": 1,
+          "highAndAboveVulnerabilities": 0,
+          "weakPasswords": 0,
+          "totalExposures": 0,
+          "webExposures": 0,
+          "nonWebExposures": 0,
+          "webComponentExamples": [],
+          "nonWebServiceExamples": [],
+          "malwareAndC2Events": 4,
+          "otherEvents": 0,
+          "hasAes": false,
+          "detailLines": [
+            "总计安全事件4个，其中，病毒木马&C2外联4起，网站攻击&漏洞攻击1起，其他事件0起",
+            "该资产尚未安装aES"
+          ]
+        },
+        "detailLines": [
+          "总计安全事件4个，其中，病毒木马&C2外联4起，网站攻击&漏洞攻击1起，其他事件0起",
+          "该资产尚未安装aES"
+        ]
+      },
+      {
         "ip": "192.168.200.22",
         "managedStatus": "已托管",
         "businessSystem": "业务系统1",
@@ -342,36 +374,6 @@
           "该资产共发现1个弱口令",
           "该资产尚未安装aES"
         ]
-      },
-      {
-        "ip": "10.24.152.0",
-        "managedStatus": "",
-        "businessSystem": "",
-        "riskCount": 2,
-        "riskDetails": {
-          "totalEvents": 0,
-          "c2Events": 0,
-          "virusTrojanEvents": 0,
-          "vulnExploitEvents": 0,
-          "highAndAboveVulnerabilities": 1,
-          "weakPasswords": 0,
-          "totalExposures": 0,
-          "webExposures": 0,
-          "nonWebExposures": 0,
-          "webComponentExamples": [],
-          "nonWebServiceExamples": [],
-          "malwareAndC2Events": 0,
-          "otherEvents": 0,
-          "hasAes": false,
-          "detailLines": [
-            "该资产共发现在1个高危及以上漏洞",
-            "该资产尚未安装aES"
-          ]
-        },
-        "detailLines": [
-          "该资产共发现在1个高危及以上漏洞",
-          "该资产尚未安装aES"
-        ]
       }
     ]
   },
@@ -381,99 +383,13 @@
     "alertReductionRate": 99.48,
     "closeRate": 33,
     "caseStudy": {
-      "selectedIncidentId": "incident-ccb79f5b-0c52-45c8-8727-a49ee56da964",
-      "selectedSourceType": "c2",
-      "selectedSeverity": "严重",
-      "candidateCount": 24,
-      "matchedCount": 7,
-      "attackTimeline": [
-        {
-          "timestamp": 1781491687,
-          "stageId": "TA0001",
-          "stageName": "初始访问",
-          "techniqueId": "T1190",
-          "techniqueName": "漏洞攻击公网暴露应用",
-          "hostIp": "192.168.50.98",
-          "voiceMode": "主动",
-          "narrative": "192.168.50.98初始访问漏洞攻击公网暴露应用"
-        },
-        {
-          "timestamp": 1781492414,
-          "stageId": "TA0005",
-          "stageName": "防御规避",
-          "techniqueId": "T1564",
-          "techniqueName": "隐藏组件",
-          "hostIp": "192.168.50.98",
-          "voiceMode": "主动",
-          "narrative": "192.168.50.98防御规避隐藏组件"
-        },
-        {
-          "timestamp": 1781492414,
-          "stageId": "TA0007",
-          "stageName": "探测",
-          "techniqueId": "T1033",
-          "techniqueName": "系统所有者/用户发现",
-          "hostIp": "192.168.50.98",
-          "voiceMode": "主动",
-          "narrative": "192.168.50.98探测系统所有者/用户发现"
-        },
-        {
-          "timestamp": 1781492414,
-          "stageId": "TA0011",
-          "stageName": "命令与控制",
-          "techniqueId": "T1105",
-          "techniqueName": "入口工具传输",
-          "hostIp": "192.168.50.98",
-          "voiceMode": "主动",
-          "narrative": "192.168.50.98命令与控制入口工具传输"
-        }
-      ],
-      "defenseTimeline": [
-        {
-          "timestamp": 1781061151,
-          "label": "组件日志检测时间"
-        },
-        {
-          "timestamp": 1781061251,
-          "label": "数据湖标准化时间"
-        },
-        {
-          "timestamp": 1781061251,
-          "label": "数据湖接收时间"
-        },
-        {
-          "timestamp": 1781061251,
-          "label": "组件日志上报时间"
-        },
-        {
-          "timestamp": 1781061345,
-          "label": "E侧引擎接收时间"
-        },
-        {
-          "timestamp": 1781061347,
-          "label": "首次安全告警生成时间"
-        },
-        {
-          "timestamp": 1781061410,
-          "label": "首次安全事件生成时间"
-        },
-        {
-          "timestamp": 1781061410,
-          "label": "NAE关联分析引擎接收时间"
-        },
-        {
-          "timestamp": 1781061422,
-          "label": "安全告警解读时间"
-        },
-        {
-          "timestamp": 1781061423,
-          "label": "安全事件接收时间"
-        },
-        {
-          "timestamp": 1781061425,
-          "label": "安全事件入库时间"
-        }
-      ]
+      "selectedIncidentId": "",
+      "selectedSourceType": "",
+      "selectedSeverity": "",
+      "candidateCount": 0,
+      "matchedCount": 0,
+      "attackTimeline": [],
+      "defenseTimeline": []
     },
     "highRiskIncidentExamples": {
       "viruses": [
@@ -524,14 +440,14 @@
         {
           "incidentId": "incident-c608fb20-d8e3-474b-b827-6b17c3cfc628",
           "ioc": "ddos-agent.net",
-          "affectedAsset": "192.168.24.241",
+          "affectedAsset": "192.168.213.156",
           "lastOccurredAt": "2026-06-01 00:00:00",
           "disposalStatus": "处置完成"
         },
         {
           "incidentId": "incident-f303ded9-35a5-4333-bfc6-8cff61b05333",
           "ioc": "ransom-bot.biz",
-          "affectedAsset": "192.168.100.200",
+          "affectedAsset": "192.168.213.156",
           "lastOccurredAt": "2026-06-24 00:00:00",
           "disposalStatus": "处置完成"
         },
@@ -561,7 +477,7 @@
         {
           "incidentId": "incident-08cddcf6-87ec-4051-91a1-1af581e6e57e",
           "eventName": "检测到海莲花APT攻击攻击活动—远程代码执行",
-          "affectedAsset": "168.196.23.21",
+          "affectedAsset": "192.168.213.156",
           "lastOccurredAt": "2026-06-06 00:00:00",
           "disposalStatus": "处理中"
         },
@@ -587,7 +503,7 @@
     "closedEvents": 8,
     "containedEvents": 8,
     "processingEvents": 0,
-    "uniqueAssetCount": 18,
+    "uniqueAssetCount": 17,
     "managedAssetEvents": 0,
     "managedAssetContainedEvents": 0,
     "managedAssetDisposedEvents": 0,

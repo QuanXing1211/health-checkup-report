@@ -17,7 +17,7 @@ from openpyxl import load_workbook
 
 # ==================== 配置（按需修改） ====================
 COOKIES_FILE    = r"C:\Users\User\Downloads\cookies.txt"
-BASE_URL        = "https://soar59.sangfor.com.cn"
+SOAR_BASE_URL   = "https://soar59.sangfor.com.cn"
 TEMP_DIR        = r"C:\Users\User\Downloads\temp_report"
 OUTPUT_FILE     = r"C:\Users\User\Downloads\temp_report\暴露面清单.xlsx"
 POLL_INTERVAL  = 5     # 轮询间隔（秒）
@@ -95,7 +95,7 @@ DEFAULT_HEADERS: Dict[str, str] = {
     "Content-Type": "application/json",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "X-Requested-With": "XMLHttpRequest",
-    "Referer": f"{BASE_URL}/index.html",
+    "Referer": f"{SOAR_BASE_URL}/index.html",
     "timezone": _get_system_timezone(),
 }
 
@@ -161,7 +161,7 @@ def _parse_json(resp: requests.Response, api_name: str) -> dict:
 
 def api0_search_customer(headers: Dict, keyword: str) -> list:
     """接口0：根据关键词模糊搜索客户，返回列表"""
-    url = f"{BASE_URL}/gateway/customer-mgr-service/order/v1/user?_method=GET"
+    url = f"{SOAR_BASE_URL}/gateway/customer-mgr-service/order/v1/user?_method=GET"
     payload = {
         "order": "asc", "offset": 0, "limit": 20, "keyword": keyword,
         "share_ids": [], "delivery_channel_id": [], "service_code": [],
@@ -189,7 +189,7 @@ def _pick_exact_match(customers: list, keyword: str):
 
 def api1_get_template(headers: Dict) -> tuple:
     """接口1：获取报告模板列表，返回 (template_id, template_name)"""
-    url = f"{BASE_URL}/order/v1/report/template_list"
+    url = f"{SOAR_BASE_URL}/order/v1/report/template_list"
     resp = request_with_retry("POST", url, headers=headers, json={"template_format": ""})
     data = _parse_json(resp, "接口1")
     if data.get('code') != 0:
@@ -208,7 +208,7 @@ def api1_get_template(headers: Dict) -> tuple:
 def api2_generate_report(headers: Dict, company_id: str,
                          template_id: str, template_name: str) -> str:
     """接口2：触发报告生成，返回 task_id"""
-    url = f"{BASE_URL}/order/v1/report/generate_easm_report"
+    url = f"{SOAR_BASE_URL}/order/v1/report/generate_easm_report"
     payload = {
         "customer_id": company_id,
         "target_company_id": ["all"],
@@ -228,7 +228,7 @@ def api2_generate_report(headers: Dict, company_id: str,
 
 def api3_poll_status(headers: Dict, task_id: str) -> None:
     """接口3：轮询报告生成状态，直到 task_status=1（成功）"""
-    url = f"{BASE_URL}/order/v1/report/report_status"
+    url = f"{SOAR_BASE_URL}/order/v1/report/report_status"
     payload = {
         "order": "desc", "offset": 0, "limit": REPORT_LIMIT,
         "keyword": "", "start_time": "", "end_time": "",
@@ -264,7 +264,7 @@ def api3_poll_status(headers: Dict, task_id: str) -> None:
 
 def api4_download_report(headers: Dict, task_id: str, save_dir: str) -> str:
     """接口4：下载报告压缩包，返回本地 zip 路径"""
-    url = f"{BASE_URL}/order/v1/report/report_download?task_id={task_id}"
+    url = f"{SOAR_BASE_URL}/order/v1/report/report_download?task_id={task_id}"
     # 下载用流式GET，stream参数通过kwargs传入
     resp = request_with_retry("GET", url, headers=headers, stream=True)
     if resp is None:

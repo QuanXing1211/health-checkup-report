@@ -62,6 +62,11 @@ def configure_module(module, table_type, args):
             args.mssw_base_url = 'https://' + args.mssw_base_url
         module.MSSW_BASE_URL = args.mssw_base_url
 
+    if args.soar_base_url:
+        if not args.soar_base_url.startswith('http'):
+            args.soar_base_url = 'https://' + args.soar_base_url
+        module.SOAR_BASE_URL = args.soar_base_url
+
     if table_type == 'exposure':
         module.COOKIES_FILE = args.easm_cookie_path
         return
@@ -81,6 +86,7 @@ def main():
     parser.add_argument('--easm-cookie-path')
     parser.add_argument('--mssw-cookie-path')
     parser.add_argument('--mssw-base-url')
+    parser.add_argument('--soar-base-url')
     args = parser.parse_args()
 
     os.makedirs(args.temp_dir, exist_ok=True)

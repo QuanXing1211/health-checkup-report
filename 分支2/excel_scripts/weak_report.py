@@ -38,7 +38,7 @@ RETRY_DELAY     = 3     # 重试等待时间（秒）
 PAGE_LIMIT      = 100   # 列表接口每次查询数量
 
 # --- EASM 平台（外网） ---
-EASM_BASE_URL    = "https://soar59.sangfor.com.cn"
+SOAR_BASE_URL    = "https://soar59.sangfor.com.cn"
 EASM_COOKIES_FILE = r"C:\Users\User\Downloads\cookies.txt"
 
 # --- MSSW 平台（内网） ---
@@ -294,7 +294,7 @@ def _pick_exact_match(customers: list, keyword: str):
 
 def api0_search_customer(cookie_str: str, keyword: str) -> list:
     """根据关键词模糊搜索客户，返回列表"""
-    url = f"{EASM_BASE_URL}/gateway/customer-mgr-service/order/v1/user?_method=GET"
+    url = f"{SOAR_BASE_URL}/gateway/customer-mgr-service/order/v1/user?_method=GET"
     # 正确入参
     payload = {
         "order": "asc", "offset": 0, "limit": 20, "keyword": keyword,
@@ -303,7 +303,7 @@ def api0_search_customer(cookie_str: str, keyword: str) -> list:
         "customer_stratification": [], "protection_type": [], "service_group": [],
         "delivery_method": [], "platform_type": [], "service_status": 0, "my_customer": 0,
     }
-    resp = request_with_retry("POST", url, EASM_BASE_URL, cookie_str, json=payload, timeout=120)
+    resp = request_with_retry("POST", url, SOAR_BASE_URL, cookie_str, json=payload, timeout=120)
     data = _parse_json(resp, "接口0")
     if data.get('code') != 0:
         raise RuntimeError(f"接口0失败: {data.get('msg')}")
@@ -334,7 +334,7 @@ def mssw_api0_search_customer(cookie_str: str, keyword: str) -> list:
 
 def easm_api7_1_weak_pwd_list(cookie_str: str, company_id: str) -> List[dict]:
     """接口7-1：分页获取母表弱口令列表，返回所有数据"""
-    url = f"{EASM_BASE_URL}/gateway/vuln-manager/vm/order/v1/weak_pwd/easm/summary_list"
+    url = f"{SOAR_BASE_URL}/gateway/vuln-manager/vm/order/v1/weak_pwd/easm/summary_list"
     all_items: List[dict] = []
     offset = 0
     total = None
@@ -353,7 +353,7 @@ def easm_api7_1_weak_pwd_list(cookie_str: str, company_id: str) -> List[dict]:
             "deal_status": EASM_DEAL_STATUS_FILTER,
             "company_id": company_id,
         }
-        resp = request_with_retry("POST", url, EASM_BASE_URL, cookie_str, json=payload, timeout=120)
+        resp = request_with_retry("POST", url, SOAR_BASE_URL, cookie_str, json=payload, timeout=120)
         data = _parse_json(resp, "接口7-1（EASM母表弱口令列表）")
         if data.get('code') != 0:
             raise RuntimeError(f"接口7-1失败: {data.get('msg')}")
@@ -376,7 +376,7 @@ def easm_api7_1_weak_pwd_list(cookie_str: str, company_id: str) -> List[dict]:
 
 def easm_api7_2_weak_pwd_sub_list(cookie_str: str, company_id: str, ip: str) -> List[dict]:
     """接口7-2：获取指定 IP 下的子表弱口令列表（分页全量）"""
-    url = (f"{EASM_BASE_URL}/gateway/vuln-manager/vm/order/v1/weak_pwd/easm/list"
+    url = (f"{SOAR_BASE_URL}/gateway/vuln-manager/vm/order/v1/weak_pwd/easm/list"
            f"?ip={ip}")
     all_items: List[dict] = []
     offset = 0
@@ -397,7 +397,7 @@ def easm_api7_2_weak_pwd_sub_list(cookie_str: str, company_id: str, ip: str) -> 
             "company_id": company_id,
             "ip": ip,
         }
-        resp = request_with_retry("POST", url, EASM_BASE_URL, cookie_str, json=payload, timeout=120)
+        resp = request_with_retry("POST", url, SOAR_BASE_URL, cookie_str, json=payload, timeout=120)
         data = _parse_json(resp, f"接口7-2（子表 ip={ip}）")
         if data.get('code') != 0:
             log(f"  接口7-2失败 ip={ip}: {data.get('msg')}", "WARNING")
@@ -419,10 +419,10 @@ def easm_api7_2_weak_pwd_sub_list(cookie_str: str, company_id: str, ip: str) -> 
 
 def easm_weak_pwd_detail(cookie_str: str, pwd_id: str) -> dict:
     """补充接口：弱密码详情，返回 detail dict（含 found_time / login_time / proof）"""
-    url = (f"{EASM_BASE_URL}/gateway/vuln-manager/vm/order/v1/weak_pwd/"
+    url = (f"{SOAR_BASE_URL}/gateway/vuln-manager/vm/order/v1/weak_pwd/"
            f"weak_pwd_info?_method=GET")
     payload = {"pwd_id": pwd_id}
-    resp = request_with_retry("POST", url, EASM_BASE_URL, cookie_str, json=payload, timeout=60)
+    resp = request_with_retry("POST", url, SOAR_BASE_URL, cookie_str, json=payload, timeout=60)
     data = _parse_json(resp, f"弱密码详情（pwd_id={pwd_id}）")
     if data.get('code') != 0:
         log(f"  弱密码详情失败 pwd_id={pwd_id}: {data.get('msg')}", "WARNING")

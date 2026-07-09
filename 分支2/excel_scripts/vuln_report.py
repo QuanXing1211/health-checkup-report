@@ -37,7 +37,7 @@ RETRY_DELAY     = 3     # 重试等待时间（秒）
 PAGE_LIMIT      = 100   # 列表接口每次查询数量
 
 # --- EASM 平台（内网） ---
-EASM_BASE_URL    = "https://soar59.sangfor.com.cn"
+SOAR_BASE_URL    = "https://soar59.sangfor.com.cn"
 EASM_COOKIES_FILE = r"C:\Users\User\Downloads\cookies.txt"
 EASM_VULN_STATUSES = [5, 1, 12, 9]                  # 过滤跟进状态：[未审核=5, 处置中=1, 待复测=12, 修复失败=9]
 
@@ -273,7 +273,7 @@ def parse_date_to_ms(date_str: str, is_end: bool = False) -> int:
 
 def api0_search_customer(cookie_str: str, keyword: str) -> list:
     """根据关键词模糊搜索客户，返回列表"""
-    url = f"{EASM_BASE_URL}/gateway/customer-mgr-service/order/v1/user?_method=GET"
+    url = f"{SOAR_BASE_URL}/gateway/customer-mgr-service/order/v1/user?_method=GET"
     # 正确入参
     payload = {
         "order": "asc", "offset": 0, "limit": 20, "keyword": keyword,
@@ -282,7 +282,7 @@ def api0_search_customer(cookie_str: str, keyword: str) -> list:
         "customer_stratification": [], "protection_type": [], "service_group": [],
         "delivery_method": [], "platform_type": [], "service_status": 0, "my_customer": 0,
     }
-    resp = request_with_retry("POST", url, EASM_BASE_URL, cookie_str, json=payload, timeout=120)
+    resp = request_with_retry("POST", url, SOAR_BASE_URL, cookie_str, json=payload, timeout=120)
     data = _parse_json(resp, "接口0")
     if data.get('code') != 0:
         raise RuntimeError(f"接口0失败: {data.get('msg')}")
@@ -315,7 +315,7 @@ def easm_api5_export_vuln(cookie_str: str, company_id: str,
                            scan_method: int,
                            last_time: list) -> str:
     """接口5：触发漏洞导出，返回 task_id"""
-    url = f"{EASM_BASE_URL}/gateway/vuln-manager/vm/order/v1/vulnmgr/exposed_surface/report"
+    url = f"{SOAR_BASE_URL}/gateway/vuln-manager/vm/order/v1/vulnmgr/exposed_surface/report"
     payload = {
         "params": {
             "order": {},
@@ -339,7 +339,7 @@ def easm_api5_export_vuln(cookie_str: str, company_id: str,
         "need_split": False,
         "data_type": 13,
     }
-    resp = request_with_retry("POST", url, EASM_BASE_URL, cookie_str, json=payload, timeout=120)
+    resp = request_with_retry("POST", url, SOAR_BASE_URL, cookie_str, json=payload, timeout=120)
     data = _parse_json(resp, "接口5（EASM漏洞导出）")
     if data.get('code') != 0:
         raise RuntimeError(f"接口5失败: {data.get('msg')}")
@@ -350,13 +350,13 @@ def easm_api5_export_vuln(cookie_str: str, company_id: str,
 
 def easm_api6_poll_export(cookie_str: str, task_id: str) -> str:
     """接口6：轮询报告生成状态，返回下载 url（相对路径）"""
-    url = f"{EASM_BASE_URL}/gateway/vuln-manager/vm/order/v1/vulnmgr/exposed_surface/report_async_task"
+    url = f"{SOAR_BASE_URL}/gateway/vuln-manager/vm/order/v1/vulnmgr/exposed_surface/report_async_task"
     payload = {"task_id_list": [task_id]}
 
     attempt = 0
     while True:
         attempt += 1
-        resp = request_with_retry("POST", url, EASM_BASE_URL, cookie_str, json=payload, timeout=120)
+        resp = request_with_retry("POST", url, SOAR_BASE_URL, cookie_str, json=payload, timeout=120)
         data = _parse_json(resp, "接口6（EASM轮询）")
         if data.get('code') != 0:
             raise RuntimeError(f"接口6失败: {data.get('msg')}")
@@ -383,8 +383,8 @@ def easm_api6_poll_export(cookie_str: str, task_id: str) -> str:
 
 def easm_download_file(cookie_str: str, download_path: str, save_dir: str) -> str:
     """下载 EASM 导出的漏洞文件，返回本地文件路径"""
-    url = f"{EASM_BASE_URL}{download_path}"
-    resp = request_with_retry("GET", url, EASM_BASE_URL, cookie_str, stream=True)
+    url = f"{SOAR_BASE_URL}{download_path}"
+    resp = request_with_retry("GET", url, SOAR_BASE_URL, cookie_str, stream=True)
     if resp is None:
         raise RuntimeError("EASM 漏洞文件下载失败")
 

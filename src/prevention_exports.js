@@ -60,6 +60,10 @@ async function resolveTablePath(tableType, explicitPath, options, outputDir, tem
     args.push('--mssw-base-url', options.msswBaseUrl);
   }
 
+  if (options.soarBaseUrl) {
+    args.push('--soar-base-url', options.soarBaseUrl);
+  }
+
   const stdout = await execPython(args, `${displayName(tableType)} 导出失败`, options.logger);
   const lastLine = stdout.split(/\r?\n/).filter(Boolean).pop() || '{}';
   const parsed = JSON.parse(lastLine);
