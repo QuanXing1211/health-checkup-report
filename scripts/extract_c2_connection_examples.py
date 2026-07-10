@@ -81,7 +81,7 @@ def main():
     col_map = build_col_map(sheet)
 
     id_col = find_column(col_map, ["事件ID", "incident_id"])
-    ext_ip_col = find_column(col_map, ["外网IP", "外联IP"])
+    ext_ip_col = find_column(col_map, ["外网IP地址"])
     domain_col = find_column(col_map, ["域名", "外联域名"])
     asset_col = find_column(col_map, ["受影响资产", "影响资产", "host_ip", "hostIp", "主机IP", "ip"])
     time_col = find_column(col_map, ["最近发生时间", "最近发现时间", "endTime", "结束时间"])
@@ -99,9 +99,9 @@ def main():
 
         severe_entities = []
         if ext_ip_col is not None and len(row) > ext_ip_col:
-            severe_entities.extend(extract_severe_entities(row[ext_ip_col]))
-        if domain_col is not None and len(row) > domain_col:
-            severe_entities.extend(extract_severe_entities(row[domain_col]))
+            severe_entities = extract_severe_entities(row[ext_ip_col])
+        if not severe_entities and domain_col is not None and len(row) > domain_col:
+            severe_entities = extract_severe_entities(row[domain_col])
 
         if not severe_entities:
             continue

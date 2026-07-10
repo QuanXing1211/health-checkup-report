@@ -57,7 +57,9 @@ function buildZeroReportData(source) {
     { name: '', count: 0 }
   ];
   zero.riskOverview.incidentGptStats.nonAesCoveredAssets = ['', ''];
+  zero.riskOverview.incidentGptStats.nonAesCoveredAssetsHideHint = true;
   zero.riskOverview.incidentGptStats.unlabeledAssets = ['', ''];
+  zero.riskOverview.incidentGptStats.unlabeledAssetsHideHint = true;
   zero.riskOverview.incidentGptStats.confirmedIncidentIds = [];
   zero.riskOverview.incidentGptStats.c2ConnectionExamples = [];
   zero.riskOverview.incidentGptStats.virusTrojanExamples = [];

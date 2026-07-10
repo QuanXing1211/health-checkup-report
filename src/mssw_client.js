@@ -2562,7 +2562,9 @@ async function fetchMsswAssetOverview(options = {}) {
       total: 0,
       confirmedIncidentIds: []
     },
-    threatActorStats: []
+    threatActorStats: [],
+    nonAesCoveredAssetsHideHint: true,
+    unlabeledAssetsHideHint: true
   };
   let caseStudy = buildEmptyCaseStudy();
 
@@ -2592,7 +2594,9 @@ async function fetchMsswAssetOverview(options = {}) {
         );
         incidentGptStats.virusAttackAsset = assetInfo.virusAttackAsset || '';
         incidentGptStats.nonAesCoveredAssets = assetInfo.nonAesCoveredAssets || [];
+        incidentGptStats.nonAesCoveredAssetsHideHint = incidentGptStats.nonAesCoveredAssets.length === 0;
         incidentGptStats.unlabeledAssets = assetInfo.unlabeledAssets || [];
+        incidentGptStats.unlabeledAssetsHideHint = incidentGptStats.unlabeledAssets.length === 0;
         logInfo(logger, `提取事件资产信息完成: 病毒攻击资产=${incidentGptStats.virusAttackAsset}, ` +
           `未被AES覆盖=${incidentGptStats.nonAesCoveredAssets.length}个, ` +
           `未标注资产=${incidentGptStats.unlabeledAssets.length}个`);
@@ -2625,14 +2629,7 @@ async function fetchMsswAssetOverview(options = {}) {
   }
 
   try {
-    const xdrCookieInfo = options.xdrCookiePath ? await readXdrCookieInfo(options.xdrCookiePath) : null;
-    const alertQueryBaseUrl = xdrCookieInfo ? parseAlertQueryBaseUrl(xdrCookieInfo) : '';
-    if (xdrCookieInfo && !xdrCookieInfo.alertQueryBaseUrl && alertQueryBaseUrl) {
-      logInfo(logger, `典型案例告警查询未提供完整 alertQueryBaseUrl，已回退到 ${alertQueryBaseUrl}`);
-    }
-    if (options.xdrCookiePath && !alertQueryBaseUrl) {
-      logInfo(logger, '典型案例告警查询缺少 alertQueryBaseUrl，已跳过攻击侧时间线查询');
-    } else if (options.incidentFilePath && xdrCookieInfo && alertQueryBaseUrl) {
+    if (options.incidentFilePath) {
       const timeRange = resolveIncidentTimeRange(timeOptions);
       caseStudy = await fetchIncidentCaseStudy({
         incidentFilePath: options.incidentFilePath,
@@ -2640,9 +2637,7 @@ async function fetchMsswAssetOverview(options = {}) {
         virusIds: incidentGptStats.virusTrojan?.confirmedIncidentIds || [],
         exploitIds: Array.isArray(options.exploitIncidentIds) ? options.exploitIncidentIds : [],
         msswCookieInfo: cookieInfo,
-        xdrCookieInfo,
         msswBaseUrl: xdrBaseUrl,
-        alertQueryBaseUrl,
         companyId,
         range: timeRange,
         logger
