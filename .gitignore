@@ -5,3 +5,17 @@ xdr_cookies.txt
 mssw_cookies.txt
 scripts/file-association-backups/
 nul
+
+# 生成的报告输出
+output/
+
+# 临时/导出文件（mock 数据除外）
+tmp/**
+!tmp/mock_incident_table_v3.xlsx
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# Claude Code 会话临时文件
+.claude/temp/
