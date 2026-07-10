@@ -347,21 +347,32 @@ async function main() {
     });
     logger('业务系统排序数据已在 5 个风险清单落盘后合并到 riskOverview');
 
+    const incidentGptStatsForTopAssets = reportData.riskOverview && reportData.riskOverview.incidentGptStats
+      ? reportData.riskOverview.incidentGptStats
+      : {};
+    const topRiskIncidentIds = [
+      ...(incidentGptStatsForTopAssets.hostCompromise && Array.isArray(incidentGptStatsForTopAssets.hostCompromise.confirmedIncidentIds)
+        ? incidentGptStatsForTopAssets.hostCompromise.confirmedIncidentIds
+        : []),
+      ...(incidentGptStatsForTopAssets.virusTrojan && Array.isArray(incidentGptStatsForTopAssets.virusTrojan.confirmedIncidentIds)
+        ? incidentGptStatsForTopAssets.virusTrojan.confirmedIncidentIds
+        : []),
+      ...(exploitStats && Array.isArray(exploitStats.incidentIds) ? exploitStats.incidentIds : [])
+    ];
+
     const riskAssetStats = await calculateRiskAssetCount({
       eventPath: archivedFiles.incidentPath,
       assetPath: archivedFiles.assetPath,
       weakPasswordPath: archivedFiles.weakpwdPath,
       vulnerabilityPath: archivedFiles.vulnPath,
-      exposurePath: archivedFiles.exposurePath
+      exposurePath: archivedFiles.exposurePath,
+      topRiskIncidentIds
     });
     let topRiskAssets = Array.isArray(riskAssetStats.riskAssetTop5)
       ? riskAssetStats.riskAssetTop5
       : [];
     if (topRiskAssets.length) {
       try {
-        const incidentGptStats = reportData.riskOverview && reportData.riskOverview.incidentGptStats
-          ? reportData.riskOverview.incidentGptStats
-          : {};
         const topRiskAssetDetails = await summarizeTopRiskAssetDetails({
           incidentExcelPath: archivedFiles.incidentPath,
           assetExcelPath: archivedFiles.assetPath,
@@ -369,11 +380,11 @@ async function main() {
           vulnerabilityExcelPath: archivedFiles.vulnPath,
           exposureExcelPath: archivedFiles.exposurePath,
           topAssets: topRiskAssets,
-          c2Ids: incidentGptStats.hostCompromise && Array.isArray(incidentGptStats.hostCompromise.confirmedIncidentIds)
-            ? incidentGptStats.hostCompromise.confirmedIncidentIds
+          c2Ids: incidentGptStatsForTopAssets.hostCompromise && Array.isArray(incidentGptStatsForTopAssets.hostCompromise.confirmedIncidentIds)
+            ? incidentGptStatsForTopAssets.hostCompromise.confirmedIncidentIds
             : [],
-          virusIds: incidentGptStats.virusTrojan && Array.isArray(incidentGptStats.virusTrojan.confirmedIncidentIds)
-            ? incidentGptStats.virusTrojan.confirmedIncidentIds
+          virusIds: incidentGptStatsForTopAssets.virusTrojan && Array.isArray(incidentGptStatsForTopAssets.virusTrojan.confirmedIncidentIds)
+            ? incidentGptStatsForTopAssets.virusTrojan.confirmedIncidentIds
             : [],
           exploitIds: exploitStats && Array.isArray(exploitStats.incidentIds) ? exploitStats.incidentIds : []
         });

@@ -116,6 +116,7 @@ def collect_incident_counts(incident_path, target_assets, c2_ids, virus_ids, exp
     c2_id_set = set(c2_ids)
     virus_id_set = set(virus_ids)
     exploit_id_set = set(exploit_ids)
+    included_id_set = c2_id_set | virus_id_set | exploit_id_set
 
     for row in sheet.iter_rows(min_row=header_row + 1, values_only=True):
         if not any(normalize(cell) for cell in row):
@@ -128,6 +129,9 @@ def collect_incident_counts(incident_path, target_assets, c2_ids, virus_ids, exp
             continue
 
         incident_id = normalize(row[id_col]) if id_col is not None and len(row) > id_col else ""
+        if incident_id not in included_id_set:
+            continue
+
         bucket = counts[asset]
         bucket["totalEvents"] += 1
         if incident_id in c2_id_set:
