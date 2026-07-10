@@ -17,5 +17,8 @@ tmp/**
 __pycache__/
 *.pyc
 
-# Claude Code 会话临时文件
-.claude/temp/
+# Claude Code
+.claude
+
+# IDE
+.idea

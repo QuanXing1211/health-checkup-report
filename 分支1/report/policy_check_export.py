@@ -1,11 +1,7 @@
 """
 策略检查数据采集与导出
 ======================
-从 SOAR 策略检查接口分页获取指定 latest_time 时间范围内的数据，写入 Excel。
-
-接口支持 latest_time_range 参数（毫秒时间戳数组 [start, end]），
-直接由接口按最近检查时间过滤，本端只需常规分页直到无数据即可。
-
+从 XDR 策略检查结果查询接口分页获取指定 time_range 时间范围内的数据，写入 Excel。
 用法:
     python policy_check_export.py
     python policy_check_export.py --company_id 57229265 --start "2026-06-01" --end "2026-06-22"
@@ -27,7 +23,7 @@ import openpyxl
 # 常量
 # ──────────────────────────────────────────────
 
-API_URL = "https://soar.sangfor.com.cn/order/v1/policy_check/policy?_method=GET"
+API_URL = "https://soar.sangfor.com.cn/openapi/idps/xdr/policy_check/result"
 PAGE_SIZE = 100
 COOKIE_FILE_PATH = r"D:\Users\User\Desktop\下载\xdr_cookies.txt"
 DEFAULT_OUTPUT_PATH = "策略检查清单.xlsx"
@@ -143,28 +139,31 @@ class PolicyCheckExporter:
 
     def fetch_data(self):
         """
-        从策略检查接口分页获取指定 latest_time 范围内的数据。
+        从策略检查结果查询接口分页获取指定 time_range 范围内的数据。
 
-        接口支持 latest_time_range 参数（毫秒时间戳数组 [start, end]），
-        直接由接口按最近检查时间过滤，本端只需常规分页直到无数据即可。
+        依据 策略检查接口对齐.md 中的接口 3：
+          POST /openapi/idps/xdr/policy_check/result
+          入参: company_id / dev_id_list / limit / time_range / offset
+          time_range 为 ISO 日期字符串数组 [start, end]（YYYY-MM-DD）
+          返回: code == 0 时，data 为结果条目数组
+        本端按 offset+limit 常规分页循环拉取，直至无数据。
         """
         all_records = []
         offset = 0
 
-        # 接口存储 UTC 时间，前端传入的 start_time/end_time 为本地时间，
-        # 这里转成 UTC 毫秒时间戳交给接口做 $gte/$lte 过滤
-        latest_time_range = [
-            int(self.start_time.timestamp() * 1000),
-            int(self.end_time.timestamp() * 1000),
+        # 接口要求 time_range 为 [start, end] 日期字符串数组
+        # start_time 取日期部分；end_time 若含时分秒则取对应日期，否则取日期部分
+        time_range = [
+            self.start_time.strftime("%Y-%m-%d"),
+            self.end_time.strftime("%Y-%m-%d"),
         ]
 
         while True:
             payload = {
-                "order": {"latest_time": "desc"},
-                "offset": offset,
-                "limit": PAGE_SIZE,
                 "company_id": self.company_id,
-                "latest_time_range": latest_time_range,
+                "limit": PAGE_SIZE,
+                "offset": offset,
+                "time_range": time_range,
             }
             if self.status:
                 payload["status"] = self.status
@@ -197,8 +196,8 @@ class PolicyCheckExporter:
                 print(f"[ERROR] 接口返回错误: code={result.get('code')}, 数据获取中断")
                 break
 
-            data = result.get("data", {})
-            records = data.get("list", [])
+            data = result.get("data", [])
+            records = data if isinstance(data, list) else data.get("list", []) if isinstance(data, dict) else []
 
             if not records:
                 break

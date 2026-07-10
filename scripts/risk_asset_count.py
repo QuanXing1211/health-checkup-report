@@ -66,6 +66,13 @@ def open_sheet(filepath, preferred_sheet=None):
     return wb.active
 
 
+def find_column(col_map, aliases):
+    for alias in aliases:
+        if alias in col_map:
+            return col_map[alias]
+    return None
+
+
 def normalize_asset_key(raw):
     text = normalize(raw)
     if not text:
@@ -96,18 +103,32 @@ def collect_assets_from_column(filepath, sheet_name, asset_col_name, status_col_
     return assets
 
 
-def collect_risk_records_from_column(filepath, sheet_name, asset_col_name, source_name, status_col_name=None, skip_status=None):
+def collect_risk_records_from_column(
+    filepath,
+    sheet_name,
+    asset_col_name,
+    source_name,
+    status_col_name=None,
+    skip_status=None,
+    include_ids=None
+):
     ws = open_sheet(filepath, sheet_name)
     col_map, header_row = build_col_map(ws)
     asset_col = col_map.get(asset_col_name)
     status_col = col_map.get(status_col_name) if status_col_name else None
+    id_col = find_column(col_map, ['事件ID', '事件Id', 'incident_id', 'incidentId', 'id', 'ID']) if include_ids is not None else None
     if asset_col is None:
         return []
 
+    include_id_set = set(normalize(item) for item in include_ids) if include_ids is not None else None
     records = []
     for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
         if not any(normalize(cell) for cell in row):
             continue
+        if include_id_set is not None:
+            incident_id = normalize(row[id_col]) if id_col is not None and len(row) > id_col else ''
+            if incident_id not in include_id_set:
+                continue
         if status_col is not None and len(row) > status_col:
             status = normalize(row[status_col])
             if status == skip_status:
@@ -129,20 +150,27 @@ def collect_typed_risk_records_from_column(
     severity_col_name=None,
     fixed_severity=None,
     status_col_name=None,
-    skip_status=None
+    skip_status=None,
+    include_ids=None
 ):
     ws = open_sheet(filepath, sheet_name)
     col_map, header_row = build_col_map(ws)
     asset_col = col_map.get(asset_col_name)
     status_col = col_map.get(status_col_name) if status_col_name else None
     severity_col = col_map.get(severity_col_name) if severity_col_name else None
+    id_col = find_column(col_map, ['事件ID', '事件Id', 'incident_id', 'incidentId', 'id', 'ID']) if include_ids is not None else None
     if asset_col is None:
         return []
 
+    include_id_set = set(normalize(item) for item in include_ids) if include_ids is not None else None
     records = []
     for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
         if not any(normalize(cell) for cell in row):
             continue
+        if include_id_set is not None:
+            incident_id = normalize(row[id_col]) if id_col is not None and len(row) > id_col else ''
+            if incident_id not in include_id_set:
+                continue
         if status_col is not None and len(row) > status_col:
             status = normalize(row[status_col])
             if status == skip_status:
@@ -438,6 +466,14 @@ def main():
         raise SystemExit('Usage: risk_asset_count.py <event.xlsx> <weakpwd.xlsx> <vuln.xlsx> <exposure.xlsx> <asset.xlsx>')
 
     event_path, weakpwd_path, vuln_path, exposure_path, asset_path = sys.argv[1:6]
+    top_risk_incident_ids = []
+    if len(sys.argv) >= 7:
+        try:
+            parsed_ids = json.loads(sys.argv[6])
+            if isinstance(parsed_ids, list):
+                top_risk_incident_ids = [normalize(item) for item in parsed_ids if normalize(item)]
+        except Exception:
+            top_risk_incident_ids = []
 
     event_assets = collect_assets_from_column(event_path, '事件表', '影响资产', '处置状态', '处置完成')
     weakpwd_assets = collect_assets_from_column(weakpwd_path, '弱口令', '风险资产', '处置状态', '处置完成')
@@ -455,6 +491,18 @@ def main():
         + collect_typed_risk_records_from_column(vuln_path, '漏洞', '风险资产', 'vulnerabilities', '风险等级')
         + collect_exposure_risk_records(exposure_path)
     )
+    top_risk_records = (
+        collect_risk_records_from_column(event_path, '事件表', '影响资产', 'events', '处置状态', '处置完成', top_risk_incident_ids)
+        + collect_risk_records_from_column(weakpwd_path, '弱口令', '风险资产', 'weakPasswords', '处置状态', '处置完成')
+        + collect_risk_records_from_column(vuln_path, '漏洞', '风险资产', 'vulnerabilities')
+        + collect_exposure_risk_records(exposure_path)
+    )
+    top_typed_risk_records = (
+        collect_typed_risk_records_from_column(event_path, '事件表', '影响资产', 'events', '等级', None, '处置状态', '处置完成', top_risk_incident_ids)
+        + collect_typed_risk_records_from_column(weakpwd_path, '弱口令', '风险资产', 'weakPasswords', None, 'medium', '处置状态', '处置完成')
+        + collect_typed_risk_records_from_column(vuln_path, '漏洞', '风险资产', 'vulnerabilities', '风险等级')
+        + collect_exposure_risk_records(exposure_path)
+    )
 
     all_assets = event_assets | weakpwd_assets | vuln_assets | exposure_assets
     asset_business_map = build_asset_business_map(asset_path)
@@ -462,7 +510,7 @@ def main():
     asset_detail_map = build_asset_detail_map(asset_path)
     business_systems = sorted({asset_business_map[asset] for asset in all_assets if asset in asset_business_map})
     top1_business_system = resolve_top1_business_system(typed_risk_records, asset_all_business_map)
-    risk_asset_top5 = rank_risk_assets(typed_risk_records, risk_records, asset_detail_map, 5)
+    risk_asset_top5 = rank_risk_assets(top_typed_risk_records, top_risk_records, asset_detail_map, 5)
 
     print(json.dumps({
         'affectedAssetCount': len(all_assets),
