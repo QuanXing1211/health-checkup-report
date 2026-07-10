@@ -32,6 +32,26 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scoring import _parse_dev_types_from_datasource  # noqa: E402
 from data_reader import read_excel, read_json, resolve_data_file  # noqa: E402
+from policy_config import POLICY_HAZARD_LEVEL  # noqa: E402
+
+# 危害等级 → 排序权重：P0 最重排在最前；未知等级放最后
+_HAZARD_LEVEL_WEIGHT = {"P0": 0, "P1": 1, "P2": 2, "P3": 3, "P4": 4}
+_UNKNOWN_WEIGHT = 5
+
+
+def _policy_hazard_weight(policy_row: dict) -> int:
+    """
+    获取策略检查项的危害等级排序权重。
+
+    policy_row 中的 policy_type 字段为接口下发的实际枚举值字符串
+    （与 POLICY_HAZARD_LEVEL 的 key 一致），据此查表返回权重；
+    未匹配时返回 _UNKNOWN_WEIGHT（排在已知等级之后）。
+    """
+    policy_type = str(policy_row.get("policy_type", "")).strip()
+    level = POLICY_HAZARD_LEVEL.get(policy_type)
+    if level is None:
+        return _UNKNOWN_WEIGHT
+    return _HAZARD_LEVEL_WEIGHT.get(level, _UNKNOWN_WEIGHT)
 
 
 # 配置文件路径（相对脚本所在目录）
@@ -216,6 +236,10 @@ def stat_policy_check(policy_data: list) -> dict:
     # 按检查数量倒序，便于阅读
     by_device.sort(key=lambda x: x["check_count"], reverse=True)
 
+    # policy_check_example 按危害等级排序后取 top5（P0 → P4，未知项放最后）
+    policy_check_example.sort(key=_policy_hazard_weight)
+    policy_check_example_top5 = policy_check_example[:5]
+
     # 按设备类型生成"设备类型 X 个"的中文顿号分隔文本，供 HTML 模板直接渲染
     # 顺序：按异常数量倒序，便于阅读
     abnormal_by_dev_type_sorted = sorted(
@@ -239,7 +263,7 @@ def stat_policy_check(policy_data: list) -> dict:
         "abnormal_component_count": abnormal_component_count,
         "total_component_count": total_component_count,
         "by_device": by_device,
-        "policy_check_example": policy_check_example[:5]
+        "policy_check_example": policy_check_example_top5
     }
 
 
