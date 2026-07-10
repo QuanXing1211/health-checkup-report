@@ -86,6 +86,8 @@ function renderTemplate(template, reportData, gradeAssets) {
   html = patchDataFields(html, reportData);
   html = patchGrade(html, reportData, gradeAssets);
   html = injectReportData(html, reportData);
+  html = patchOps3DeviceCells(html, reportData);
+  html = syncPipelineDeviceData(html, reportData);
 
   return html;
 }
@@ -639,6 +641,63 @@ function injectReportData(html, data) {
   }
 
   return html.replace('</head>', `${script}\n</head>`);
+}
+
+function patchOps3DeviceCells(html, data) {
+  // 4.1.1 设备格子：值为0的服务端直接删除元素，不依赖浏览器端JS
+  // 匹配设备格子: <div class="ops3-device-cell" data-hide-ops3="riskDetails.XX"><span class="nm">XX</span><span class="nv">0</span></div>
+  html = html.replace(
+    /<div\s+class="ops3-device-cell"\s+data-hide-ops3="riskDetails\.\w+"\s*>\s*<span\s+class="nm">[^<]*<\/span>\s*<span\s+class="nv">0<\/span>\s*<\/div>/g,
+    ''
+  );
+
+  // 第三方合计格子（class 中有 ops3-layer ops3-device-third 两个类名）
+  html = html.replace(
+    /<div\s+class="[^"]*ops3-device-third[^"]*"\s+data-hide-ops3="riskDetails\.\w+"\s*>\s*<span\s+class="nm">[^<]*<\/span>\s*<span\s+class="nv">0<\/span>\s*<\/div>/g,
+    ''
+  );
+
+  // 如果第三方设备为0，也隐藏"第三方设备"标签
+  const rd = data.riskDetails || {};
+  if (Number(rd.third) === 0) {
+    html = html.replace(
+      /<p\s+class="ops3-layer ops3-ingest-label ops3-ingest-label--3rd">[^<]*<\/p>/g,
+      ''
+    );
+  }
+
+  // 如果深信服设备为0，也隐藏"深信服设备"标签
+  if (Number(rd.sangfor) === 0) {
+    html = html.replace(
+      /<p\s+class="ops3-layer ops3-ingest-label ops3-ingest-label--sf">[^<]*<\/p>/g,
+      ''
+    );
+  }
+
+  return html;
+}
+
+function syncPipelineDeviceData(html, data) {
+  // 在 bootPipeline 函数开头注入代码，从 SECURITY_REPORT_DATA 同步设备数据到 XDR_PIPELINE_DATA
+  // 确保 Canvas 管道图的 buildDeviceSources 能读到正确的设备数量
+  const syncCode = `      var reportRd = (window.SECURITY_REPORT_DATA || {}).riskDetails || {};
+      if (reportRd.devices !== undefined) window.XDR_PIPELINE_DATA.devices = Number(reportRd.devices) || window.XDR_PIPELINE_DATA.devices;
+      if (reportRd.af !== undefined) window.XDR_PIPELINE_DATA.af = Number(reportRd.af) || 0;
+      if (reportRd.aes !== undefined) window.XDR_PIPELINE_DATA.aes = Number(reportRd.aes) || 0;
+      if (reportRd.sip !== undefined) window.XDR_PIPELINE_DATA.sip = Number(reportRd.sip) || 0;
+      if (reportRd.sta !== undefined) window.XDR_PIPELINE_DATA.sta = Number(reportRd.sta) || 0;
+      if (reportRd.other_sf !== undefined) window.XDR_PIPELINE_DATA.other_sf = Number(reportRd.other_sf) || 0;
+      if (reportRd.third !== undefined) window.XDR_PIPELINE_DATA.third = Number(reportRd.third) || 0;
+      if (reportRd.sangfor !== undefined) window.XDR_PIPELINE_DATA.sangfor = Number(reportRd.sangfor) || 0;
+      syncKpiDom();`;
+
+  // 注入到 bootPipeline 函数体中，在 renderPipeline(0) 之前
+  html = html.replace(
+    /(function bootPipeline\(\)\s*\{\s*if\s*\(\!pipelineReady\(\)\)\s*\{\s*requestAnimationFrame\(bootPipeline\);\s*return;\s*\})/,
+    '$1\n' + syncCode + '\n'
+  );
+
+  return html;
 }
 
 function buildOutputFilename(data) {

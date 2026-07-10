@@ -19,7 +19,8 @@ async function calculateRiskAssetCount(options = {}) {
     encodePath(options.weakPasswordPath || path.join(tmpDir, '弱口令清单_mock.xlsx')),
     encodePath(options.vulnerabilityPath || path.join(tmpDir, '漏洞清单_mock.xlsx')),
     encodePath(options.exposurePath || path.join(tmpDir, '暴露面清单_mock.xlsx')),
-    encodePath(assetPath || '')
+    encodePath(assetPath || ''),
+    JSON.stringify(Array.isArray(options.topRiskIncidentIds) ? options.topRiskIncidentIds : [])
   ];
 
   return new Promise((resolve, reject) => {

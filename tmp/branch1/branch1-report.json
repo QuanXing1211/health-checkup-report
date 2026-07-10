@@ -1,16 +1,16 @@
 {
   "reportPatch": {
     "scoring": {
-      "total_score": 32.73,
+      "total_score": 37.86,
       "grade": "差",
       "grade_color": "红色",
       "L1": {
-        "资产防护得分": 1.22,
+        "资产防护得分": 9.76,
         "日常运营得分": 80.0
       },
       "L2": {
         "托管资产得分": 0.0,
-        "组件检测得分": 2.04,
+        "组件检测得分": 16.27,
         "事件得分": 100.0,
         "勒索风险得分": 50.0
       },
@@ -19,7 +19,7 @@
         "终端得分": 0.0,
         "服务器权重": 0.75,
         "终端权重": 0.25,
-        "设备离线得分": 4.08,
+        "设备离线得分": 32.53,
         "策略隐患得分": 0.0,
         "漏洞得分": 0,
         "端口得分": 100,
@@ -45,9 +45,9 @@
           },
           "all_assets": 0,
           "device": {
-            "activated_count": 98,
-            "offline_count": 94,
-            "total": 175
+            "activated_count": 83,
+            "offline_count": 56,
+            "total": 98
           }
         },
         "event": {
@@ -81,10 +81,10 @@
           "total_events": 0
         },
         "vuln": {
-          "urgent_count": 14,
-          "fast_count": 8,
-          "suggest_count": 0,
-          "total_vulns": 22
+          "urgent_count": 19,
+          "fast_count": 56,
+          "suggest_count": 5,
+          "total_vulns": 80
         },
         "weak_pwd": {
           "high_count": 0,

@@ -223,7 +223,7 @@ def build_asset_rows():
             f"1380000{i:04d}",                                   # 负责人电话 — 每条都有
             f"host-srv-{i:03d}",
             f"user_{i:03d}",                                     # 实时认证用户名 — 每条都有
-            "已托管" if i % 3 != 0 else "未托管",                  # 托管状态
+            "已托管",                                            # 托管状态—全部已托管
         ])
     return rows
 
@@ -240,8 +240,9 @@ def patch_asset_table():
     from openpyxl import Workbook
     wb = Workbook()
     ws = wb.active
-    # 表头放第1行（business_system_ranking.py 的 build_col_map 取第一个非空行当表头，
-    # 第1行放占位会让它误把“资产清单”当表头，导致 IP地址/所属业务/重要级别/托管状态 全部找不到）
+    # 第1行放标题占位（managed_asset_incident_stats.py 读第2行当表头）
+    ws.append(["资产清单"])
+    # 表头放第2行
     ws.append([
         "IP地址", "网络区域", "所属业务", "资产名称", "MAC地址",
         "公网IP地址", "操作系统", "主机名", "资产类型(一级)", "重要级别",
