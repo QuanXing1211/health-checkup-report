@@ -6,7 +6,7 @@ const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
-const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails } = require('./src/incident_excel_stats');
+const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails, extractIncidentDirectStats } = require('./src/incident_excel_stats');
 const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
@@ -111,8 +111,16 @@ async function main() {
   // 从事件表提取漏洞利用统计（不阻断主流程）
   let exploitStats = null;
   let vulnExploitExamples = [];
+  let topRiskDirectIncidentStats = null;
   let incidentFilePath = await resolveIncidentFilePath(options, tableExports);
   if (incidentFilePath) {
+    try {
+      topRiskDirectIncidentStats = await extractIncidentDirectStats(incidentFilePath);
+      logger(`风险资产 TOP5 事件表直读分类: C2 ${topRiskDirectIncidentStats.hostCompromiseIds.length} 起, 病毒木马 ${topRiskDirectIncidentStats.virusTrojanIds.length} 起, 漏洞利用 ${topRiskDirectIncidentStats.exploitIds.length} 起`);
+    } catch (error) {
+      logger(`风险资产 TOP5 事件表直读分类失败（不影响主流程）: ${error.message}`);
+    }
+
     try {
       exploitStats = await extractExploitStats(incidentFilePath);
       logger(`漏洞利用事件统计: 共 ${exploitStats.total} 起, 攻击成功 ${exploitStats.attackSuccessCount} 次, 影响资产 ${exploitStats.highRiskAsset || '无'}`);
@@ -350,14 +358,32 @@ async function main() {
     const incidentGptStatsForTopAssets = reportData.riskOverview && reportData.riskOverview.incidentGptStats
       ? reportData.riskOverview.incidentGptStats
       : {};
-    const topRiskIncidentIds = [
+    const topRiskC2Ids = uniqueStrings([
       ...(incidentGptStatsForTopAssets.hostCompromise && Array.isArray(incidentGptStatsForTopAssets.hostCompromise.confirmedIncidentIds)
         ? incidentGptStatsForTopAssets.hostCompromise.confirmedIncidentIds
         : []),
+      ...(topRiskDirectIncidentStats && Array.isArray(topRiskDirectIncidentStats.hostCompromiseIds)
+        ? topRiskDirectIncidentStats.hostCompromiseIds
+        : [])
+    ]);
+    const topRiskVirusIds = uniqueStrings([
       ...(incidentGptStatsForTopAssets.virusTrojan && Array.isArray(incidentGptStatsForTopAssets.virusTrojan.confirmedIncidentIds)
         ? incidentGptStatsForTopAssets.virusTrojan.confirmedIncidentIds
         : []),
-      ...(exploitStats && Array.isArray(exploitStats.incidentIds) ? exploitStats.incidentIds : [])
+      ...(topRiskDirectIncidentStats && Array.isArray(topRiskDirectIncidentStats.virusTrojanIds)
+        ? topRiskDirectIncidentStats.virusTrojanIds
+        : [])
+    ]);
+    const topRiskExploitIds = uniqueStrings([
+      ...(exploitStats && Array.isArray(exploitStats.incidentIds) ? exploitStats.incidentIds : []),
+      ...(topRiskDirectIncidentStats && Array.isArray(topRiskDirectIncidentStats.exploitIds)
+        ? topRiskDirectIncidentStats.exploitIds
+        : [])
+    ]);
+    const topRiskIncidentIds = [
+      ...topRiskC2Ids,
+      ...topRiskVirusIds,
+      ...topRiskExploitIds
     ];
 
     const riskAssetStats = await calculateRiskAssetCount({
@@ -380,13 +406,9 @@ async function main() {
           vulnerabilityExcelPath: archivedFiles.vulnPath,
           exposureExcelPath: archivedFiles.exposurePath,
           topAssets: topRiskAssets,
-          c2Ids: incidentGptStatsForTopAssets.hostCompromise && Array.isArray(incidentGptStatsForTopAssets.hostCompromise.confirmedIncidentIds)
-            ? incidentGptStatsForTopAssets.hostCompromise.confirmedIncidentIds
-            : [],
-          virusIds: incidentGptStatsForTopAssets.virusTrojan && Array.isArray(incidentGptStatsForTopAssets.virusTrojan.confirmedIncidentIds)
-            ? incidentGptStatsForTopAssets.virusTrojan.confirmedIncidentIds
-            : [],
-          exploitIds: exploitStats && Array.isArray(exploitStats.incidentIds) ? exploitStats.incidentIds : []
+          c2Ids: topRiskC2Ids,
+          virusIds: topRiskVirusIds,
+          exploitIds: topRiskExploitIds
         });
         const detailMap = topRiskAssetDetails.assets || {};
         topRiskAssets = topRiskAssets.map((asset) => {
@@ -562,6 +584,20 @@ function logWith(logger, message) {
   if (typeof logger === 'function') {
     logger(message);
   }
+}
+
+function uniqueStrings(values) {
+  const result = [];
+  const seen = new Set();
+  for (const value of Array.isArray(values) ? values : []) {
+    const text = String(value || '').trim();
+    if (!text || seen.has(text)) {
+      continue;
+    }
+    seen.add(text);
+    result.push(text);
+  }
+  return result;
 }
 
 async function summarizeExportedIncidentStatus(tableExports, logger) {
