@@ -151,11 +151,10 @@ class PolicyCheckExporter:
         all_records = []
         offset = 0
 
-        # 接口要求 time_range 为 [start, end] 日期字符串数组
-        # start_time 取日期部分；end_time 若含时分秒则取对应日期，否则取日期部分
+        # 接口要求 time_range 为 [start, end] ISO 8601 字符串数组
         time_range = [
-            self.start_time.strftime("%Y-%m-%d"),
-            self.end_time.strftime("%Y-%m-%d"),
+            self.start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            self.end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
         ]
 
         while True:
@@ -163,7 +162,7 @@ class PolicyCheckExporter:
                 "company_id": self.company_id,
                 "limit": PAGE_SIZE,
                 "offset": offset,
-                "time_range": time_range,
+                "latest_time": time_range,
             }
             if self.status:
                 payload["status"] = self.status
