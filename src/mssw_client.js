@@ -1269,7 +1269,13 @@ async function queryCaseStudyIncidentTimeline(cookieInfo, msswBaseUrl, companyId
   assertXdrApiSuccess(response, '典型案例防守侧查询');
   const data = response && response.data && typeof response.data === 'object' ? response.data : {};
   const list = Array.isArray(data.data) ? data.data : [];
-  return list[0] || null;
+  const row = list[0] || null;
+  console.log('[DEBUG] queryCaseStudyIncidentTimeline 原始响应 data:', JSON.stringify(data, null, 2));
+  console.log('[DEBUG] queryCaseStudyIncidentTimeline 取到的 row:', JSON.stringify(row, null, 2));
+  if (row && row.logTraceInfo) {
+    console.log('[DEBUG] queryCaseStudyIncidentTimeline row.logTraceInfo:', JSON.stringify(row.logTraceInfo, null, 2));
+  }
+  return row;
 }
 
 function extractAttckTechniqueHits(response) {
@@ -1297,16 +1303,28 @@ function extractAttckTechniqueHits(response) {
 }
 
 function buildDefenseTimelineFromIncidentRow(row) {
-  if (!row || typeof row !== 'object') return [];
+  console.log('[DEBUG] buildDefenseTimelineFromIncidentRow 入参 row:', JSON.stringify(row, null, 2));
+  if (!row || typeof row !== 'object') {
+    console.log('[DEBUG] buildDefenseTimelineFromIncidentRow row为空/非对象，返回[]');
+    return [];
+  }
   const logTraceInfo = row.logTraceInfo && typeof row.logTraceInfo === 'object' ? row.logTraceInfo : {};
+  console.log('[DEBUG] buildDefenseTimelineFromIncidentRow logTraceInfo:', JSON.stringify(logTraceInfo, null, 2));
   const renderValue = Array.isArray(logTraceInfo.renderValue) ? logTraceInfo.renderValue : [];
-  return renderValue
-    .map((item) => ({
-      timestamp: Number(item && item.value || 0),
-      label: String(item && item.label || '').trim()
-    }))
+  console.log('[DEBUG] buildDefenseTimelineFromIncidentRow renderValue 原始数组:', JSON.stringify(renderValue, null, 2));
+  const result = renderValue
+    .map((item, idx) => {
+      const parsed = {
+        timestamp: Number(item && item.value || 0),
+        label: String(item && item.label || '').trim()
+      };
+      console.log(`[DEBUG] buildDefenseTimelineFromIncidentRow item[${idx}]: raw=`, JSON.stringify(item), 'parsed=', JSON.stringify(parsed));
+      return parsed;
+    })
     .filter((item) => Number.isFinite(item.timestamp) && item.timestamp > 0 && item.label)
-    .sort((a, b) => a.timestamp - b.timestamp);
+    .reverse();
+  console.log('[DEBUG] buildDefenseTimelineFromIncidentRow 最终结果:', JSON.stringify(result, null, 2));
+  return result;
 }
 
 async function fetchIncidentCaseStudy(options = {}) {
@@ -1444,6 +1462,7 @@ async function fetchIncidentCaseStudy(options = {}) {
     );
     result.defenseTimeline = buildDefenseTimelineFromIncidentRow(incidentRow);
     logInfo(options.logger, `[典型案例] 防守时间线: ${result.defenseTimeline.length} 条, incidentRow=${incidentRow ? '有' : '无'}`);
+    console.log('[DEBUG] fetchIncidentCaseStudy defenseTimeline 最终结果:', JSON.stringify(result.defenseTimeline, null, 2));
   } catch (error) {
     logInfo(options.logger, `[典型案例] 防守侧时间线查询失败: ${error.message}`);
     result.defenseTimeline = [];

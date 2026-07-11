@@ -72,7 +72,7 @@ def rank_business_systems(records, n):
     for record in records:
         system_name = record.get("system")
         if not system_name:
-            continue
+            system_name = "未知"
         bucket = system_counts.setdefault(system_name, {
             "critical": 0,
             "high": 0,
@@ -241,9 +241,9 @@ def main():
                 if ips:
                     incident_ip = ips[0]
 
-            # 业务系统安全事件分布
-            if incident_ip and incident_ip in ip_to_business:
-                biz = ip_to_business[incident_ip]
+            # 业务系统安全事件分布：资产表所属业务为空时归入"未知"，正常计入分布
+            if incident_ip:
+                biz = ip_to_business.get(incident_ip) or "未知"
                 severity_raw = normalize(row[level_col] if level_col is not None and level_col < len(row) else None)
                 business_risk_records.append({
                     "system": biz,

@@ -437,6 +437,48 @@ async function main() {
     logger('跳过威胁预防数据准备: 未提供相关运行上下文');
   }
 
+  // 3.1 关键风险卡片：无数据类别不展示（通过 data-hide 机制驱动）
+  {
+    const r = reportData.riskOverview || {};
+    const k = reportData.key_risks || {};
+    const igs = r.incidentGptStats || {};
+    const es = r.exploitStats || {};
+    r.keyRisk01Hide = (igs.total || 0) === 0;
+    r.keyRisk02Hide = (es.total || 0) === 0;
+    r.keyRisk03Hide = ((k.vuln || {}).high_count || 0) === 0;
+    r.keyRisk04Hide = ((k.weak_pwd || {}).total || 0) === 0;
+    r.keyRisk05Hide = ((k.exposure || {}).total || 0) === 0;
+    logger(`关键风险卡片隐藏标记: #01=${r.keyRisk01Hide} #02=${r.keyRisk02Hide} #03=${r.keyRisk03Hide} #04=${r.keyRisk04Hide} #05=${r.keyRisk05Hide}`);
+  }
+
+  // 4.1.3 高危及以上安全事件：三类（C2外联/病毒木马/漏洞利用）全部为空则整章不展示
+  {
+    const examples = (reportData.riskDetails || {}).highRiskIncidentExamples || {};
+    const c2 = Array.isArray(examples.c2Connections) ? examples.c2Connections.length : 0;
+    const viruses = Array.isArray(examples.viruses) ? examples.viruses.length : 0;
+    const vulnExploits = Array.isArray(examples.vulnExploits) ? examples.vulnExploits.length : 0;
+    const allEmpty = c2 + viruses + vulnExploits === 0;
+    reportData.riskDetails.highRiskEventsSectionHide = allEmpty;
+    logger(`4.1.3 高危及以上安全事件章节隐藏标记: ${allEmpty} (C2=${c2}, 病毒=${viruses}, 漏洞利用=${vulnExploits})`);
+  }
+
+  // 4.1.2 安全事件分布：事件表一个事件都没有则整章不展示
+  {
+    const noEvents = Number((reportData.riskDetails || {}).totalEvents || 0) === 0;
+    reportData.riskDetails.eventDistributionSectionHide = noEvents;
+    logger(`4.1.2 安全事件分布章节隐藏标记: ${noEvents} (totalEvents=${(reportData.riskDetails || {}).totalEvents || 0})`);
+  }
+
+  // 4.1.4 典型案例：攻击/防御时间线都为空则整章不展示（与 renderCaseStudySection 判空口径一致）
+  {
+    const cs = (reportData.riskDetails || {}).caseStudy || {};
+    const attack = Array.isArray(cs.attackTimeline) ? cs.attackTimeline.length : 0;
+    const defense = Array.isArray(cs.defenseTimeline) ? cs.defenseTimeline.length : 0;
+    const noCase = attack + defense === 0;
+    reportData.riskDetails.caseStudySectionHide = noCase;
+    logger(`4.1.4 典型案例章节隐藏标记: ${noCase} (attack=${attack}, defense=${defense})`);
+  }
+
   const reportDataJsonPath = options['output-json'] || path.join(outputDir, 'report-data.json');
   await writeJsonFile(reportDataJsonPath, reportData);
   logger(`数据已写入: ${reportDataJsonPath}`);

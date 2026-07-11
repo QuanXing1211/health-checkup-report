@@ -27,6 +27,9 @@ const SECTION_RENDERERS = {
   'riskOverview.topRiskAssetsSummary': renderTopRiskAssetsSummary,
   'riskDetails.caseStudy': renderCaseStudySection,
   'riskDetails.potentialLoss': () => '',
+  'riskDetail.severeHighEventsPhrase': renderSevereHighEventsPhrase,
+  'riskDetail.sangforDeviceBreakdown': renderSangforDeviceBreakdown,
+  'riskDetail.severeHighEventsTail': renderSevereHighEventsTail,
   'riskDetail.internetSummary': renderInternetRiskSummary,
   'riskDetail.intranetSummary': renderIntranetRiskSummary,
   'internet.vuln.levelDetail': renderInternetVulnLevelDetail,
@@ -193,14 +196,68 @@ function renderAssetLedgerSummary(data) {
   ].join('');
 }
 
+function renderSevereHighEventsPhrase(data) {
+  const details = data.riskDetails || {};
+  const severe = Number(details.severeEvents || 0);
+  const high = Number(details.highEvents || 0);
+
+  const parts = [];
+  if (severe > 0) parts.push(`严重事件 <strong>${severe}</strong> 起`);
+  if (high > 0) parts.push(`高危事件 <strong>${high}</strong> 起`);
+
+  if (!parts.length) return '';
+  return `（${parts.join('、')}）`;
+}
+
+function renderSangforDeviceBreakdown(data) {
+  const details = data.riskDetails || {};
+  const items = [
+    { label: 'AF', value: Number(details.af || 0) },
+    { label: 'aES', value: Number(details.aes || 0) },
+    { label: 'SIP', value: Number(details.sip || 0) },
+    { label: 'STA', value: Number(details.sta || 0) },
+    { label: '其他', value: Number(details.other_sf || 0) }
+  ];
+
+  const parts = items.filter((it) => it.value > 0).map((it) => `${it.label} <strong>${it.value}</strong> 个`);
+  if (!parts.length) return '';
+  return `（${parts.join('、')}）`;
+}
+
+function renderSevereHighEventsTail(data) {
+  const details = data.riskDetails || {};
+  const severe = Number(details.severeEvents || 0);
+  const high = Number(details.highEvents || 0);
+
+  const parts = [];
+  if (severe > 0) parts.push(`严重事件 <strong>${severe}</strong> 起`);
+  if (high > 0) parts.push(`高危事件 <strong>${high}</strong> 起`);
+
+  if (!parts.length) return '';
+  return `，其中${parts.join('、')}`;
+}
+
 function renderRiskOverviewSummary(data) {
   const overview = data.riskOverview || {};
   const ranking = Array.isArray(overview.coreBusinessSystemRanking)
     ? overview.coreBusinessSystemRanking.filter(Boolean)
     : [];
-  const rankingText = ranking.length
-    ? `「${ranking.slice(0, 3).map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}等」`
-    : '「<strong>暂无</strong>」';
+
+  // 没有业务系统：只显示简化版概述，不带排序文案和后半句
+  if (ranking.length === 0) {
+    return paragraph(`本次安全体检中，您的核心业务系统存在 <strong>${num(overview.securityRiskTotal)}</strong> 个安全风险。`);
+  }
+
+  // 根据业务系统数量构建排序文案
+  let rankingText;
+  if (ranking.length === 1) {
+    rankingText = `「<strong>${escapeHtml(ranking[0])}</strong>」`;
+  } else if (ranking.length === 2) {
+    rankingText = `「${ranking.map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}」`;
+  } else {
+    rankingText = `「${ranking.slice(0, 3).map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}等」`;
+  }
+
   const topSystemText = overview.maxRiskSystem
     ? `【<strong>${escapeHtml(overview.maxRiskSystem)}</strong>】`
     : '【<strong>暂无</strong>】';
