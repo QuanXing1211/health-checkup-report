@@ -39,9 +39,12 @@ def extract_ip(raw):
     return m.group(1) if m else None
 
 
-def build_col_map(ws):
+def build_col_map(ws, skip_rows=0):
     """读取表头行，返回 列名 → 列索引(0-based) 的映射"""
-    header = [normalize(cell) for cell in next(ws.iter_rows(values_only=True))]
+    rows = ws.iter_rows(values_only=True)
+    for _ in range(skip_rows):
+        next(rows)
+    header = [normalize(cell) for cell in next(rows)]
     return {name: i for i, name in enumerate(header) if name}
 
 
@@ -122,7 +125,8 @@ def main():
         try:
             asset_wb = load_workbook(asset_path, read_only=True, data_only=True)
             asset_ws = asset_wb.active
-            asset_col_map = build_col_map(asset_ws)
+            # 资产表第1行是空行/标题行，跳过，第2行才是列名
+            asset_col_map = build_col_map(asset_ws, skip_rows=1)
 
             ip_col = find_column(asset_col_map, [
                 "IP地址", "P地址", "IP", "地址", "主机IP",
@@ -132,7 +136,7 @@ def main():
                 "数据源", "数据来源", "dataSource", "data_source",
                 "设备来源", "devSourceNames", "source"
             ])
-            resp_col = find_column(asset_col_map, ["责任人", "负责人", "responsible", "负责人姓名"])
+            resp_col = find_column(asset_col_map, ["负责人"])
 
             if ip_col is not None:
                 for row in asset_ws.iter_rows(min_row=2, values_only=True):

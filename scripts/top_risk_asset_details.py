@@ -116,7 +116,6 @@ def collect_incident_counts(incident_path, target_assets, c2_ids, virus_ids, exp
     c2_id_set = set(c2_ids)
     virus_id_set = set(virus_ids)
     exploit_id_set = set(exploit_ids)
-
     for row in sheet.iter_rows(min_row=header_row + 1, values_only=True):
         if not any(normalize(cell) for cell in row):
             continue
@@ -128,6 +127,7 @@ def collect_incident_counts(incident_path, target_assets, c2_ids, virus_ids, exp
             continue
 
         incident_id = normalize(row[id_col]) if id_col is not None and len(row) > id_col else ""
+
         bucket = counts[asset]
         bucket["totalEvents"] += 1
         if incident_id in c2_id_set:
@@ -178,7 +178,13 @@ def collect_aes_install_status(asset_path, target_assets):
 
 
 def collect_vulnerability_counts(vuln_path, target_assets):
-    counts = {asset: {"highAndAboveVulnerabilities": 0} for asset in target_assets}
+    counts = {
+        asset: {
+            "totalVulnerabilities": 0,
+            "highAndAboveVulnerabilities": 0,
+        }
+        for asset in target_assets
+    }
     if not vuln_path or not target_assets:
         return counts
 
@@ -187,7 +193,7 @@ def collect_vulnerability_counts(vuln_path, target_assets):
     col_map, header_row = build_col_map(sheet)
     asset_col = find_column(col_map, ["风险资产", "影响资产", "资产IP", "IP地址", "ip"])
     severity_col = find_column(col_map, ["风险等级", "等级", "severity"])
-    if asset_col is None or severity_col is None:
+    if asset_col is None:
         workbook.close()
         return counts
 
@@ -199,7 +205,8 @@ def collect_vulnerability_counts(vuln_path, target_assets):
         asset = normalize_asset_key(row[asset_col] if len(row) > asset_col else "")
         if asset not in target_set:
             continue
-        severity = normalize(row[severity_col]) if len(row) > severity_col else ""
+        counts[asset]["totalVulnerabilities"] += 1
+        severity = normalize(row[severity_col]) if severity_col is not None and len(row) > severity_col else ""
         if severity in high_and_above:
             counts[asset]["highAndAboveVulnerabilities"] += 1
 

@@ -46,6 +46,56 @@ def find_column(col_map, aliases):
     return None
 
 
+def resolve_source_type(incident_id, row, source_type_map, columns):
+    mapped = source_type_map.get(incident_id, "")
+    if mapped:
+        return mapped
+
+    gpt_result_col = columns.get("gpt_result_col")
+    class_col = columns.get("class_col")
+    gpt_result = normalize(row[gpt_result_col]) if gpt_result_col is not None and len(row) > gpt_result_col else ""
+    class_value = normalize(row[class_col]) if class_col is not None and len(row) > class_col else ""
+
+    if gpt_result == "主机失陷活动":
+        return "c2"
+    if gpt_result == "病毒木马活动":
+        return "virus"
+    if class_value == "漏洞利用":
+        return "exploit"
+    return ""
+
+
+def collect_candidates(sheet, columns, source_type_map, candidate_ids=None):
+    matched_candidates = []
+    id_col = columns["id_col"]
+    severity_col = columns["severity_col"]
+    deal_status_col = columns["deal_status_col"]
+    push_status_col = columns["push_status_col"]
+
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        incident_id = normalize(row[id_col]) if len(row) > id_col else ""
+        if not incident_id:
+            continue
+        if candidate_ids is not None and incident_id not in candidate_ids:
+            continue
+
+        deal_status = normalize(row[deal_status_col]) if len(row) > deal_status_col else ""
+        push_status = normalize(row[push_status_col]) if len(row) > push_status_col else ""
+        if deal_status != "处置完成" or push_status != "已推送":
+            continue
+
+        severity = normalize(row[severity_col]) if len(row) > severity_col else ""
+        matched_candidates.append({
+            "incidentId": incident_id,
+            "severity": severity,
+            "dealStatus": deal_status,
+            "pushStatus": push_status,
+            "sourceType": resolve_source_type(incident_id, row, source_type_map, columns)
+        })
+
+    return matched_candidates
+
+
 def main():
     if len(sys.argv) < 5:
         raise SystemExit(
@@ -78,6 +128,8 @@ def main():
     severity_col = find_column(col_map, ["等级", "severity", "Severity"])
     deal_status_col = find_column(col_map, ["处置状态", "deal_status", "dealStatus"])
     push_status_col = find_column(col_map, ["推送状态", "event_push_label", "pushStatus"])
+    gpt_result_col = find_column(col_map, ["GPT研判结论", "gpt_result", "gptResult"])
+    class_col = find_column(col_map, ["安全事件一级分类", "事件一级分类", "class1", "categoryLevel1"])
 
     if id_col is None:
         raise SystemExit(f"事件表缺少事件ID列，可用列: {list(col_map.keys())}")
@@ -88,32 +140,26 @@ def main():
     if push_status_col is None:
         raise SystemExit(f"事件表缺少推送状态列，可用列: {list(col_map.keys())}")
 
-    matched_candidates = []
+    columns = {
+        "id_col": id_col,
+        "severity_col": severity_col,
+        "deal_status_col": deal_status_col,
+        "push_status_col": push_status_col,
+        "gpt_result_col": gpt_result_col,
+        "class_col": class_col
+    }
 
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        incident_id = normalize(row[id_col]) if len(row) > id_col else ""
-        if not incident_id or incident_id not in candidate_ids:
-            continue
-
-        severity = normalize(row[severity_col]) if len(row) > severity_col else ""
-        deal_status = normalize(row[deal_status_col]) if len(row) > deal_status_col else ""
-        push_status = normalize(row[push_status_col]) if len(row) > push_status_col else ""
-
-        if deal_status != "处置完成" or push_status != "已推送":
-            continue
-
-        matched_candidates.append({
-            "incidentId": incident_id,
-            "severity": severity,
-            "dealStatus": deal_status,
-            "pushStatus": push_status,
-            "sourceType": source_type_map.get(incident_id, "")
-        })
+    matched_candidates = collect_candidates(sheet, columns, source_type_map, candidate_ids)
+    fallback_used = False
+    if not matched_candidates:
+        matched_candidates = collect_candidates(sheet, columns, source_type_map, None)
+        fallback_used = True
 
     workbook.close()
     print(json.dumps({
         "candidateCount": len(candidate_ids),
-        "matchedCandidates": matched_candidates
+        "matchedCandidates": matched_candidates,
+        "fallbackUsed": fallback_used
     }, ensure_ascii=False))
 
 

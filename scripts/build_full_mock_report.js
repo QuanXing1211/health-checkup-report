@@ -232,10 +232,12 @@ function enrichReportData(reportData) {
     incidentGptStats.nonAesCoveredAssets,
     ['10.128.160.200', '10.128.165.10']
   );
+  incidentGptStats.nonAesCoveredAssetsHideHint = incidentGptStats.nonAesCoveredAssetsHideHint ?? false;
   incidentGptStats.unlabeledAssets = ensurePrimitiveArray(
     incidentGptStats.unlabeledAssets,
     ['10.128.165.151', '10.128.165.53']
   );
+  incidentGptStats.unlabeledAssetsHideHint = incidentGptStats.unlabeledAssetsHideHint ?? false;
   incidentGptStats.c2ConnectionExamples = ensureArrayObjects(
     incidentGptStats.c2ConnectionExamples,
     [

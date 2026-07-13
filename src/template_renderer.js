@@ -26,7 +26,10 @@ const SECTION_RENDERERS = {
   'riskOverview.summary': renderRiskOverviewSummary,
   'riskOverview.topRiskAssetsSummary': renderTopRiskAssetsSummary,
   'riskDetails.caseStudy': renderCaseStudySection,
-  'riskDetails.potentialLoss': renderPotentialLossSection,
+  'riskDetails.potentialLoss': () => '',
+  'riskDetail.severeHighEventsPhrase': renderSevereHighEventsPhrase,
+  'riskDetail.sangforDeviceBreakdown': renderSangforDeviceBreakdown,
+  'riskDetail.severeHighEventsTail': renderSevereHighEventsTail,
   'riskDetail.internetSummary': renderInternetRiskSummary,
   'riskDetail.intranetSummary': renderIntranetRiskSummary,
   'internet.vuln.levelDetail': renderInternetVulnLevelDetail,
@@ -86,6 +89,8 @@ function renderTemplate(template, reportData, gradeAssets) {
   html = patchDataFields(html, reportData);
   html = patchGrade(html, reportData, gradeAssets);
   html = injectReportData(html, reportData);
+  html = patchOps3DeviceCells(html, reportData);
+  html = syncPipelineDeviceData(html, reportData);
 
   return html;
 }
@@ -191,14 +196,68 @@ function renderAssetLedgerSummary(data) {
   ].join('');
 }
 
+function renderSevereHighEventsPhrase(data) {
+  const details = data.riskDetails || {};
+  const severe = Number(details.severeEvents || 0);
+  const high = Number(details.highEvents || 0);
+
+  const parts = [];
+  if (severe > 0) parts.push(`严重事件 <strong>${severe}</strong> 起`);
+  if (high > 0) parts.push(`高危事件 <strong>${high}</strong> 起`);
+
+  if (!parts.length) return '';
+  return `（${parts.join('、')}）`;
+}
+
+function renderSangforDeviceBreakdown(data) {
+  const details = data.riskDetails || {};
+  const items = [
+    { label: 'AF', value: Number(details.af || 0) },
+    { label: 'aES', value: Number(details.aes || 0) },
+    { label: 'SIP', value: Number(details.sip || 0) },
+    { label: 'STA', value: Number(details.sta || 0) },
+    { label: '其他', value: Number(details.other_sf || 0) }
+  ];
+
+  const parts = items.filter((it) => it.value > 0).map((it) => `${it.label} <strong>${it.value}</strong> 个`);
+  if (!parts.length) return '';
+  return `（${parts.join('、')}）`;
+}
+
+function renderSevereHighEventsTail(data) {
+  const details = data.riskDetails || {};
+  const severe = Number(details.severeEvents || 0);
+  const high = Number(details.highEvents || 0);
+
+  const parts = [];
+  if (severe > 0) parts.push(`严重事件 <strong>${severe}</strong> 起`);
+  if (high > 0) parts.push(`高危事件 <strong>${high}</strong> 起`);
+
+  if (!parts.length) return '';
+  return `，其中${parts.join('、')}`;
+}
+
 function renderRiskOverviewSummary(data) {
   const overview = data.riskOverview || {};
   const ranking = Array.isArray(overview.coreBusinessSystemRanking)
     ? overview.coreBusinessSystemRanking.filter(Boolean)
     : [];
-  const rankingText = ranking.length
-    ? `「${ranking.slice(0, 3).map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}等」`
-    : '「<strong>暂无</strong>」';
+
+  // 没有业务系统：只显示简化版概述，不带排序文案和后半句
+  if (ranking.length === 0) {
+    return paragraph(`本次安全体检中，您的核心业务系统存在 <strong>${num(overview.securityRiskTotal)}</strong> 个安全风险。`);
+  }
+
+  // 根据业务系统数量构建排序文案
+  let rankingText;
+  if (ranking.length === 1) {
+    rankingText = `「<strong>${escapeHtml(ranking[0])}</strong>」`;
+  } else if (ranking.length === 2) {
+    rankingText = `「${ranking.map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}」`;
+  } else {
+    rankingText = `「${ranking.slice(0, 3).map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}等」`;
+  }
+
   const topSystemText = overview.maxRiskSystem
     ? `【<strong>${escapeHtml(overview.maxRiskSystem)}</strong>】`
     : '【<strong>暂无</strong>】';
@@ -246,23 +305,7 @@ function renderCaseStudySection(data) {
   const defenseTimeline = Array.isArray(caseStudy.defenseTimeline) ? caseStudy.defenseTimeline : [];
 
   if (!attackTimeline.length && !defenseTimeline.length) {
-    return [
-      '<div class="sr-attack-chain">',
-      '<div class="tm">',
-      '<div class="tm-row">',
-      '<div class="tm-left"></div>',
-      '<div class="tm-dot gn"></div>',
-      '<div class="tm-right">',
-      '<div class="tm-card def">',
-      '<div class="tm-tag">典型案例</div>',
-      '<div class="tm-desc">暂无典型案例数据</div>',
-      '<span class="tm-arrow"></span>',
-      '</div>',
-      '</div>',
-      '</div>',
-      '</div>',
-      '</div>'
-    ].join('');
+    return '';
   }
 
   const attackGroups = groupAttackTimelineByStage(attackTimeline);
@@ -282,68 +325,6 @@ function renderCaseStudySection(data) {
   }
 
   return `<div class="sr-attack-chain"><div class="tm">${rows.join('')}</div></div>`;
-}
-
-function renderPotentialLossSection(data) {
-  const caseStudy = (data && data.riskDetails && data.riskDetails.caseStudy) || {};
-  const sourceType = String(caseStudy.selectedSourceType || '').trim();
-  // C2 外联 / 病毒木马 → 银狐木马话术，漏洞利用 → 原有漏洞利用话术
-  const isC2OrVirus = sourceType === 'c2' || sourceType === 'virus';
-
-  if (isC2OrVirus) {
-    return [
-      '<table class="report-table sr-tbl">',
-      '<thead><tr>',
-      '<th>潜在损失</th>',
-      '<th>主机外联成功将被感染银狐木马，利用主机的即时通讯软件在单位内部执行诈骗，或以内部员工合法身份窃取内部敏感数据。</th>',
-      '</tr></thead>',
-      '<tbody>',
-      '<tr>',
-      '<td>潜在损失规避评估（影响面）</td>',
-      '<td>600起银狐外联*2000元≈120万元（基于深信服安全运营中心2025年统计，平均每起银狐木马攻击造成的个人损失约2000元；）</td>',
-      '</tr>',
-      '<tr>',
-      '<td>实际案例损失情况</td>',
-      '<td>',
-      '2025 年，银狐木马以远程控制+财务诈骗+数据窃取为主，非传统勒索加密，但造成企业直接经济损失超20亿元、受害企事业单位超 1000 家，以下为权威披露的典型高损失案例：<br>',
-      '<strong>杭州某跨境电商（2025年5月，损失800万元）</strong><br>',
-      '攻击路径：伪装成银行账户年审通知钓鱼邮件，财务电脑中招，木马潜伏两周，<br>',
-      '作案手法：监控微信聊天，自动篡改指令：将财务汇报的"暂不付款"篡改为"立即支付"，并伪造老板"已阅"回复。<br>',
-      '损失：15分钟内 800 万货款转至境外账户，追回难度极大。<br>',
-      '来源：浙江警方（2025年经济犯罪典型案例）',
-      '</td>',
-      '</tr>',
-      '</tbody>',
-      '</table>'
-    ].join('');
-  }
-
-  // 默认：漏洞利用话术（与 template 原有内容一致）
-  return [
-    '<table class="report-table sr-tbl">',
-    '<thead><tr>',
-    '<th>潜在损失</th>',
-    '<th>漏洞利用攻击如果未及时发现和对抗，可能导致核心系统敏感数据泄露、主机被控挖矿、数据勒索加密等重大危害事件</th>',
-    '</tr></thead>',
-    '<tbody>',
-    '<tr>',
-    '<td>潜在损失规避评估（影响面）</td>',
-    '<td><strong>2</strong>个高危可利用漏洞*100万元≈<strong>200</strong>万元（基于行业公开事例评估测算，单个漏洞利用攻击入侵成功导致的平均安全损失约<strong>100</strong>万元）</td>',
-    '</tr>',
-    '<tr>',
-    '<td>实际案例损失情况</td>',
-    '<td>',
-    '当前规模化的 RaaS 攻击手段主要探测识别 <strong>1</strong>DAY 高危可利用漏洞后进行自动化利用攻击。<br>',
-    '<strong>捷豹路虎遭勒索攻击致全球系统瘫痪</strong><br>',
-    '日期：<strong>2025.9</strong> 至 2025.10.8<br>',
-    '事件概要："Scattered Lapsus$ Hunters" 黑客组织利用 SAP NetWeaver（CVE-2025-31324）远程执行漏洞入侵内部网络，部署勒索软件并窃取数据。<br>',
-    '影响描述：全球 IT 系统关闭，生产、销售、售后服务全面瘫痪；<strong>33,000</strong> 名员工被安排休假；财务损失达 <strong>1.96</strong> 亿英镑；<strong>10</strong> 月 <strong>8</strong> 日才完成系统重启。<br>',
-    '基于国内安全咨询机构及厂商综合披露的数据显示，国内政企勒索支付的中位数为 <strong>100</strong> 万元',
-    '</td>',
-    '</tr>',
-    '</tbody>',
-    '</table>'
-  ].join('');
 }
 
 function renderTopRiskAssetRows(rows) {
@@ -639,6 +620,63 @@ function injectReportData(html, data) {
   }
 
   return html.replace('</head>', `${script}\n</head>`);
+}
+
+function patchOps3DeviceCells(html, data) {
+  // 4.1.1 设备格子：值为0的服务端直接删除元素，不依赖浏览器端JS
+  // 匹配设备格子: <div class="ops3-device-cell" data-hide-ops3="riskDetails.XX"><span class="nm">XX</span><span class="nv">0</span></div>
+  html = html.replace(
+    /<div\s+class="ops3-device-cell"\s+data-hide-ops3="riskDetails\.\w+"\s*>\s*<span\s+class="nm">[^<]*<\/span>\s*<span\s+class="nv">0<\/span>\s*<\/div>/g,
+    ''
+  );
+
+  // 第三方合计格子（class 中有 ops3-layer ops3-device-third 两个类名）
+  html = html.replace(
+    /<div\s+class="[^"]*ops3-device-third[^"]*"\s+data-hide-ops3="riskDetails\.\w+"\s*>\s*<span\s+class="nm">[^<]*<\/span>\s*<span\s+class="nv">0<\/span>\s*<\/div>/g,
+    ''
+  );
+
+  // 如果第三方设备为0，也隐藏"第三方设备"标签
+  const rd = data.riskDetails || {};
+  if (Number(rd.third) === 0) {
+    html = html.replace(
+      /<p\s+class="ops3-layer ops3-ingest-label ops3-ingest-label--3rd">[^<]*<\/p>/g,
+      ''
+    );
+  }
+
+  // 如果深信服设备为0，也隐藏"深信服设备"标签
+  if (Number(rd.sangfor) === 0) {
+    html = html.replace(
+      /<p\s+class="ops3-layer ops3-ingest-label ops3-ingest-label--sf">[^<]*<\/p>/g,
+      ''
+    );
+  }
+
+  return html;
+}
+
+function syncPipelineDeviceData(html, data) {
+  // 在 bootPipeline 函数开头注入代码，从 SECURITY_REPORT_DATA 同步设备数据到 XDR_PIPELINE_DATA
+  // 确保 Canvas 管道图的 buildDeviceSources 能读到正确的设备数量
+  const syncCode = `      var reportRd = (window.SECURITY_REPORT_DATA || {}).riskDetails || {};
+      if (reportRd.devices !== undefined) window.XDR_PIPELINE_DATA.devices = Number(reportRd.devices) || window.XDR_PIPELINE_DATA.devices;
+      if (reportRd.af !== undefined) window.XDR_PIPELINE_DATA.af = Number(reportRd.af) || 0;
+      if (reportRd.aes !== undefined) window.XDR_PIPELINE_DATA.aes = Number(reportRd.aes) || 0;
+      if (reportRd.sip !== undefined) window.XDR_PIPELINE_DATA.sip = Number(reportRd.sip) || 0;
+      if (reportRd.sta !== undefined) window.XDR_PIPELINE_DATA.sta = Number(reportRd.sta) || 0;
+      if (reportRd.other_sf !== undefined) window.XDR_PIPELINE_DATA.other_sf = Number(reportRd.other_sf) || 0;
+      if (reportRd.third !== undefined) window.XDR_PIPELINE_DATA.third = Number(reportRd.third) || 0;
+      if (reportRd.sangfor !== undefined) window.XDR_PIPELINE_DATA.sangfor = Number(reportRd.sangfor) || 0;
+      syncKpiDom();`;
+
+  // 注入到 bootPipeline 函数体中，在 renderPipeline(0) 之前
+  html = html.replace(
+    /(function bootPipeline\(\)\s*\{\s*if\s*\(\!pipelineReady\(\)\)\s*\{\s*requestAnimationFrame\(bootPipeline\);\s*return;\s*\})/,
+    '$1\n' + syncCode + '\n'
+  );
+
+  return html;
 }
 
 function buildOutputFilename(data) {

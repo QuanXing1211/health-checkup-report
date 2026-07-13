@@ -136,8 +136,6 @@ node health_report.js `
 
 ## Template Strategy
 
-模板改造标准见 [TEMPLATE_STANDARD.md](./TEMPLATE_STANDARD.md)。
-
 推荐模板里显式放占位符：
 
 ```html

@@ -73,7 +73,7 @@ def main():
     id_col = find_column(col_map, ["事件ID", "事件Id", "incident_id", "incidentId", "id", "ID"])
     gpt_col = find_column(col_map, ["GPT研判结论"])
     file_col = find_column(col_map, ["文件", "文件MD5", "md5", "file"])
-    ext_ip_col = find_column(col_map, ["外网IP地址", "外网IP", "外联IP"])
+    ext_ip_col = find_column(col_map, ["外网IP地址"])
     domain_col = find_column(col_map, ["域名", "外联域名"])
     class_col = find_column(col_map, [
         "安全事件一级分类", "事件分类", "incident_threat_class",
@@ -97,9 +97,9 @@ def main():
         if gpt_value == GPT_HOST_COMPROMISE:
             severe_iocs = []
             if ext_ip_col is not None and len(row) > ext_ip_col:
-                severe_iocs.extend(extract_severe_entities(row[ext_ip_col]))
-            if domain_col is not None and len(row) > domain_col:
-                severe_iocs.extend(extract_severe_entities(row[domain_col]))
+                severe_iocs = extract_severe_entities(row[ext_ip_col])
+            if not severe_iocs and domain_col is not None and len(row) > domain_col:
+                severe_iocs = extract_severe_entities(row[domain_col])
             if severe_iocs:
                 host_compromise_ids.append(incident_id)
 
