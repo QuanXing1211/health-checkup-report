@@ -58,13 +58,27 @@ def _extract_first(value):
 
 
 def _parse_datetime(text):
-    """解析日期时间字符串，支持 YYYY-MM-DD 和 YYYY-MM-DD HH:MM:SS 两种格式。"""
+    """
+    解析日期时间字符串并转换为 UTC 时间（带 timezone 信息）。
+
+    输入字符串按本地时间解释，支持 YYYY-MM-DD 和 YYYY-MM-DD HH:MM:SS 两种格式。
+    返回带 tzinfo 的 datetime（UTC）。
+    """
+    naive = None
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
-            return datetime.datetime.strptime(text, fmt)
+            naive = datetime.datetime.strptime(text, fmt)
+            break
         except ValueError:
             continue
-    raise ValueError(f"无法解析日期: {text}，请使用 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS 格式")
+    if naive is None:
+        raise ValueError(f"无法解析日期: {text}，请使用 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS 格式")
+    # 假设输入为本地时间，附加本地时区后转换为 UTC；获取不到本地时区则回退到东八区
+    local_tz = datetime.datetime.now().astimezone().tzinfo
+    if local_tz is None:
+        local_tz = datetime.timezone(datetime.timedelta(hours=8))
+    local_dt = naive.replace(tzinfo=local_tz)
+    return local_dt.astimezone(datetime.timezone.utc)
 
 
 # ──────────────────────────────────────────────
