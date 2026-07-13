@@ -25,22 +25,27 @@ import openpyxl
 
 API_URL = "https://pre.soar.sangfor.com/gateway/idps/openapi/idps/xdr/policy_check/result"
 PAGE_SIZE = 100
-COOKIE_FILE_PATH = r"D:\Users\User\Desktop\下载\xdr_cookies.txt"
 DEFAULT_OUTPUT_PATH = "策略检查清单.xlsx"
 TMP_DIR = "tmp"
 
 COLUMN_MAP = [
-    ("序号",          "seq"),
-    ("设备",          "dev_name"),
-    ("策略名称",      "name"),
-    ("策略状态",      "policy_status"),
-    ("风险状态",      "risk_status"),
-    ("策略描述",      "description"),
-    ("最近检查时间",  "latest_time"),
-    ("风险描述",      "risk_desc"),
+    ("序号", "seq"),
+    ("设备", "dev_name"),
+    ("策略名称", "name"),
+    ("策略状态", "policy_status"),
+    ("风险状态", "risk_status"),
+    ("策略描述", "description"),
+    ("最近检查时间", "latest_time"),
+    ("风险描述", "risk_desc"),
 ]
 
 SHEET_NAME = "策略检查"
+
+DEV_TYPE_DICT = {
+    3: "AF",
+    9: "SIP",
+    12: "EDR",
+}
 
 
 # ──────────────────────────────────────────────
@@ -146,20 +151,24 @@ class PolicyCheckExporter:
 
     def _load_cookie(self, cookie_path=None):
         """
-        从固定路径文件读取并提取 cookie 内容。
+        从文件读取并提取 cookie 内容。
 
-        文件格式为 JSON，需提取 cookieString 字段作为请求 cookie。
+        cookie_path 必须在创建时提供，否则抛出 ValueError。
+        文件格式如果是以 { 或 [ 开头的 JSON，提取 cookieString 或 cookie 字段；
+        否则直接作为原始 cookie 字符串使用。
         """
-        resolved_path = cookie_path or COOKIE_FILE_PATH
-        if not os.path.exists(resolved_path):
-            print(f"[WARNING] Cookie 文件不存在: {resolved_path}")
-            return ""
-        with open(resolved_path, "r", encoding="utf-8") as f:
+        if not cookie_path:
+            raise ValueError("必须提供 cookie_path 以加载 cookie")
+
+        if not os.path.exists(cookie_path):
+            raise FileNotFoundError(f"Cookie 文件不存在: {cookie_path}")
+
+        with open(cookie_path, "r", encoding="utf-8") as f:
             raw = f.read()
 
         stripped = raw.strip()
         if not stripped:
-            return ""
+            raise ValueError(f"Cookie 文件为空: {cookie_path}")
 
         if stripped.startswith("{") or stripped.startswith("["):
             data = json.loads(stripped)
@@ -242,6 +251,9 @@ class PolicyCheckExporter:
             offset += PAGE_SIZE
 
         print(f"[INFO] 接口获取 {len(all_records)} 条")
+        for item in all_records:
+            item["dev_type"] = DEV_TYPE_DICT.get(item.get("dev_type")) or item.get("dev_type") or ""
+
         return all_records
 
     # ── 第二步：格式转换 ──
@@ -336,13 +348,6 @@ class PolicyCheckExporter:
         print()
 
         records = self.fetch_data()
-        if not records:
-            print("[WARNING] 未获取到符合条件的数据，Excel 不会生成")
-            return {
-                "recordCount": 0,
-                "excelPath": self.output_path,
-                "jsonPath": self.json_output_path or os.path.join(TMP_DIR, "policy_check.json"),
-            }
 
         json_path = self._save_json(records)
         rows = self.transform(records)
@@ -367,7 +372,7 @@ def parse_args():
     parser.add_argument("--start", required=True, help="时间范围起始，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS")
     parser.add_argument("--end", required=True, help="时间范围结束，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS")
     parser.add_argument("--status", default="", help="策略状态过滤，如 at_risk、no_risk，默认不过滤")
-    parser.add_argument("--cookie-path", default=None, help="Cookie 文件路径，支持纯文本或含 cookieString 的 JSON")
+    parser.add_argument("--cookie-path", required=True, help="Cookie 文件路径（必填），支持纯文本或含 cookieString 的 JSON")
     parser.add_argument("--output", default=None, help="输出 Excel 路径，默认为当前目录下 策略检查.xlsx")
     parser.add_argument("--json-output", default=None, help="输出 JSON 路径，默认为 tmp/policy_check.json")
     return parser.parse_args()
