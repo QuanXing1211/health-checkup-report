@@ -23,7 +23,7 @@ import openpyxl
 # 常量
 # ──────────────────────────────────────────────
 
-API_URL = "https://soar.sangfor.com.cn/openapi/idps/xdr/policy_check/result"
+API_URL = "https://pre.soar.sangfor.com/gateway/idps/openapi/idps/xdr/policy_check/result"
 PAGE_SIZE = 100
 COOKIE_FILE_PATH = r"D:\Users\User\Desktop\下载\xdr_cookies.txt"
 DEFAULT_OUTPUT_PATH = "策略检查清单.xlsx"
@@ -37,7 +37,6 @@ COLUMN_MAP = [
     ("风险状态",      "risk_status"),
     ("策略描述",      "description"),
     ("最近检查时间",  "latest_time"),
-    ("生成事件时间",  "event_time"),
     ("风险描述",      "risk_desc"),
 ]
 
@@ -57,12 +56,33 @@ def _extract_first(value):
     return ""
 
 
+def _utc_to_local_str(utc_str):
+    """
+    将 UTC 时间字符串（如 "2026-07-13T01:31:32Z"）转换为当前时区的本地时间字符串。
+
+    优先使用系统当前时区，获取不到时回退到东八区（UTC+8）。
+    输出格式为 "YYYY-MM-DD HH:MM:SS"。解析失败时原样返回。
+    """
+    if not utc_str:
+        return ""
+    try:
+        normalized = utc_str.replace("Z", "+00:00")
+        dt = datetime.datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+    except ValueError:
+        return utc_str
+    local_tz = datetime.datetime.now().astimezone().tzinfo or datetime.timezone(datetime.timedelta(hours=8))
+    return dt.astimezone(local_tz).strftime("%Y-%m-%d %H:%M:%S")
+
+
 def _parse_datetime(text):
     """
-    解析日期时间字符串并转换为 UTC 时间（带 timezone 信息）。
+    解析日期时间字符串，按本地时间解释并附加本地时区信息。
 
     输入字符串按本地时间解释，支持 YYYY-MM-DD 和 YYYY-MM-DD HH:MM:SS 两种格式。
-    返回带 tzinfo 的 datetime（UTC）。
+    返回带本地时区 tzinfo 的 datetime（保持本地时间，不转 UTC）。
+    调用接口需要 UTC 时再由调用方 astimezone(UTC) 转换。
     """
     naive = None
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
@@ -73,12 +93,9 @@ def _parse_datetime(text):
             continue
     if naive is None:
         raise ValueError(f"无法解析日期: {text}，请使用 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS 格式")
-    # 假设输入为本地时间，附加本地时区后转换为 UTC；获取不到本地时区则回退到东八区
-    local_tz = datetime.datetime.now().astimezone().tzinfo
-    if local_tz is None:
-        local_tz = datetime.timezone(datetime.timedelta(hours=8))
-    local_dt = naive.replace(tzinfo=local_tz)
-    return local_dt.astimezone(datetime.timezone.utc)
+    # 附加本地时区；获取不到本地时区时回退到东八区
+    local_tz = datetime.datetime.now().astimezone().tzinfo or datetime.timezone(datetime.timedelta(hours=8))
+    return naive.replace(tzinfo=local_tz)
 
 
 # ──────────────────────────────────────────────
@@ -165,10 +182,12 @@ class PolicyCheckExporter:
         all_records = []
         offset = 0
 
-        # 接口要求 time_range 为 [start, end] ISO 8601 字符串数组
+        # 接口要求 time_range 为 [start, end] ISO 8601 UTC 字符串数组
+        # self.start_time / self.end_time 保存的是本地时间，此处转换为 UTC
+        utc_tz = datetime.timezone.utc
         time_range = [
-            self.start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            self.end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            self.start_time.astimezone(utc_tz).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            self.end_time.astimezone(utc_tz).strftime("%Y-%m-%dT%H:%M:%SZ"),
         ]
 
         while True:
@@ -242,8 +261,8 @@ class PolicyCheckExporter:
             for col_name, field_name in COLUMN_MAP:
                 if field_name == "seq":
                     row[col_name] = idx
-                elif field_name in ("latest_time", "event_time"):
-                    row[col_name] = _extract_first(record.get(field_name, []))
+                elif field_name == "latest_time":
+                    row[col_name] = _utc_to_local_str(_extract_first(record.get(field_name, [])))
                 elif field_name == "risk_status":
                     raw = record.get("risk_status", "")
                     row[col_name] = "存在风险" if raw == "at_risk" else "无风险"
