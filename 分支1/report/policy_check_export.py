@@ -23,25 +23,29 @@ import openpyxl
 # 常量
 # ──────────────────────────────────────────────
 
-API_URL = "https://soar.sangfor.com.cn/openapi/idps/xdr/policy_check/result"
+API_URL = "https://pre.soar.sangfor.com/gateway/idps/openapi/idps/xdr/policy_check/result"
 PAGE_SIZE = 100
-COOKIE_FILE_PATH = r"D:\Users\User\Desktop\下载\xdr_cookies.txt"
 DEFAULT_OUTPUT_PATH = "策略检查清单.xlsx"
 TMP_DIR = "tmp"
 
 COLUMN_MAP = [
-    ("序号",          "seq"),
-    ("设备",          "dev_name"),
-    ("策略名称",      "name"),
-    ("策略状态",      "policy_status"),
-    ("风险状态",      "risk_status"),
-    ("策略描述",      "description"),
-    ("最近检查时间",  "latest_time"),
-    ("生成事件时间",  "event_time"),
-    ("风险描述",      "risk_desc"),
+    ("序号", "seq"),
+    ("设备", "dev_name"),
+    ("策略名称", "name"),
+    ("策略状态", "policy_status"),
+    ("风险状态", "risk_status"),
+    ("策略描述", "description"),
+    ("最近检查时间", "latest_time"),
+    ("风险描述", "risk_desc"),
 ]
 
 SHEET_NAME = "策略检查"
+
+DEV_TYPE_DICT = {
+    3: "AF",
+    9: "SIP",
+    12: "EDR",
+}
 
 
 # ──────────────────────────────────────────────
@@ -57,14 +61,46 @@ def _extract_first(value):
     return ""
 
 
+def _utc_to_local_str(utc_str):
+    """
+    将 UTC 时间字符串（如 "2026-07-13T01:31:32Z"）转换为当前时区的本地时间字符串。
+
+    优先使用系统当前时区，获取不到时回退到东八区（UTC+8）。
+    输出格式为 "YYYY-MM-DD HH:MM:SS"。解析失败时原样返回。
+    """
+    if not utc_str:
+        return ""
+    try:
+        normalized = utc_str.replace("Z", "+00:00")
+        dt = datetime.datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+    except ValueError:
+        return utc_str
+    local_tz = datetime.datetime.now().astimezone().tzinfo or datetime.timezone(datetime.timedelta(hours=8))
+    return dt.astimezone(local_tz).strftime("%Y-%m-%d %H:%M:%S")
+
+
 def _parse_datetime(text):
-    """解析日期时间字符串，支持 YYYY-MM-DD 和 YYYY-MM-DD HH:MM:SS 两种格式。"""
+    """
+    解析日期时间字符串，按本地时间解释并附加本地时区信息。
+
+    输入字符串按本地时间解释，支持 YYYY-MM-DD 和 YYYY-MM-DD HH:MM:SS 两种格式。
+    返回带本地时区 tzinfo 的 datetime（保持本地时间，不转 UTC）。
+    调用接口需要 UTC 时再由调用方 astimezone(UTC) 转换。
+    """
+    naive = None
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
-            return datetime.datetime.strptime(text, fmt)
+            naive = datetime.datetime.strptime(text, fmt)
+            break
         except ValueError:
             continue
-    raise ValueError(f"无法解析日期: {text}，请使用 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS 格式")
+    if naive is None:
+        raise ValueError(f"无法解析日期: {text}，请使用 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS 格式")
+    # 附加本地时区；获取不到本地时区时回退到东八区
+    local_tz = datetime.datetime.now().astimezone().tzinfo or datetime.timezone(datetime.timedelta(hours=8))
+    return naive.replace(tzinfo=local_tz)
 
 
 # ──────────────────────────────────────────────
@@ -115,20 +151,24 @@ class PolicyCheckExporter:
 
     def _load_cookie(self, cookie_path=None):
         """
-        从固定路径文件读取并提取 cookie 内容。
+        从文件读取并提取 cookie 内容。
 
-        文件格式为 JSON，需提取 cookieString 字段作为请求 cookie。
+        cookie_path 必须在创建时提供，否则抛出 ValueError。
+        文件格式如果是以 { 或 [ 开头的 JSON，提取 cookieString 或 cookie 字段；
+        否则直接作为原始 cookie 字符串使用。
         """
-        resolved_path = cookie_path or COOKIE_FILE_PATH
-        if not os.path.exists(resolved_path):
-            print(f"[WARNING] Cookie 文件不存在: {resolved_path}")
-            return ""
-        with open(resolved_path, "r", encoding="utf-8") as f:
+        if not cookie_path:
+            raise ValueError("必须提供 cookie_path 以加载 cookie")
+
+        if not os.path.exists(cookie_path):
+            raise FileNotFoundError(f"Cookie 文件不存在: {cookie_path}")
+
+        with open(cookie_path, "r", encoding="utf-8") as f:
             raw = f.read()
 
         stripped = raw.strip()
         if not stripped:
-            return ""
+            raise ValueError(f"Cookie 文件为空: {cookie_path}")
 
         if stripped.startswith("{") or stripped.startswith("["):
             data = json.loads(stripped)
@@ -151,11 +191,12 @@ class PolicyCheckExporter:
         all_records = []
         offset = 0
 
-        # 接口要求 time_range 为 [start, end] 日期字符串数组
-        # start_time 取日期部分；end_time 若含时分秒则取对应日期，否则取日期部分
+        # 接口要求 time_range 为 [start, end] ISO 8601 UTC 字符串数组
+        # self.start_time / self.end_time 保存的是本地时间，此处转换为 UTC
+        utc_tz = datetime.timezone.utc
         time_range = [
-            self.start_time.strftime("%Y-%m-%d"),
-            self.end_time.strftime("%Y-%m-%d"),
+            self.start_time.astimezone(utc_tz).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            self.end_time.astimezone(utc_tz).strftime("%Y-%m-%dT%H:%M:%SZ"),
         ]
 
         while True:
@@ -163,7 +204,7 @@ class PolicyCheckExporter:
                 "company_id": self.company_id,
                 "limit": PAGE_SIZE,
                 "offset": offset,
-                "time_range": time_range,
+                "latest_time": time_range,
             }
             if self.status:
                 payload["status"] = self.status
@@ -210,6 +251,9 @@ class PolicyCheckExporter:
             offset += PAGE_SIZE
 
         print(f"[INFO] 接口获取 {len(all_records)} 条")
+        for item in all_records:
+            item["dev_type"] = DEV_TYPE_DICT.get(item.get("dev_type")) or item.get("dev_type") or ""
+
         return all_records
 
     # ── 第二步：格式转换 ──
@@ -229,8 +273,8 @@ class PolicyCheckExporter:
             for col_name, field_name in COLUMN_MAP:
                 if field_name == "seq":
                     row[col_name] = idx
-                elif field_name in ("latest_time", "event_time"):
-                    row[col_name] = _extract_first(record.get(field_name, []))
+                elif field_name == "latest_time":
+                    row[col_name] = _utc_to_local_str(_extract_first(record.get(field_name, [])))
                 elif field_name == "risk_status":
                     raw = record.get("risk_status", "")
                     row[col_name] = "存在风险" if raw == "at_risk" else "无风险"
@@ -304,13 +348,6 @@ class PolicyCheckExporter:
         print()
 
         records = self.fetch_data()
-        if not records:
-            print("[WARNING] 未获取到符合条件的数据，Excel 不会生成")
-            return {
-                "recordCount": 0,
-                "excelPath": self.output_path,
-                "jsonPath": self.json_output_path or os.path.join(TMP_DIR, "policy_check.json"),
-            }
 
         json_path = self._save_json(records)
         rows = self.transform(records)
@@ -335,7 +372,7 @@ def parse_args():
     parser.add_argument("--start", required=True, help="时间范围起始，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS")
     parser.add_argument("--end", required=True, help="时间范围结束，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS")
     parser.add_argument("--status", default="", help="策略状态过滤，如 at_risk、no_risk，默认不过滤")
-    parser.add_argument("--cookie-path", default=None, help="Cookie 文件路径，支持纯文本或含 cookieString 的 JSON")
+    parser.add_argument("--cookie-path", required=True, help="Cookie 文件路径（必填），支持纯文本或含 cookieString 的 JSON")
     parser.add_argument("--output", default=None, help="输出 Excel 路径，默认为当前目录下 策略检查.xlsx")
     parser.add_argument("--json-output", default=None, help="输出 JSON 路径，默认为 tmp/policy_check.json")
     return parser.parse_args()

@@ -19,8 +19,8 @@ async function runBranch1ReportStage(options = {}) {
   await fs.mkdir(outputDir, { recursive: true });
 
   const reportOutputPath = path.join(outputDir, 'branch1-report.json');
-  const policyJsonPath = options.policyJsonPath || path.join(reportDir, 'tmp', 'policy_check.json');
-  const policyExcelPath = options.policyExcelPath || path.join(reportDir, '策略检查清单.xlsx');
+  const policyJsonPath = options.policyJsonPath || path.join(path.resolve(__dirname, '..'), 'tmp', 'policy_check.json');
+  const policyExcelPath = options.policyExcelPath || path.join(path.resolve(__dirname, '..'), '安全体检报告', '风险清单', '策略检查清单.xlsx');
   const args = [
     path.join(reportDir, 'run_all.py'),
     '--asset-path', path.resolve(options.assetPath || ''),
@@ -34,8 +34,8 @@ async function runBranch1ReportStage(options = {}) {
     '--policy-excel-path', path.resolve(policyExcelPath),
   ];
 
-  if (options.soarCookiePath) {
-    args.push('--cookie-path', path.resolve(options.soarCookiePath));
+  if (options.msswCookiePath) {
+    args.push('--cookie-path', path.resolve(options.msswCookiePath));
   }
   if (options.companyId) {
     args.push('--company-id', String(options.companyId));

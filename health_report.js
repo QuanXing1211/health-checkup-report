@@ -303,8 +303,8 @@ async function main() {
       vulnPath: preventionTables.vuln.filePath,
       exposurePath: preventionTables.exposure.filePath,
       devicePath: getDefaultDeviceJsonPath(),
-      soarCookiePath: options['cookie-path'],
-      outputDir: path.join(root, 'tmp', 'branch1')
+      msswCookiePath: options['mssw-cookie-path'],
+      outputDir: path.join(root, 'tmp')
     });
     reportData = mergeBranch1ReportPatch(reportData, branch1Result.reportPatch);
     logger('分支1 JSON 已合并到 report-data');
@@ -325,6 +325,7 @@ async function main() {
       exposurePath: preventionTables.exposure.filePath,
       weakpwdPath: preventionTables.weakpwd.filePath,
       vulnPath: preventionTables.vuln.filePath,
+      policyCheckPath: branch1Result.artifacts.policyExcelPath,
       logger
     });
     if (tableExports.incident) {
@@ -702,7 +703,8 @@ async function archiveRiskListFiles(options) {
     ['assetPath', '资产清单.xlsx'],
     ['exposurePath', '暴露面清单.xlsx'],
     ['weakpwdPath', '弱口令清单.xlsx'],
-    ['vulnPath', '漏洞清单.xlsx']
+    ['vulnPath', '漏洞清单.xlsx'],
+    ['policyCheckPath', '策略检查清单.xlsx']
   ];
   const archived = {};
 
