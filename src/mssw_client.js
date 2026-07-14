@@ -427,7 +427,6 @@ function buildAssetExportRequestBody(exportFields) {
   return {
     branch_id: 'all',
     search_type: 'current',
-    platform_ids: [],
     is_all: false,
     ids: [],
     exclude_ids: [],
@@ -2037,6 +2036,13 @@ function buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId, overrides = 
   });
 }
 
+function buildMsswAssetExportHeaders(cookieInfo, msswBaseUrl, companyId) {
+  return buildMsswHeaders(cookieInfo.cookieString, msswBaseUrl, {
+    traceid: generateUUID(),
+    'x-mssw-company-id': String(companyId || '')
+  });
+}
+
 function buildMsswIncidentExportRequestBody({ begin, end, companyId, fields }) {
   return {
     filters: {
@@ -2236,7 +2242,6 @@ function buildMsswAssetExportRequestBody(exportFields, ids = []) {
   return {
     branch_id: 'all',
     search_type: 'current',
-    platform_ids: [],
     is_all: false,
     ids: Array.isArray(ids) ? ids : [],
     exclude_ids: [],
@@ -2246,11 +2251,13 @@ function buildMsswAssetExportRequestBody(exportFields, ids = []) {
 
 async function fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId) {
   const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
-  const headers = buildMsswExportHeaders(cookieInfo, msswHost, companyId);
+  const headers = buildMsswAssetExportHeaders(cookieInfo, msswHost, companyId);
   const url = `https://${msswHost}${MSSW_ASSET_EXPORT_FIELDS_ENDPOINT}`;
+  const body = JSON.stringify({});
+  headers['content-length'] = String(Buffer.byteLength(body));
   const response = await requestJson(url, {
     headers,
-    body: JSON.stringify({})
+    body
   });
 
   if (!response || response.success !== true || !response.data) {
@@ -2262,11 +2269,13 @@ async function fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId) {
 
 async function triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFields, ids = []) {
   const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
-  const headers = buildMsswExportHeaders(cookieInfo, msswHost, companyId);
+  const headers = buildMsswAssetExportHeaders(cookieInfo, msswHost, companyId);
   const url = `https://${msswHost}${MSSW_ASSET_EXPORT_ENDPOINT}`;
+  const body = JSON.stringify(buildMsswAssetExportRequestBody(exportFields, ids));
+  headers['content-length'] = String(Buffer.byteLength(body));
   const response = await requestJson(url, {
     headers,
-    body: JSON.stringify(buildMsswAssetExportRequestBody(exportFields, ids)),
+    body,
     timeout: 120000
   });
 
