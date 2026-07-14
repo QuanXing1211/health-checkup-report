@@ -537,37 +537,18 @@ Options:
 }
 
 async function exportConfiguredXdrTables(options) {
-  // ====== MOCK: 使用本地模拟表，注释掉下载部分 ======
-  const mockIncidentPath = path.resolve(__dirname, 'tmp', 'mock_incident_table_v3.xlsx');
-  const mockAssetPath = path.resolve(__dirname, 'tmp', 'mock_asset_table.xlsx');
-
-  // 如果 mock 文件不存在，自动运行 gen_mock_tables.py 生成一次
-  const genScript = path.resolve(__dirname, 'scripts', 'gen_mock_tables.py');
-  const tableMissing = !(await fileExists(mockIncidentPath)) || !(await fileExists(mockAssetPath));
-  if (tableMissing) {
-    logWith(options.logger, '[MOCK] 模拟表缺失，自动生成中...');
-    await execPythonScript(genScript);
-    logWith(options.logger, '[MOCK] 模拟表生成完成');
-  }
-
-  logWith(options.logger, `[MOCK] 使用模拟事件表: ${mockIncidentPath}`);
-  logWith(options.logger, `[MOCK] 使用模拟资产表: ${mockAssetPath}`);
-  return {
-    asset: { filePath: mockAssetPath, filename: 'mock_asset_table.xlsx' },
-    incident: { filePath: mockIncidentPath, filename: 'mock_incident_table.xlsx' }
-  };
-  // ====== 原始下载逻辑（已注释） ======
-  /*
   if (!options.msswCookiePath) {
+    logWith(options.logger, '未提供 mssw-cookie-path，跳过 MSSW 导表');
     return {};
   }
 
   const tables = parseXdrTables(options.xdrTables);
   logWith(options.logger, `准备导出表格: ${tables.join(', ')}`);
   const results = {};
+
   for (const table of tables) {
     if (table === 'asset') {
-      logWith(options.logger, '开始处理表格: asset (MSSW)');
+      logWith(options.logger, '开始处理表格: asset (MSSW 真实下载)');
       results.asset = await exportMsswAssetList({
         msswCookiePath: options.msswCookiePath,
         msswBaseUrl: options.msswBaseUrl,
@@ -580,7 +561,7 @@ async function exportConfiguredXdrTables(options) {
     }
 
     if (table === 'incident') {
-      logWith(options.logger, '开始处理表格: incident (MSSW)');
+      logWith(options.logger, '开始处理表格: incident (MSSW 真实下载)');
       results.incident = await exportMsswIncidentList({
         msswCookiePath: options.msswCookiePath,
         downloadDir: options.downloadDir,
@@ -598,7 +579,6 @@ async function exportConfiguredXdrTables(options) {
   }
 
   return results;
-  */
 }
 
 function createLogger(options = {}) {
@@ -799,35 +779,66 @@ async function resolveEffectiveTimeRange({ options, customerId, msswCookie, repo
     throw new Error('时间参数必须同时传入 --start 和 --end，或两者都不传');
   }
 
+  // 每次都要查接口拿服务起止时间
+  let serviceTimeRange = null;
+  const canFetchEicvres = Boolean(options['mssw-cookie-path'] && customerId);
+
+  if (canFetchEicvres) {
+    try {
+      const resolvedCookie = msswCookie || await readMsswCookieInfo(options['mssw-cookie-path']);
+      serviceTimeRange = await fetchDefaultProjectTimeRange(
+        resolvedCookie,
+        options['mssw-base-url'],
+        customerId,
+        reportGeneratedAt
+      );
+      logger(`服务时间范围: ${serviceTimeRange.start} ~ ${serviceTimeRange.end}`);
+    } catch (error) {
+      logger(`获取服务时间范围失败: ${error.message}`);
+    }
+  }
+
   if (hasStart && hasEnd) {
-    validateDateRange(options.start, options.end);
+    let effectiveStart = String(options.start).trim();
+    let effectiveEnd = String(options.end).trim();
+
+    if (serviceTimeRange) {
+      // 起始时间早于服务开始时间 → 取服务开始时间
+      const userStart = parseLocalDate(effectiveStart, false);
+      const serviceStart = parseLocalDate(serviceTimeRange.start, false);
+      if (userStart !== null && serviceStart !== null && userStart < serviceStart) {
+        effectiveStart = serviceTimeRange.start;
+        logger(`用户起始时间 ${options.start} 早于服务开始时间 ${serviceTimeRange.start}，已自动调整`);
+      }
+
+      // 结束时间晚于服务结束时间 → 取服务结束时间
+      const userEnd = parseLocalDate(effectiveEnd, true);
+      const serviceEnd = parseLocalDate(serviceTimeRange.end, true);
+      if (userEnd !== null && serviceEnd !== null && userEnd > serviceEnd) {
+        effectiveEnd = serviceTimeRange.end;
+        logger(`用户结束时间 ${options.end} 晚于服务结束时间 ${serviceTimeRange.end}，已自动调整`);
+      }
+    }
+
+    validateDateRange(effectiveStart, effectiveEnd);
+    const clamped = effectiveStart !== String(options.start).trim() || effectiveEnd !== String(options.end).trim();
+    logger(`最终时间范围: ${effectiveStart} ~ ${effectiveEnd}`);
     return {
-      start: String(options.start).trim(),
-      end: String(options.end).trim(),
-      source: 'cli'
+      start: effectiveStart,
+      end: effectiveEnd,
+      source: clamped ? 'cli-clamped' : 'cli'
     };
   }
 
-  if (!options['mssw-cookie-path']) {
-    throw new Error('未传 --start/--end 时，需要提供 --mssw-cookie-path 以自动推导默认时间范围');
+  // 用户未传时间，使用接口返回的服务时间范围
+  if (!serviceTimeRange) {
+    throw new Error('未传 --start/--end 时，需要提供 --mssw-cookie-path 和有效的 company_id 以自动推导默认时间范围');
   }
 
-  const resolvedCookie = msswCookie || await readMsswCookieInfo(options['mssw-cookie-path']);
-  const resolvedCustomerId = String(customerId || options['customer-id'] || '').trim();
-  if (!resolvedCustomerId) {
-    throw new Error('未传时间时需要先解析出 company_id，请检查 --customer 是否能匹配，或手动传 --customer-id');
-  }
-
-  const timeRange = await fetchDefaultProjectTimeRange(
-    resolvedCookie,
-    options['mssw-base-url'],
-    resolvedCustomerId,
-    reportGeneratedAt
-  );
-  validateDateRange(timeRange.start, timeRange.end);
-  logger(`已自动推导时间范围: ${timeRange.start} ~ ${timeRange.end}`);
+  validateDateRange(serviceTimeRange.start, serviceTimeRange.end);
+  logger(`最终时间范围: ${serviceTimeRange.start} ~ ${serviceTimeRange.end}`);
   return {
-    ...timeRange,
+    ...serviceTimeRange,
     source: 'mssw-project-service'
   };
 }
