@@ -181,13 +181,6 @@ def ensure_parent_dir(file_path: str):
 
 
 def maybe_export_policy(args):
-    if args.policy_json_path and args.policy_excel_path:
-        return {
-            "jsonPath": os.path.abspath(args.policy_json_path),
-            "excelPath": os.path.abspath(args.policy_excel_path),
-            "recordCount": None,
-        }
-
     required = [args.cookie_path, args.company_id, args.start, args.end]
     if not all(required):
         raise ValueError("缺少策略检查输入：需同时提供 policy 路径，或提供 cookie/company-id/start/end 以自动采集")
