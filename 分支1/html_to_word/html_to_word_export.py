@@ -43,7 +43,7 @@ _DEFAULT_CONFIG = {
     "trigger_paginate": False,
     "render_wait": {"after_load_ms": 2000, "ready_markers": []},
     "dom_root": "#sr-page-source",
-    "skip_selectors": [".sr-nav-wrap", ".sr-toc-page", ".sr-copyright-page"],
+    "skip_selectors": [".sr-nav-wrap", ".sr-toc-page", ".sr-copyright-page", ".sr-dev-reference", ".sr-hidden-charts"],
     "snapshot_selectors": [
         ".sr-chart-slot",
         ".sr-chart-card",
@@ -154,13 +154,22 @@ class _Container:
                     pass
             # 东亚字体：heading 优先，回退到 normal.east_asia
             ea = heading_cfg.get("east_asia") or (self.fonts.get("normal", {}) or {}).get("east_asia")
-            if ea:
+            latin = heading_cfg.get("font") or (self.fonts.get("normal", {}) or {}).get("font")
+            if ea or latin:
                 rPr = run._r.get_or_add_rPr()
                 rFonts = rPr.find(qn("w:rFonts"))
                 if rFonts is None:
                     rFonts = OxmlElement("w:rFonts")
                     rPr.append(rFonts)
-                rFonts.set(qn("w:eastAsia"), ea)
+                # 清除主题字体引用，避免 Word fallback 到主题字体（MS Gothic 等）
+                for theme_attr in ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "cstheme"):
+                    if rFonts.get(qn(f"w:{theme_attr}")) is not None:
+                        del rFonts.attrib[qn(f"w:{theme_attr}")]
+                if ea:
+                    rFonts.set(qn("w:eastAsia"), ea)
+                if latin:
+                    rFonts.set(qn("w:ascii"), latin)
+                    rFonts.set(qn("w:hAnsi"), latin)
             return p
         return self.doc.add_heading(text, level=level)
 
@@ -594,6 +603,10 @@ class HtmlToWordExporter:
         # 剔除 script / style / noscript
         for tag in root.find_all(["script", "style", "noscript"]):
             tag.decompose()
+        # 剔除 data-hide="true" 元素（HTML 预览中被 CSS [data-hide="true"]{display:none}
+        # 隐藏的内容，如占位符列表项、无需展示的风险卡等，浏览器不渲染，Word 也不应出现）
+        for tag in root.find_all(attrs={"data-hide": "true"}):
+            tag.decompose()
         return root
 
     # ──────────────────────────────────────────────
@@ -614,6 +627,12 @@ class HtmlToWordExporter:
         # 防御性剔除 HTML 注释（同 extract_dom）
         for c in root.find_all(string=lambda s: isinstance(s, Comment)):
             c.extract()
+        # 防御性剔除 data-hide="true" 元素（同 extract_dom）
+        try:
+            for tag in root.find_all(attrs={"data-hide": "true"}):
+                tag.decompose()
+        except Exception:
+            pass
         doc = Document()
         self._configure_page(doc)
         # 首页：A4 竖版封面（背景图固定使用 html_to_word/assets/a4-portrait-bg.png）
@@ -1171,7 +1190,19 @@ class HtmlToWordExporter:
             if rFonts is None:
                 rFonts = OxmlElement("w:rFonts")
                 rPr.append(rFonts)
+            # 清除主题字体引用，避免 Word 渲染中文时 fallback 到主题字体
+            # （python-docx 默认模板 majorFont/Jpan=MS Gothic、Hans=宋体，
+            #  仅追加显式 w:eastAsia 不删 asciiTheme/eastAsiaTheme 等
+            #  主题引用属性时，部分字符仍会被 Word 按 Unicode script 归到
+            #  主题字体）。同时设置 ascii/hAnsi，让英文字符也走显式字体名。
+            for theme_attr in ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "cstheme"):
+                if rFonts.get(qn(f"w:{theme_attr}")) is not None:
+                    del rFonts.attrib[qn(f"w:{theme_attr}")]
             rFonts.set(qn("w:eastAsia"), cfg["east_asia"])
+            # 若配置同时提供拉丁字体名，则一并写入 ascii/hAnsi，避免英文 fallback
+            if "font" in cfg and cfg["font"]:
+                rFonts.set(qn("w:ascii"), cfg["font"])
+                rFonts.set(qn("w:hAnsi"), cfg["font"])
         # 段落间距
         pf = style.paragraph_format
         if "space_before_pt" in cfg and cfg["space_before_pt"] is not None:
@@ -1545,7 +1576,89 @@ class HtmlToWordExporter:
                         for k in range(colspan):
                             occupied[(ri + r, ci + k)] = True
                 ci += colspan
+        self._set_table_column_widths_by_header(table, grid[0])
         self._set_table_borders(table)
+
+    def _set_table_column_widths_by_header(self, table, header_row):
+        """根据表头单元格文本长度计算列宽并固定到 Word 表格。
+
+        策略：
+          - 中文字符按 2 宽度权重，英文/数字按 1 宽度
+          - 按权重比例分配页面内容宽度（page_width - 2 * margin）
+          - 最小列宽 10mm，避免空表头列宽为 0
+          - 关闭 autofit + 设置 tblLayout=fixed，确保 Word 按指定列宽渲染
+
+        Args:
+            table: docx Table 对象
+            header_row: 表头行数据 [(cell_soup, colspan, rowspan), ...]，
+                        与 _map_table 中 grid[0] 一致
+        """
+        if not header_row:
+            return
+        cfg = self.config.get("docx", {})
+        page_w_mm = cfg.get("page_width_mm", 210)
+        margin_mm = cfg.get("margin_mm", 20)
+        content_w_mm = page_w_mm - 2 * margin_mm
+        min_col_mm = 10
+
+        # 按 colspan 展开，把表头权重铺到每个 gridCol 上
+        col_weights = []
+        for cell_soup, colspan, rowspan in header_row:
+            text = cell_soup.get_text(strip=True) if cell_soup else ""
+            # 中文字符（ord > 127）按 2 宽度，其他按 1
+            weight = sum(2 if ord(c) > 127 else 1 for c in text)
+            n = max(int(colspan or 1), 1)
+            col_weights.extend([weight / n] * n)
+
+        if not col_weights:
+            return
+        col_weights = [max(w, 1.0) for w in col_weights]
+
+        # 列数过多退化到平均分配；否则按权重比例分配并兜底最小列宽
+        if min_col_mm * len(col_weights) >= content_w_mm:
+            each = content_w_mm / len(col_weights)
+            col_widths_mm = [each] * len(col_weights)
+        else:
+            total_weight = sum(col_weights)
+            col_widths_mm = [content_w_mm * w / total_weight for w in col_weights]
+            col_widths_mm = [max(w, min_col_mm) for w in col_widths_mm]
+            # 拉底后总宽可能超 content_w，按比例归一
+            total = sum(col_widths_mm)
+            if total > content_w_mm and total > 0:
+                scale = content_w_mm / total
+                col_widths_mm = [w * scale for w in col_widths_mm]
+
+        # 关闭 autofit，设置 tblLayout=fixed
+        table.autofit = False
+        table.allow_autofit = False
+        tbl = table._tbl
+        tblPr = tbl.find(qn("w:tblPr"))
+        if tblPr is None:
+            tblPr = OxmlElement("w:tblPr")
+            tbl.insert(0, tblPr)
+
+        layout = tblPr.find(qn("w:tblLayout"))
+        if layout is None:
+            layout = OxmlElement("w:tblLayout")
+            tblPr.append(layout)
+        layout.set(qn("w:type"), "fixed")
+
+        # tblW 总宽（dxa = twips）
+        total_twips = int(round(content_w_mm * 1440 / 25.4))
+        tblW = tblPr.find(qn("w:tblW"))
+        if tblW is None:
+            tblW = OxmlElement("w:tblW")
+            tblPr.append(tblW)
+        tblW.set(qn("w:type"), "dxa")
+        tblW.set(qn("w:w"), str(total_twips))
+
+        # 各 gridCol 宽度（twips）
+        tblGrid = tbl.find(qn("w:tblGrid"))
+        if tblGrid is None:
+            return
+        for gridCol, width_mm in zip(tblGrid.findall(qn("w:gridCol")), col_widths_mm):
+            twips = int(round(width_mm * 1440 / 25.4))
+            gridCol.set(qn("w:w"), str(twips))
 
     def _render_cell_text_with_br(self, cell, cell_soup):
         """将 HTML 单元格文本写入 docx cell，<br> 映射为 Word 软换行。"""
