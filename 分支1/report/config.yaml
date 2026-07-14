@@ -14,7 +14,7 @@ data_source:
       data_start_row: 3
     event:
       latest_match: "incident|事件"
-      sheet: "安全事件"
+      sheet: "事件表"
     vuln:
       latest_match: "vuln|漏洞"
       sheet: "漏洞"
