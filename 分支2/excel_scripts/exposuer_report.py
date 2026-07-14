@@ -957,6 +957,10 @@ def main():
 
     # 7. 解压 + 构建新报告
     extract_dir = os.path.join(TEMP_DIR, 'extracted')
+    # 清理旧文件，避免 os.walk 匹配到之前残留的 xlsx
+    if os.path.exists(extract_dir):
+        import shutil
+        shutil.rmtree(extract_dir)
     os.makedirs(extract_dir, exist_ok=True)
     log("[7/7] 构建暴露面清单...")
     file_b, file_c = extract_report(zip_path, extract_dir)

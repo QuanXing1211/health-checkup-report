@@ -38,7 +38,8 @@ const SECTION_RENDERERS = {
   'internet.vuln.topAssetsBlock': renderInternetVulnTopAssetsBlock,
   'intranet.vuln.levelDetail': renderIntranetVulnLevelDetail,
   'intranet.vuln.prioritySummary': renderIntranetVulnPrioritySummary,
-  'intranet.vuln.topBlocksGroup': renderIntranetVulnTopBlocksGroup
+  'intranet.vuln.bizTopBlock': renderIntranetVulnBizTopBlock,
+  'intranet.vuln.assetTopBlock': renderIntranetVulnAssetTopBlock
 };
 
 const REPEAT_RENDERERS = {
@@ -800,7 +801,7 @@ function renderInternetVulnPrioritySummary(data) {
 
 function renderInternetVulnTopAssetsBlock(data) {
   const v = (data.internet && data.internet.vuln) || {};
-  if (!v.total) return '';
+  if (!v.related_assets) return '';
 
   const rows = Array.isArray(v.top_rows) ? v.top_rows : [];
   const tableRows = rows.map((r, i) =>
@@ -844,24 +845,12 @@ function renderIntranetVulnPrioritySummary(data) {
   );
 }
 
-function renderIntranetVulnTopBlocksGroup(data) {
+function renderIntranetVulnBizTopBlock(data) {
   const v = (data.intranet && data.intranet.vuln) || {};
-  if (!v.total) return '';
+  if (!v.related_biz) return '';
 
   const bizRows = Array.isArray(v.biz_top_rows) ? v.biz_top_rows : [];
   const bizTableRows = bizRows.map((r, i) =>
-    '<tr>' +
-    `<td>${i + 1}</td>` +
-    `<td>${escapeHtml(r.asset)}</td>` +
-    '<td class="sr-vuln-priority-stats">' +
-    `<div>急需修复：<strong>${num(r.urgent)}</strong>个</div>` +
-    `<div>尽快修复：<strong>${num(r.soon)}</strong>个</div>` +
-    `<div>建议修复：<strong>${num(r.suggest)}</strong>个</div>` +
-    '</td></tr>'
-  ).join('');
-
-  const assetRows = Array.isArray(v.asset_top_rows) ? v.asset_top_rows : [];
-  const assetTableRows = assetRows.map((r, i) =>
     '<tr>' +
     `<td>${i + 1}</td>` +
     `<td>${escapeHtml(r.asset)}</td>` +
@@ -876,7 +865,27 @@ function renderIntranetVulnTopBlocksGroup(data) {
     '<p class="report-body sr-p">业务系统TOP 5如下：</p>\n' +
     '<table class="report-table sr-tbl" id="tbl-biz-vuln-top">' +
     '<thead><tr><th>序号</th><th>风险资产</th><th>漏洞修复优先级</th></tr></thead>' +
-    `<tbody>${bizTableRows}</tbody></table>\n` +
+    `<tbody>${bizTableRows}</tbody></table>`
+  );
+}
+
+function renderIntranetVulnAssetTopBlock(data) {
+  const v = (data.intranet && data.intranet.vuln) || {};
+  if (!v.related_assets) return '';
+
+  const assetRows = Array.isArray(v.asset_top_rows) ? v.asset_top_rows : [];
+  const assetTableRows = assetRows.map((r, i) =>
+    '<tr>' +
+    `<td>${i + 1}</td>` +
+    `<td>${escapeHtml(r.asset)}</td>` +
+    '<td class="sr-vuln-priority-stats">' +
+    `<div>急需修复：<strong>${num(r.urgent)}</strong>个</div>` +
+    `<div>尽快修复：<strong>${num(r.soon)}</strong>个</div>` +
+    `<div>建议修复：<strong>${num(r.suggest)}</strong>个</div>` +
+    '</td></tr>'
+  ).join('');
+
+  return (
     '<p class="report-body sr-p">内网漏洞风险资产TOP 5如下：</p>\n' +
     '<table class="report-table sr-tbl" id="tbl-intra-vuln-top">' +
     '<thead><tr><th>序号</th><th>风险资产</th><th>漏洞修复优先级</th></tr></thead>' +

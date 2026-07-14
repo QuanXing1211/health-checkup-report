@@ -553,9 +553,9 @@ C_FROM_EASM: List[Tuple[str, str]] = [
     ("修复建议",      "__EMPTY__"),   # 固定为空
     ("风险描述",      "漏洞介绍"),     # 直接来自文件A的【漏洞介绍】列
     ("威胁标签",      "__EMPTY__"),   # 固定为空
-    ("数据源",        "__FIXED_bjx"), # 固定为 "bjx"
+    ("数据源",        "__FIXED_Xhunter"), # 固定为 "Xhunter"
     ("检测方式",      "扫描方式"),
-    ("CVE 编号",      "__FIXED_CVE_ID"), # 固定为 "CVE ID"
+    ("CVE 编号",      "CVE ID"),
     ("最近发现时间",  "最近发现时间"),
     ("首次发现时间",  "首次发现时间"),
     ("风险资产",      "IP/子域名"),
@@ -619,17 +619,14 @@ def process_easm_file(file_a_path: str) -> List[dict]:
             elif source == "__EMPTY__":
                 row_data[c_col] = ""
 
-            elif source == "__FIXED_bjx":
-                row_data[c_col] = "bjx"
+            elif source == "__FIXED_Xhunter":
+                row_data[c_col] = "Xhunter"
 
             elif source == "__FIXED_暴露":
                 row_data[c_col] = "暴露"
 
             elif source == "__FIXED_外网":
                 row_data[c_col] = "外网"
-
-            elif source == "__FIXED_CVE_ID":
-                row_data[c_col] = "CVE ID"
 
             elif source == "__PROOF__":
                 # 举证信息：请求 + 响应 拼接
