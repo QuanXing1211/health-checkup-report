@@ -18,7 +18,6 @@ import json
 import os
 import shutil
 import sys
-from datetime import datetime, timedelta
 
 from openpyxl import load_workbook
 
@@ -37,20 +36,7 @@ INCIDENT_COLUMNS_TO_MOCK = [
     '外网IP地址',
     '域名',
     '文件',
-    '处置时间',
     '推送状态',
-]
-
-TIME_COLUMN_ALIASES = [
-    '处置时间',
-    '最近发生时间',
-    '最近发现时间',
-    '结束时间',
-    'lastTime',
-    'endTime',
-    'disposeTime',
-    'dealTime',
-    'firstTime',
 ]
 
 def normalize(value):
@@ -81,53 +67,14 @@ def process_asset_table(input_path, output_dir):
             to_remove_cols.append(col_map[col_name])
 
     if to_remove_cols:
-        # 按列索引从大到小排序，从右往左删除（避免删除后索引偏移）
+        # 按列索引从大到小直接删除原工作表中的列，避免重建单元格导致样式丢失。
         to_remove_cols.sort(reverse=True)
-        # 读取所有行数据
-        all_rows = list(ws.iter_rows(min_row=1, values_only=True))
-        # 清空原 sheet
-        ws.delete_rows(1, ws.max_row)
-        # 逐行删除指定列
-        for row_idx, row in enumerate(all_rows, start=1):
-            row_list = list(row)
-            for col_idx in to_remove_cols:
-                if col_idx < len(row_list):
-                    del row_list[col_idx]
-            ws.append(row_list)
+        for col_idx in to_remove_cols:
+            ws.delete_cols(col_idx + 1, 1)
 
     wb.save(output_path)
     wb.close()
     return output_path
-
-
-def find_first_non_empty_time(ws, col_map, header_row):
-    for column_name in TIME_COLUMN_ALIASES:
-        col_idx = col_map.get(column_name)
-        if col_idx is None:
-            continue
-
-        for row_idx in range(header_row + 1, ws.max_row + 1):
-            value = ws.cell(row=row_idx, column=col_idx + 1).value
-            if value not in (None, ''):
-                return value
-    return None
-
-
-def parse_time_template(value):
-    if isinstance(value, datetime):
-        return value, '%Y-%m-%d %H:%M:%S'
-
-    text = normalize(value)
-    if not text:
-        return datetime(2026, 7, 1, 9, 0, 0), '%Y-%m-%d %H:%M:%S'
-
-    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y/%m/%d %H:%M:%S', '%Y-%m-%d %H:%M', '%Y/%m/%d %H:%M'):
-        try:
-            return datetime.strptime(text, fmt), fmt
-        except ValueError:
-            continue
-
-    return datetime(2026, 7, 1, 9, 0, 0), '%Y-%m-%d %H:%M:%S'
 
 
 def build_mock_ip_value(index):
@@ -177,9 +124,6 @@ def process_incident_table(input_path, output_dir):
         shutil.copy2(input_path, output_path)
         return output_path
 
-    time_sample = find_first_non_empty_time(ws, col_map, header_row)
-    base_time, time_format = parse_time_template(time_sample)
-
     for column_name in missing_columns:
         new_col = ws.max_column + 1
         ws.cell(row=header_row, column=new_col).value = column_name
@@ -195,8 +139,6 @@ def process_incident_table(input_path, output_dir):
             ws.cell(row=row_idx, column=col_map['域名'] + 1).value = build_mock_domain_value(index)
         if '文件' in missing_columns:
             ws.cell(row=row_idx, column=col_map['文件'] + 1).value = build_mock_file_value(index)
-        if '处置时间' in missing_columns:
-            ws.cell(row=row_idx, column=col_map['处置时间'] + 1).value = (base_time + timedelta(minutes=index)).strftime(time_format)
         if '推送状态' in missing_columns:
             ws.cell(row=row_idx, column=col_map['推送状态'] + 1).value = build_mock_push_status(index)
 

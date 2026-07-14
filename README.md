@@ -97,7 +97,7 @@ node health_report.js `
 | `riskDetails.closedEvents` | 已闭环事件数 | 导出的事件表 Excel | 统计 `处置状态` 列值等于 `处置完成` 的事件行数；指标名仍保留“已闭环” |
 | `riskDetails.containedEvents` | 已遏制事件数 | 导出的事件表 Excel | 读取表头为 `处置状态` 的列，统计值等于 `已遏制` 或 `处置完成` 的事件行数 |
 | `riskDetails.processingEvents` | 处置中事件数 | 导出的事件表 Excel | 读取表头为 `处置状态` 的列，统计值等于 `处置中` 的事件行数 |
-| `riskDetails.closeRate` | 闭环率 | 导出的事件表 Excel | 用 `closedEvents / totalEvents * 100` 计算，四舍五入为整数 |
+| `riskDetails.closeRate` | 闭环率 | 导出的事件表 Excel | 用 `closedEvents / totalEvents * 100` 计算，结果保留两位小数 |
 | `riskDetails.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果保留两位小数 |
 | `riskDetails.uniqueAssetCount` | 涉及到的资产数 | 导出的事件表 Excel | 遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址（如 `10.5.40.62(未归类组)` 取 `10.5.40.62`）后去重计数 |
 | `riskDetails.managedAvgResponseTime` | 托管资产事件平均响应时间 | 导出的资产表 Excel + 事件表 Excel | 先筛出影响资产属于托管资产且 `处置状态 = 处置完成` 的事件，再用 `完成时间 - 事件创建时间` 计算每起事件的响应分钟数，最后求平均并保留 1 位小数；任一时间缺失或无法解析则跳过该事件 |

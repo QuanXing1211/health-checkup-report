@@ -26,3 +26,16 @@ def decode_argv():
     """原地解码 sys.argv 中的所有条目。"""
     for i in range(1, len(sys.argv)):
         sys.argv[i] = decode_arg(sys.argv[i])
+
+
+def reset_read_only_dimensions(sheet):
+    """Ignore an incorrect XLSX ``dimension`` value in openpyxl read-only mode.
+
+    Some MSSW exports declare ``<dimension ref="A1"/>`` even though their
+    worksheet XML contains the complete table.  openpyxl otherwise truncates
+    iteration to A1 when reading these files in streaming mode.
+    """
+    reset = getattr(sheet, 'reset_dimensions', None)
+    if callable(reset):
+        reset()
+    return sheet

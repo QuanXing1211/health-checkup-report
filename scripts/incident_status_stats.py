@@ -85,7 +85,7 @@ def main():
             for ip in extract_ips(row[ip_col]):
                 unique_ips.add(ip)
 
-    close_rate = round((closed / total) * 100) if total else 0
+    close_rate = round((closed / total) * 100, 2) if total else 0
     print(json.dumps({
         "totalEvents": total,
         "severeEvents": severe,

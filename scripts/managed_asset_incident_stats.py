@@ -289,7 +289,7 @@ def main():
         }, ensure_ascii=False))
         return
 
-    close_rate = round((disposed_managed / total_managed) * 100) if total_managed else 0
+    close_rate = round((disposed_managed / total_managed) * 100, 2) if total_managed else 0
     avg_response_time = round(sum(disposed_response_times) / len(disposed_response_times), 1) if disposed_response_times else 0
     business_ranking = rank_business_systems(business_risk_records, 5)
 

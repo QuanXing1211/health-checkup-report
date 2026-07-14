@@ -427,7 +427,6 @@ function buildAssetExportRequestBody(exportFields) {
   return {
     branch_id: 'all',
     search_type: 'current',
-    platform_ids: [],
     is_all: false,
     ids: [],
     exclude_ids: [],
@@ -1819,9 +1818,11 @@ async function processRiskListTable(tableType, inputPath) {
     execFile('python3', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (error, stdout, stderr) => {
       if (error) {
         // Fallback: try python instead of python3
-        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2) => {
+        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2, stderr2) => {
           if (err2) {
-            reject(new Error(`处理风险清单表失败 (python3: ${error.message}, python: ${err2.message})`));
+            const python3Detail = stderr ? stderr.trim() : error.message;
+            const pythonDetail = stderr2 ? stderr2.trim() : err2.message;
+            reject(new Error(`处理风险清单表失败 (python3: ${python3Detail}, python: ${pythonDetail})`));
             return;
           }
           try {
@@ -2037,6 +2038,13 @@ function buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId, overrides = 
   });
 }
 
+function buildMsswAssetExportHeaders(cookieInfo, msswBaseUrl, companyId) {
+  return buildMsswHeaders(cookieInfo.cookieString, msswBaseUrl, {
+    traceid: generateUUID(),
+    'x-mssw-company-id': String(companyId || '')
+  });
+}
+
 function buildMsswIncidentExportRequestBody({ begin, end, companyId, fields }) {
   return {
     filters: {
@@ -2236,7 +2244,6 @@ function buildMsswAssetExportRequestBody(exportFields, ids = []) {
   return {
     branch_id: 'all',
     search_type: 'current',
-    platform_ids: [],
     is_all: false,
     ids: Array.isArray(ids) ? ids : [],
     exclude_ids: [],
@@ -2246,11 +2253,13 @@ function buildMsswAssetExportRequestBody(exportFields, ids = []) {
 
 async function fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId) {
   const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
-  const headers = buildMsswExportHeaders(cookieInfo, msswHost, companyId);
+  const headers = buildMsswAssetExportHeaders(cookieInfo, msswHost, companyId);
   const url = `https://${msswHost}${MSSW_ASSET_EXPORT_FIELDS_ENDPOINT}`;
+  const body = JSON.stringify({});
+  headers['content-length'] = String(Buffer.byteLength(body));
   const response = await requestJson(url, {
     headers,
-    body: JSON.stringify({})
+    body
   });
 
   if (!response || response.success !== true || !response.data) {
@@ -2262,11 +2271,13 @@ async function fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId) {
 
 async function triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFields, ids = []) {
   const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
-  const headers = buildMsswExportHeaders(cookieInfo, msswHost, companyId);
+  const headers = buildMsswAssetExportHeaders(cookieInfo, msswHost, companyId);
   const url = `https://${msswHost}${MSSW_ASSET_EXPORT_ENDPOINT}`;
+  const body = JSON.stringify(buildMsswAssetExportRequestBody(exportFields, ids));
+  headers['content-length'] = String(Buffer.byteLength(body));
   const response = await requestJson(url, {
     headers,
-    body: JSON.stringify(buildMsswAssetExportRequestBody(exportFields, ids)),
+    body,
     timeout: 120000
   });
 
@@ -2911,9 +2922,11 @@ async function removeIncidentSensitiveColumns(inputPath, outputDir) {
   return new Promise((resolve, reject) => {
     execFile('python3', [scriptPath, encodePath(inputPath), encodePath(resolvedOutputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (error, stdout, stderr) => {
       if (error) {
-        execFile('python', [scriptPath, encodePath(inputPath), encodePath(resolvedOutputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2) => {
+        execFile('python', [scriptPath, encodePath(inputPath), encodePath(resolvedOutputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2, stderr2) => {
           if (err2) {
-            reject(new Error(`删除事件表敏感列失败 (python3: ${error.message}, python: ${err2.message})`));
+            const python3Detail = stderr ? stderr.trim() : error.message;
+            const pythonDetail = stderr2 ? stderr2.trim() : err2.message;
+            reject(new Error(`删除事件表敏感列失败 (python3: ${python3Detail}, python: ${pythonDetail})`));
             return;
           }
           try {

@@ -13,7 +13,7 @@ import sys
 
 from openpyxl import load_workbook
 
-from _path_helper import decode_argv
+from _path_helper import decode_argv, reset_read_only_dimensions
 decode_argv()
 
 
@@ -103,7 +103,7 @@ def collect_incident_counts(incident_path, target_assets, c2_ids, virus_ids, exp
         return counts
 
     workbook = load_workbook(incident_path, read_only=True, data_only=True)
-    sheet = workbook.active
+    sheet = reset_read_only_dimensions(workbook.active)
     col_map, header_row = build_col_map(sheet)
     id_col = find_column(col_map, ["事件ID", "事件Id", "incident_id", "incidentId", "id", "ID"])
     asset_col = find_column(col_map, ["影响资产", "受影响资产", "host_ip", "hostIp", "主机IP", "ip"])
@@ -344,11 +344,18 @@ def build_detail_lines(asset, incident_counts, vuln_counts, weakpwd_counts, expo
         lines.append(f"该资产共发现在{high_vulns}个高危及以上漏洞")
     if weak_passwords > 0:
         lines.append(f"该资产共发现{weak_passwords}个弱口令")
-    if total_exposures > 0:
+    if total_exposures > 0 and (non_web_exposures > 0 or web_exposures > 0):
+        non_web_text = f"{non_web_exposures}个非Web服务"
+        if non_web_exposures > 0 and non_web_example_text:
+            non_web_text += f"（如{non_web_example_text}等）"
+
+        web_text = f"{web_exposures}个Web服务"
+        if web_exposures > 0 and web_example_text:
+            web_text += f"（如{web_example_text}）"
+
         lines.append(
             f"该资产共发现{total_exposures}个风险暴露面。"
-            f"含{non_web_exposures}个非Web服务（如{non_web_example_text}等）"
-            f"与{web_exposures}个Web服务（如{web_example_text}）"
+            f"含{non_web_text}与{web_text}"
         )
     lines.append(f"该资产{'已安装' if has_aes else '尚未安装'}aES")
     return lines
