@@ -25,6 +25,7 @@ const SECTION_RENDERERS = {
   'assetLedger.summary': renderAssetLedgerSummary,
   'riskOverview.summary': renderRiskOverviewSummary,
   'riskOverview.topRiskAssetsSummary': renderTopRiskAssetsSummary,
+  'keyRisks.01.desc': renderThreatActorRiskDescription,
   'riskDetails.caseStudy': renderCaseStudySection,
   'riskDetails.potentialLoss': () => '',
   'riskDetail.severeHighEventsPhrase': renderSevereHighEventsPhrase,
@@ -139,13 +140,14 @@ function replaceHandlebarsTokens(html, data) {
 
 function patchKnownText(html, data) {
   const projectBackground = getProjectBackground(data);
+  const riskDetails = data && data.riskDetails ? data.riskDetails : {};
   const customer = projectBackground.customerName || '';
   const start = projectBackground.startDate || '';
   const end = projectBackground.endDate || '';
   const title = projectBackground.title || '安全体检报告';
   const period = `${start} ~ ${end}`;
 
-  return html
+  html = html
     .replace(/<meta name="report-data-mode" content="[^"]*">/, '<meta name="report-data-mode" content="generated">')
     .replace(/<title>.*?<\/title>/, `<title>${escapeHtml(title)} - ${escapeHtml(customer)}</title>`)
     .replace(/<h1>首次安全体检报告<\/h1>/, `<h1>${escapeHtml(title)}</h1>`)
@@ -153,6 +155,16 @@ function patchKnownText(html, data) {
     .replace(/「示例科技有限公司」/g, `「${escapeHtml(customer)}」`)
     .replace(/示例科技有限公司/g, escapeHtml(customer))
     .replace(/2026-01-01 ~ 2026-03-31/g, escapeHtml(period));
+
+  // 4.1.3 无内容时，4.1.4 若有内容则顺延为 4.1.3，正文标题、目录和导航同步更新。
+  if (riskDetails.highRiskEventsSectionHide === true && riskDetails.caseStudySectionHide !== true) {
+    html = html
+      .replace(/(data-nav="sec-case-study"[^>]*>)4\.1\.4 典型案例/g, '$1' + '4.1.3 典型案例')
+      .replace(/(<span class="sr-toc-index">)4\.1\.4(<\/span>\s*<span class="sr-toc-label">典型案例)/g, '$1' + '4.1.3$2')
+      .replace(/(<h4 class="sr-h4" id="sec-case-study">)4\.1\.4 典型案例/g, '$1' + '4.1.3 典型案例');
+  }
+
+  return html;
 }
 
 function patchDataFields(html, data) {
@@ -299,6 +311,26 @@ function renderTopRiskAssetsSummary(data) {
   return `综上，贵公司当前的安全建设水位有一定差距，随时可能面临数据泄露、系统破坏导致业务中断以及由此带来的经济损失、信誉损害、公信力下降等更为致命的风险。修复方案重点针对 ${targetText}。`;
 }
 
+function renderThreatActorRiskDescription(data) {
+  const stats = data && data.riskOverview && data.riskOverview.incidentGptStats
+    ? data.riskOverview.incidentGptStats
+    : {};
+  const total = Number(stats.total || 0);
+  const actors = Array.isArray(stats.threatActorStats)
+    ? stats.threatActorStats
+      .filter((item) => item && Number(item.count || 0) > 0)
+      .map((item) => ({
+        count: Number(item.count),
+        name: String(item.name || '').trim()
+      }))
+      .filter((item) => item.name)
+      .map((item) => `<strong>${item.count}</strong>起${escapeHtml(item.name)}事件`)
+    : [];
+  const breakdown = actors.length ? `（其中${actors.join('、')}）` : '';
+
+  return `贵公司共发生<strong>${total}</strong>起病毒木马与C2外联事件${breakdown}，此类事件会造成主机失陷，可能引发员工的财务损失。`;
+}
+
 function renderCaseStudySection(data) {
   const caseStudy = (data && data.riskDetails && data.riskDetails.caseStudy) || {};
   const attackTimeline = Array.isArray(caseStudy.attackTimeline) ? caseStudy.attackTimeline : [];
@@ -349,7 +381,7 @@ function renderTopRiskAssetRows(rows) {
 
     return [
       '<tr>',
-      `<td class="sr-top5-asset"><div class="sr-top5-asset-ip-row"><span class="sr-top5-asset-ip">${escapeHtml(ip)}</span>${managedTag}</div><div class="sr-top5-asset-biz">${escapeHtml(businessSystem || '暂无业务')}</div></td>`,
+      `<td class="sr-top5-asset"><div class="sr-top5-asset-ip-row"><span class="sr-top5-asset-ip">${escapeHtml(ip)}</span>${managedTag}</div>${businessSystem ? `<div class="sr-top5-asset-biz">${escapeHtml(businessSystem)}</div>` : ''}</td>`,
       `<td><strong>${riskCount}</strong></td>`,
       `<td>${detailLines.join('<br>')}</td>`,
       '</tr>'

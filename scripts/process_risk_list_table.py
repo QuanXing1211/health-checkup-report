@@ -67,19 +67,10 @@ def process_asset_table(input_path, output_dir):
             to_remove_cols.append(col_map[col_name])
 
     if to_remove_cols:
-        # 按列索引从大到小排序，从右往左删除（避免删除后索引偏移）
+        # 按列索引从大到小直接删除原工作表中的列，避免重建单元格导致样式丢失。
         to_remove_cols.sort(reverse=True)
-        # 读取所有行数据
-        all_rows = list(ws.iter_rows(min_row=1, values_only=True))
-        # 清空原 sheet
-        ws.delete_rows(1, ws.max_row)
-        # 逐行删除指定列
-        for row_idx, row in enumerate(all_rows, start=1):
-            row_list = list(row)
-            for col_idx in to_remove_cols:
-                if col_idx < len(row_list):
-                    del row_list[col_idx]
-            ws.append(row_list)
+        for col_idx in to_remove_cols:
+            ws.delete_cols(col_idx + 1, 1)
 
     wb.save(output_path)
     wb.close()

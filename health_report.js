@@ -633,7 +633,9 @@ async function summarizeExportedIncidentStatus(tableExports, logger) {
   const stats = await summarizeIncidentStatus(incidentFilePath);
   if (Number(tableExports.incident.totalEvents) > 0) {
     stats.totalEvents = Number(tableExports.incident.totalEvents);
-    stats.closeRate = stats.totalEvents ? Math.round((stats.closedEvents / stats.totalEvents) * 100) : 0;
+    stats.closeRate = stats.totalEvents
+      ? Number(((stats.closedEvents / stats.totalEvents) * 100).toFixed(2))
+      : 0;
   }
   logWith(logger, `事件表统计完成: 事件数 ${stats.totalEvents} 起，严重 ${stats.severeEvents} 起，高危 ${stats.highEvents} 起，涉及到的资产数 ${stats.uniqueAssetCount} 个，已闭环 ${stats.closedEvents} 起，已遏制 ${stats.containedEvents} 起，处置中 ${stats.processingEvents} 起，闭环率 ${stats.closeRate}%`);
   return stats;
