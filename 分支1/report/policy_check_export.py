@@ -290,7 +290,7 @@ class PolicyCheckExporter:
         """
         将行字典列表写入 Excel 文件。
 
-        包含表头行和数据行，表头加粗、浅蓝底、居中显示，自动调整列宽。
+        包含表头行和数据行，表头微软雅黑白字深灰底，自动调整列宽。
         """
         path = output_path or self.output_path
         wb = openpyxl.Workbook()
@@ -300,16 +300,14 @@ class PolicyCheckExporter:
         headers = [col_name for col_name, _ in COLUMN_MAP]
         ws.append(headers)
 
-        # 表头样式：微软雅黑 10号 加粗 黑色字 浅蓝底 居中
-        header_font = openpyxl.styles.Font(name="微软雅黑", size=10, bold=True, color="FF000000")
-        header_fill = openpyxl.styles.PatternFill(start_color="FFBDCFE7", end_color="FFBDCFE7", fill_type="solid")
-        header_alignment = openpyxl.styles.Alignment(horizontal="center", vertical="center")
+        # 表头样式：微软雅黑 白色字 深灰底（与漏洞清单保持一致）
+        header_font = openpyxl.styles.Font(name="微软雅黑", color="FFFFFFFF")
+        header_fill = openpyxl.styles.PatternFill(start_color="FF333333", end_color="FF333333", fill_type="solid")
 
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_idx)
             cell.font = header_font
             cell.fill = header_fill
-            cell.alignment = header_alignment
 
         for row in rows:
             values = [row.get(col_name, "") for col_name, _ in COLUMN_MAP]

@@ -31,6 +31,8 @@ skip_selectors:
   - ".sr-nav-wrap"
   - ".sr-toc-page"
   - ".sr-copyright-page"
+  - ".sr-dev-reference"
+  - ".sr-hidden-charts"
 
 # 截图选择器（这些节点会被 Playwright 元素截图后替换为 <img> 占位）
 # 注意：报告实际类名为 sr-chart-slot / sr-chart-card 等，非 sr-chart
@@ -84,13 +86,13 @@ docx:
 # - line_spacing_pt: 行距（磅），留空则不覆盖
 fonts:
   normal:
-    font: "Microsoft YaHei"
-    east_asia: "Microsoft YaHei"
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
     size_pt: 10.5
     color_hex: "000000"
   heading_1:
-    font: "Microsoft YaHei"
-    east_asia: "Microsoft YaHei"
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
     size_pt: 22
     bold: true
     italic: false
@@ -98,8 +100,8 @@ fonts:
     space_before_pt: 12
     space_after_pt: 6
   heading_2:
-    font: "Microsoft YaHei"
-    east_asia: "Microsoft YaHei"
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
     size_pt: 18
     bold: true
     italic: false
@@ -107,8 +109,8 @@ fonts:
     space_before_pt: 10
     space_after_pt: 6
   heading_3:
-    font: "Microsoft YaHei"
-    east_asia: "Microsoft YaHei"
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
     size_pt: 16
     bold: true
     italic: false
@@ -116,8 +118,8 @@ fonts:
     space_before_pt: 8
     space_after_pt: 4
   heading_4:
-    font: "Microsoft YaHei"
-    east_asia: "Microsoft YaHei"
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
     size_pt: 14
     bold: true
     italic: false
@@ -125,8 +127,8 @@ fonts:
     space_before_pt: 6
     space_after_pt: 4
   heading_5:
-    font: "Microsoft YaHei"
-    east_asia: "Microsoft YaHei"
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
     size_pt: 12
     bold: true
     italic: false
@@ -134,8 +136,8 @@ fonts:
     space_before_pt: 6
     space_after_pt: 2
   heading_6:
-    font: "Microsoft YaHei"
-    east_asia: "Microsoft YaHei"
+    font: "微软雅黑"
+    east_asia: "微软雅黑"
     size_pt: 11
     bold: true
     italic: false
