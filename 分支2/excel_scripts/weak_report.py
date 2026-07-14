@@ -396,6 +396,7 @@ def easm_api7_2_weak_pwd_sub_list(cookie_str: str, company_id: str, ip: str) -> 
             "deal_status": EASM_DEAL_STATUS_FILTER,
             "company_id": company_id,
             "ip": ip,
+            "raw_pwd": True,     # 请求明文密码
         }
         resp = request_with_retry("POST", url, SOAR_BASE_URL, cookie_str, json=payload, timeout=120)
         data = _parse_json(resp, f"接口7-2（子表 ip={ip}）")
@@ -462,7 +463,7 @@ def mssw_api9_export_weak_pwd(cookie_str: str, company_id: str, latest_time_rang
         "data_type": ["weak_pwd"],
         "whitelisted_status": [],
         "latest_time_range": latest_time_range,
-        "is_show": 0,
+        "is_show": 1, # 明文导出
         "custom_headers": {
             "asset_info": [
                 {"disabled": True,  "key": "asset",                "label": "风险资产",      "selected": True},
@@ -627,7 +628,7 @@ def build_easm_rows(cookie_str: str, company_id: str,
                 "账号":         sub.get('account', ''),
                 "密码":         sub.get('passwd', ''),
                 "url":          sub.get('url', ''),
-                "数据源":       "bjx",
+                "数据源":       "",
                 "最近发现时间": resolve_parent_found_time(parent),
                 "首次发现时间": sub.get('found_time', ''),
                 "风险资产":     parent_ip,
