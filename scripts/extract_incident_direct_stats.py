@@ -24,7 +24,7 @@ import sys
 
 from openpyxl import load_workbook
 
-from _path_helper import decode_argv
+from _path_helper import decode_argv, reset_read_only_dimensions
 decode_argv()
 
 
@@ -67,7 +67,7 @@ def main():
         raise SystemExit("Usage: extract_incident_direct_stats.py <incident.xlsx>")
 
     workbook = load_workbook(sys.argv[1], read_only=True, data_only=True)
-    sheet = workbook.active
+    sheet = reset_read_only_dimensions(workbook.active)
     col_map = build_col_map(sheet)
 
     id_col = find_column(col_map, ["事件ID", "事件Id", "incident_id", "incidentId", "id", "ID"])

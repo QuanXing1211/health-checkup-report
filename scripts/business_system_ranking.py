@@ -18,7 +18,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from _path_helper import decode_argv
+from _path_helper import decode_argv, reset_read_only_dimensions
 decode_argv()
 
 
@@ -65,8 +65,8 @@ def normalize_asset_key(raw):
 def open_sheet(filepath, preferred_sheet=None):
     wb = load_workbook(filepath, read_only=True, data_only=True)
     if preferred_sheet and preferred_sheet in wb.sheetnames:
-        return wb[preferred_sheet]
-    return wb.active
+        return reset_read_only_dimensions(wb[preferred_sheet])
+    return reset_read_only_dimensions(wb.active)
 
 
 def find_latest_matching_file(directory, keywords):

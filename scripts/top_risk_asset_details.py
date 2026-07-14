@@ -13,7 +13,7 @@ import sys
 
 from openpyxl import load_workbook
 
-from _path_helper import decode_argv
+from _path_helper import decode_argv, reset_read_only_dimensions
 decode_argv()
 
 
@@ -103,7 +103,7 @@ def collect_incident_counts(incident_path, target_assets, c2_ids, virus_ids, exp
         return counts
 
     workbook = load_workbook(incident_path, read_only=True, data_only=True)
-    sheet = workbook.active
+    sheet = reset_read_only_dimensions(workbook.active)
     col_map, header_row = build_col_map(sheet)
     id_col = find_column(col_map, ["事件ID", "事件Id", "incident_id", "incidentId", "id", "ID"])
     asset_col = find_column(col_map, ["影响资产", "受影响资产", "host_ip", "hostIp", "主机IP", "ip"])

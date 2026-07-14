@@ -23,7 +23,7 @@ import sys
 
 from openpyxl import load_workbook
 
-from _path_helper import decode_argv
+from _path_helper import decode_argv, reset_read_only_dimensions
 decode_argv()
 
 
@@ -71,7 +71,7 @@ def main():
     # ====== Phase 1: 读取事件表 Excel ======
     # 收集：第一个病毒事件的IP、所有已确认事件的有序IP列表(去重)
     incident_wb = load_workbook(incident_path, read_only=True, data_only=True)
-    incident_ws = incident_wb.active
+    incident_ws = reset_read_only_dimensions(incident_wb.active)
     inc_col_map = build_col_map(incident_ws)
 
     id_col = find_column(inc_col_map, ["事件ID", "incident_id"])

@@ -26,7 +26,7 @@ import re
 import sys
 
 from openpyxl import load_workbook
-from _path_helper import decode_argv
+from _path_helper import decode_argv, reset_read_only_dimensions
 decode_argv()
 
 
@@ -62,8 +62,8 @@ def build_col_map(ws):
 def open_sheet(filepath, preferred_sheet=None):
     wb = load_workbook(filepath, read_only=True, data_only=True)
     if preferred_sheet and preferred_sheet in wb.sheetnames:
-        return wb[preferred_sheet]
-    return wb.active
+        return reset_read_only_dimensions(wb[preferred_sheet])
+    return reset_read_only_dimensions(wb.active)
 
 
 def find_column(col_map, aliases):
