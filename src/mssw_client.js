@@ -2031,10 +2031,16 @@ const MSSW_INCIDENT_EXPORT_FIELDS = [
 function buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId, overrides = {}) {
   const csrfToken = cookieInfo.cookies && cookieInfo.cookies['csrf_token'] || '';
   return buildMsswHeaders(cookieInfo.cookieString, msswBaseUrl, {
-    traceid: generateUUID(),
     'x-mssw-company-id': String(companyId || ''),
     'x-csrf-token': csrfToken,
     ...overrides
+  });
+}
+
+function buildMsswAssetExportHeaders(cookieInfo, msswBaseUrl, companyId) {
+  return buildMsswHeaders(cookieInfo.cookieString, msswBaseUrl, {
+    traceid: generateUUID(),
+    'x-mssw-company-id': String(companyId || '')
   });
 }
 
@@ -2247,7 +2253,7 @@ function buildMsswAssetExportRequestBody(exportFields, ids = []) {
 
 async function fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId) {
   const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
-  const headers = buildMsswExportHeaders(cookieInfo, msswHost, companyId);
+  const headers = buildMsswAssetExportHeaders(cookieInfo, msswHost, companyId);
   const url = `https://${msswHost}${MSSW_ASSET_EXPORT_FIELDS_ENDPOINT}`;
   const response = await requestJson(url, {
     headers,
@@ -2263,7 +2269,7 @@ async function fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId) {
 
 async function triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFields, ids = []) {
   const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
-  const headers = buildMsswExportHeaders(cookieInfo, msswHost, companyId);
+  const headers = buildMsswAssetExportHeaders(cookieInfo, msswHost, companyId);
   const url = `https://${msswHost}${MSSW_ASSET_EXPORT_ENDPOINT}`;
   const response = await requestJson(url, {
     headers,
