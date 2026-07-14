@@ -1818,9 +1818,11 @@ async function processRiskListTable(tableType, inputPath) {
     execFile('python3', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (error, stdout, stderr) => {
       if (error) {
         // Fallback: try python instead of python3
-        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2) => {
+        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2, stderr2) => {
           if (err2) {
-            reject(new Error(`处理风险清单表失败 (python3: ${error.message}, python: ${err2.message})`));
+            const python3Detail = stderr ? stderr.trim() : error.message;
+            const pythonDetail = stderr2 ? stderr2.trim() : err2.message;
+            reject(new Error(`处理风险清单表失败 (python3: ${python3Detail}, python: ${pythonDetail})`));
             return;
           }
           try {
@@ -2920,9 +2922,11 @@ async function removeIncidentSensitiveColumns(inputPath, outputDir) {
   return new Promise((resolve, reject) => {
     execFile('python3', [scriptPath, encodePath(inputPath), encodePath(resolvedOutputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (error, stdout, stderr) => {
       if (error) {
-        execFile('python', [scriptPath, encodePath(inputPath), encodePath(resolvedOutputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2) => {
+        execFile('python', [scriptPath, encodePath(inputPath), encodePath(resolvedOutputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2, stderr2) => {
           if (err2) {
-            reject(new Error(`删除事件表敏感列失败 (python3: ${error.message}, python: ${err2.message})`));
+            const python3Detail = stderr ? stderr.trim() : error.message;
+            const pythonDetail = stderr2 ? stderr2.trim() : err2.message;
+            reject(new Error(`删除事件表敏感列失败 (python3: ${python3Detail}, python: ${pythonDetail})`));
             return;
           }
           try {
