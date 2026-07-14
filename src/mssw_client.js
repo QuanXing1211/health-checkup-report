@@ -427,7 +427,6 @@ function buildAssetExportRequestBody(exportFields) {
   return {
     branch_id: 'all',
     search_type: 'current',
-    platform_ids: [],
     is_all: false,
     ids: [],
     exclude_ids: [],
@@ -2243,7 +2242,6 @@ function buildMsswAssetExportRequestBody(exportFields, ids = []) {
   return {
     branch_id: 'all',
     search_type: 'current',
-    platform_ids: [],
     is_all: false,
     ids: Array.isArray(ids) ? ids : [],
     exclude_ids: [],

@@ -89,6 +89,7 @@ async function main() {
   const tableExports = await exportConfiguredXdrTables({
     xdrCookiePath: options['xdr-cookie-path'],
     msswCookiePath: options['mssw-cookie-path'],
+    msswBaseUrl: options['mssw-base-url'],
     downloadDir: options['download-dir'],
     start: effectiveTimeRange.start,
     end: effectiveTimeRange.end,
@@ -572,6 +573,7 @@ async function exportConfiguredXdrTables(options) {
       logWith(options.logger, '开始处理表格: incident (MSSW 真实下载)');
       results.incident = await exportMsswIncidentList({
         msswCookiePath: options.msswCookiePath,
+        msswBaseUrl: options.msswBaseUrl,
         downloadDir: options.downloadDir,
         start: options.start,
         end: options.end,
