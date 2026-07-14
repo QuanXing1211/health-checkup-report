@@ -2031,6 +2031,7 @@ const MSSW_INCIDENT_EXPORT_FIELDS = [
 function buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId, overrides = {}) {
   const csrfToken = cookieInfo.cookies && cookieInfo.cookies['csrf_token'] || '';
   return buildMsswHeaders(cookieInfo.cookieString, msswBaseUrl, {
+    traceid: generateUUID(),
     'x-mssw-company-id': String(companyId || ''),
     'x-csrf-token': csrfToken,
     ...overrides
