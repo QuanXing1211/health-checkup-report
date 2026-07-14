@@ -298,7 +298,7 @@ async function main() {
       start: effectiveTimeRange.start,
       end: effectiveTimeRange.end,
       assetPath: resolvedAssetFilePath,
-      incidentPath: incidentFilePath,
+      eventPath: incidentFilePath,
       weakpwdPath: preventionTables.weakpwd.filePath,
       vulnPath: preventionTables.vuln.filePath,
       exposurePath: preventionTables.exposure.filePath,

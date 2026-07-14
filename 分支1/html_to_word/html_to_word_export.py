@@ -1499,7 +1499,7 @@ class HtmlToWordExporter:
                 _log(f"外部图片加载失败（忽略）: {src} ({e})", "WARNING")
 
     def _map_table(self, node, container):
-        """映射 HTML table 到 docx table，处理 colspan/rowspan。"""
+        """映射 HTML table 到 docx table，处理 colspan/rowspan 以及 <br> 换行。"""
         rows = node.find_all("tr", recursive=True)
         if not rows:
             return
@@ -1518,8 +1518,7 @@ class HtmlToWordExporter:
                     rowspan = int(c.get("rowspan", 1) or 1)
                 except (ValueError, TypeError):
                     rowspan = 1
-                text = c.get_text(" ", strip=True)
-                row_data.append((text, colspan, rowspan))
+                row_data.append((c, colspan, rowspan))
                 col_sum += colspan
             max_cols = max(max_cols, col_sum)
             grid.append(row_data)
@@ -1529,11 +1528,11 @@ class HtmlToWordExporter:
         occupied = {}
         for ri, row_data in enumerate(grid):
             ci = 0
-            for text, colspan, rowspan in row_data:
+            for cell_soup, colspan, rowspan in row_data:
                 while (ri, ci) in occupied:
                     ci += 1
                 cell = table.cell(ri, ci)
-                cell.text = text
+                self._render_cell_text_with_br(cell, cell_soup)
                 if colspan > 1:
                     for k in range(1, colspan):
                         try:
@@ -1547,6 +1546,37 @@ class HtmlToWordExporter:
                             occupied[(ri + r, ci + k)] = True
                 ci += colspan
         self._set_table_borders(table)
+
+    def _render_cell_text_with_br(self, cell, cell_soup):
+        """将 HTML 单元格文本写入 docx cell，<br> 映射为 Word 软换行。"""
+        parts = []
+        current_text = []
+        for child in cell_soup.children:
+            if isinstance(child, Tag) and child.name == "br":
+                parts.append(("text", "".join(current_text)))
+                parts.append(("br", None))
+                current_text = []
+            elif isinstance(child, NavigableString):
+                current_text.append(str(child))
+            elif isinstance(child, Tag):
+                # 其他标签（span、strong 等）取其文本
+                current_text.append(child.get_text())
+        if current_text:
+            parts.append(("text", "".join(current_text)))
+        # 写入 cell：使用段落+run 的标准方式，<br> 通过 run.add_break() 实现
+        paragraph = cell.paragraphs[0]
+        # 清空默认 run
+        for r in list(paragraph.runs):
+            r._element.getparent().remove(r._element)
+        for ptype, content in parts:
+            if ptype == "text":
+                text = content.strip()
+                if text:
+                    paragraph.add_run(text)
+            elif ptype == "br":
+                # 在新 run 中插入软换行（<w:br/>，必须在 <w:r> 内部）
+                run = paragraph.add_run()
+                run.add_break()
 
     # ── 工具：shading / borders ─────────────────────
 
