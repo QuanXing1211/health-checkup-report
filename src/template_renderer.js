@@ -298,6 +298,9 @@ function renderTopRiskAssetsSummary(data) {
   const rows = Array.isArray(data && data.riskOverview && data.riskOverview.topRiskAssets)
     ? data.riskOverview.topRiskAssets.filter(Boolean)
     : [];
+  if (!rows.length) {
+    return '';
+  }
   const topTargets = rows
     .map((row) => String(row.businessSystem || row.ip || '').trim())
     .filter(Boolean)

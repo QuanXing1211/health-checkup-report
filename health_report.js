@@ -438,6 +438,13 @@ async function main() {
     logger('跳过威胁预防数据准备: 未提供相关运行上下文');
   }
 
+  // 3.2 风险资产 TOP5：没有任何风险资产则该章节不展示
+  {
+    const r = reportData.riskOverview || {};
+    r.topRiskAssetsSectionHide = !Array.isArray(r.topRiskAssets) || r.topRiskAssets.length === 0;
+    logger(`3.2 风险资产 TOP5 章节隐藏标记: ${r.topRiskAssetsSectionHide}`);
+  }
+
   // 3.1 关键风险卡片：无数据类别不展示（通过 data-hide 机制驱动）
   {
     const r = reportData.riskOverview || {};
