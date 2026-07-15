@@ -77,11 +77,11 @@ node health_report.js `
 | `riskOverview.closeRate` | 事件闭环率 | 导出的事件表 Excel | 直接复用 `riskDetails.closeRate`，保证与风险详情完全一致 |
 | `riskOverview.riskAssetCount` | 风险资产数 | 风险清单目录中的事件表 Excel + 弱口令表 Excel + 漏洞表 Excel + 暴露面表 Excel + 资产表 Excel | 在五张风险清单归档完成后综合统计：事件表取 `影响资产` 且排除 `处置状态 = 处置完成`；弱口令表取 `风险资产` 且若存在 `处置状态` 列则排除 `处置完成`；漏洞表取 `风险资产`；暴露面表中 `Web服务风险分布` 通过 `访问路径 -> 端口表.Host` 映射资产，`非Web服务风险分布` 直接取 `IP地址/子域名`；最后按资产键去重计数 |
 | `riskOverview.affectedAssetCount` | 影响资产数 | 导出的事件表 Excel | 直接复用 `riskDetails.uniqueAssetCount`；遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址后去重计数 |
-| `riskOverview.incidentGptStats.total` | 已确认的威胁运营事件总数 | MSSW 事件表 Excel / MSSW 事件表接口 + 处置标签接口 | `incidentGptStats.hostCompromise.total + incidentGptStats.virusTrojan.total` |
-| `riskOverview.incidentGptStats.hostCompromise.total` | 已确认 C2 外联事件数 | MSSW 事件表 Excel / MSSW 事件表接口 + 处置标签接口 | 先筛出 `GPT研判结论 = 主机失陷活动` 的事件，再通过 `disposalTabs(IP)` 和 `disposalTabs(DNS)` 确认存在恶意实体后计数 |
-| `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 已确认 C2 外联事件 ID 列表 | 同上 | 保留通过确认的主机失陷事件 ID，按遍历顺序输出 |
-| `riskOverview.incidentGptStats.virusTrojan.total` | 已确认病毒木马事件数 | MSSW 事件表 Excel / MSSW 事件表接口 + 处置标签接口 | 先筛出 `GPT研判结论 = 病毒木马活动` 的事件，再通过 `disposalTabs(FILE)` 确认存在恶意实体后计数 |
-| `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 已确认病毒木马事件 ID 列表 | 同上 | 保留通过确认的病毒木马事件 ID，按遍历顺序输出 |
+| `riskOverview.incidentGptStats.total` | 已确认的威胁运营事件总数 | MSSW 事件表 Excel | `incidentGptStats.hostCompromise.total + incidentGptStats.virusTrojan.total` |
+| `riskOverview.incidentGptStats.hostCompromise.total` | 已确认 C2 外联事件数 | MSSW 事件表 Excel | 筛出 `GPT研判结论 = 主机失陷活动` 且外网IP/域名列中存在标记为"黑"的实体的事件，计数 |
+| `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 已确认 C2 外联事件 ID 列表 | 同上 | 同上，按遍历顺序输出事件 ID |
+| `riskOverview.incidentGptStats.virusTrojan.total` | 已确认病毒木马事件数 | MSSW 事件表 Excel | 筛出 `GPT研判结论 = 病毒木马活动` 且文件列中存在标记为"黑"的实体的事件，计数 |
+| `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 已确认病毒木马事件 ID 列表 | 同上 | 同上，按遍历顺序输出事件 ID |
 | `riskOverview.incidentGptStats.threatActorStats` | 威胁家族 Top2 | MSSW 事件表 Excel / MSSW 事件查询接口 | 遍历全部已确认事件的 `GPT定性结论`，按内置威胁家族关键字匹配并计数，按命中次数倒序取前 2 |
 | `riskOverview.incidentGptStats.threatTypeRanking` | 威胁类型 Top2 | 同上 | 在已命中的威胁家族集合上，按内置固定优先级顺序取前 2 |
 | `riskOverview.incidentGptStats.virusAttackAsset` | 首个病毒攻击资产 IP | 事件表 Excel + 资产表 Excel | 在已确认事件里，取第一个已确认病毒木马事件的 `影响资产` 中提取到的首个 IPv4 |

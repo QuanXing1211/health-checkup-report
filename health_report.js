@@ -690,7 +690,7 @@ async function archiveRiskListFiles(options) {
   await fs.mkdir(riskListDir, { recursive: true });
 
   const mappings = [
-    ['incidentPath', '安全事件表.xlsx'],
+    ['incidentPath', '安全事件清单.xlsx'],
     ['assetPath', '资产清单.xlsx'],
     ['exposurePath', '暴露面清单.xlsx'],
     ['weakpwdPath', '弱口令清单.xlsx'],

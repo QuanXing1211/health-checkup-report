@@ -78,8 +78,8 @@ def build_event_rows():
         asset_ip = ASSET_IPS[i]
         dt = rand_dt()
 
-        ext_ip = mal("恶意", ip)
-        domain_val = mal("恶意", domain) if i % 3 == 0 else "-"
+        ext_ip = mal("黑", ip)
+        domain_val = mal("黑", domain) if i % 3 == 0 else "-"
         file_val = "-"   # 主机失陷不靠文件识别
 
         rows.append([
@@ -117,9 +117,9 @@ def build_event_rows():
         asset_ip = ASSET_IPS[(i + 6) % 20]
         dt = rand_dt()
 
-        # 文件必须包含"恶意"标签 — 病毒木马靠文件识别
-        file_val = mal("恶意", fname)
-        # 外网IP/域名不应标"恶意"（病毒木马不靠这些识别）
+        # 文件必须包含"黑"标签 — 病毒木马靠文件识别
+        file_val = mal("黑", fname)
+        # 外网IP/域名不应标"黑"（病毒木马不靠这些识别）
         ext_ip = mal("其他", MALICIOUS_IPS[(i + 3) % 12]) if i % 4 == 0 else "-"
         domain_val = mal("其他", MALICIOUS_DOMAINS[(i + 5) % 12]) if i % 5 == 0 else "-"
 

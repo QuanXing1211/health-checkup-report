@@ -3,8 +3,8 @@
 """
 从事件表 Excel 中直接提取三类事件统计：
 
-1. C2 外联：GPT研判结论 = "主机失陷活动" 且 外网IP / 域名列中存在标记为"恶意"的实体
-2. 病毒木马：GPT研判结论 = "病毒木马活动" 且 文件列中存在标记为"恶意"的实体
+1. C2 外联：GPT研判结论 = "主机失陷活动" 且 外网IP / 域名列中存在标记为"黑"的实体
+2. 病毒木马：GPT研判结论 = "病毒木马活动" 且 文件列中存在标记为"黑"的实体
 3. 漏洞利用：安全事件一级分类列值为"漏洞利用"
 
 用法:
@@ -28,7 +28,7 @@ from _path_helper import decode_argv, reset_read_only_dimensions
 decode_argv()
 
 
-SEVERE_LABEL = "恶意"
+SEVERE_LABEL = "黑"
 GPT_HOST_COMPROMISE = "主机失陷活动"
 GPT_VIRUS_TROJAN = "病毒木马活动"
 

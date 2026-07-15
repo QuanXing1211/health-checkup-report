@@ -1075,75 +1075,6 @@ const THREAT_ACTOR_NAMES = [
   '夜枭', '雪狼', 'cobaltstrike'
 ];
 
-function buildDisposalTabsRequestBody(disposalType) {
-  return {
-    type: disposalType || 'FILE',
-    pageNum: 1,
-    pageSize: 20,
-    location: []
-  };
-}
-
-async function fetchDisposalTabs(cookieInfo, msswBaseUrl, companyId, incidentId, disposalType) {
-  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
-  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${DISPOSAL_TABS_ENDPOINT}/${incidentId}/disposalTabs`;
-  const response = await requestJson(url, {
-    headers,
-    body: JSON.stringify(buildDisposalTabsRequestBody(disposalType))
-  });
-
-  const code = response && response.code;
-  if (code !== 0 && code !== '0') {
-    throw new Error(`处置标签接口查询失败 (${incidentId}, type=${disposalType}): ${response.msg || JSON.stringify(response).slice(0, 500)}`);
-  }
-  return response;
-}
-
-function countMalwareFilesFromDisposalTabs(response) {
-  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
-  const entities = Array.isArray(data.entities) ? data.entities : [];
-  let count = 0;
-  for (const entity of entities) {
-    const threatLevelDesc = String(entity && entity.threatLevelDesc || '').trim();
-    if (threatLevelDesc.includes('恶意')) {
-      count += 1;
-    }
-  }
-  return count;
-}
-
-async function queryMsswIncidentBySearchKey(cookieInfo, msswBaseUrl, companyId, incidentId) {
-  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
-  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_INCIDENT_TABLE_ENDPOINT}`;
-  const response = await requestJson(url, {
-    headers,
-    body: JSON.stringify({
-      limit: 20,
-      offset: 0,
-      filters: {
-        search_key: incidentId,
-        customer_type: 'single_customer',
-        company_ids: [String(companyId)]
-      },
-      sorts: [{ field: 'sla_deadline', order: 'asc' }]
-    })
-  });
-
-  const code = response && response.code;
-  if (code !== 0 && code !== '0') {
-    throw new Error(`事件表按 search_key 查询失败 (${incidentId}): ${response.msg || JSON.stringify(response).slice(0, 500)}`);
-  }
-  return response;
-}
-
-function extractGptSubResultFromResponse(response) {
-  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
-  const list = Array.isArray(data.list) ? data.list : [];
-  if (list.length === 0) return '';
-  const gptSubResult = list[0] && list[0].gpt_sub_result && typeof list[0].gpt_sub_result === 'object' ? list[0].gpt_sub_result : {};
-  return String(gptSubResult.render_value || '').trim();
-}
-
 function matchThreatActor(gptSubResultValue) {
   if (!gptSubResultValue) return '';
   for (const name of THREAT_ACTOR_NAMES) {
@@ -1152,57 +1083,6 @@ function matchThreatActor(gptSubResultValue) {
     }
   }
   return '';
-}
-
-function buildIncidentGptTableRequestBody({ offset, limit, startTimeMs, endTimeMs, customerId }) {
-  return {
-    limit,
-    offset,
-    filters: {
-      end_time: [startTimeMs, endTimeMs],
-      customer_type: 'single_customer',
-      company_ids: [String(customerId)]
-    },
-    sorts: [{ field: 'sla_deadline', order: 'asc' }]
-  };
-}
-
-async function fetchMsswIncidentGptTablePage(cookieInfo, msswBaseUrl, companyId, options) {
-  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
-  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_INCIDENT_TABLE_ENDPOINT}`;
-  const response = await requestJson(url, {
-    headers,
-    body: JSON.stringify(buildIncidentGptTableRequestBody(options))
-  });
-
-  const code = response && response.code;
-  if (code !== 0 && code !== '0') {
-    throw new Error(`MSSW 事件表（GPT 统计）查询失败: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
-  }
-  return response;
-}
-
-function hasMaliciousEntity(response) {
-  const data = response && response.data && typeof response.data === 'object' ? response.data : {};
-  const entities = Array.isArray(data.entities) ? data.entities : [];
-  for (const entity of entities) {
-    const threatLevelDesc = String(entity && entity.threatLevelDesc || '').trim();
-    if (threatLevelDesc.includes('恶意')) {
-      return true;
-    }
-  }
-  return false;
-}
-
-async function confirmHostCompromiseIncident(cookieInfo, msswBaseUrl, companyId, incidentId) {
-  // 主机失陷需要检查 IP 和 DNS 两种标签，任一有"恶意"即确认
-  const ipResponse = await fetchDisposalTabs(cookieInfo, msswBaseUrl, companyId, incidentId, 'IP');
-  if (hasMaliciousEntity(ipResponse)) return true;
-
-  const dnsResponse = await fetchDisposalTabs(cookieInfo, msswBaseUrl, companyId, incidentId, 'DNS');
-  if (hasMaliciousEntity(dnsResponse)) return true;
-
-  return false;
 }
 
 async function fetchIncidentAttckCount(cookieInfo, msswBaseUrl, companyId, alertIds) {
@@ -1472,155 +1352,39 @@ async function fetchIncidentCaseStudy(options = {}) {
 
 async function fetchMsswIncidentGptStats(cookieInfo, msswBaseUrl, companyId, startTimeMs, endTimeMs, logger, incidentFilePath) {
   const threatActorCounts = {};
-  let hostCompromiseIds = [];
-  let virusTrojanIds = [];
-  let gptSubResultMap = {};
 
-  if (incidentFilePath) {
-    // 优先按事件表实体列直接判断三类事件，和 4.1.3 高危事件明细保持同口径。
-    logInfo(logger, `从事件表 Excel 直接识别 C2 / 病毒木马事件: ${incidentFilePath}`);
-    const directStats = await extractIncidentDirectStats(incidentFilePath);
-    hostCompromiseIds = directStats.hostCompromiseIds;
-    virusTrojanIds = directStats.virusTrojanIds;
+  // 直接按事件表实体列判断 C2 / 病毒木马事件，和 4.1.3 高危事件明细保持同口径。
+  // extract_incident_direct_stats.py 已内置"黑"标签确认，无需二次查 API。
+  logInfo(logger, `从事件表 Excel 直接识别 C2 / 病毒木马事件: ${incidentFilePath}`);
+  const directStats = await extractIncidentDirectStats(incidentFilePath);
+  const hostCompromiseIds = directStats.hostCompromiseIds;
+  const virusTrojanIds = directStats.virusTrojanIds;
 
-    // 保留 GPT 定性结论读取能力，供其他文案或兼容逻辑继续使用。
-    const excelData = await parseIncidentGptStats(incidentFilePath);
-    gptSubResultMap = excelData.gptSubResultMap;
-    logInfo(logger, `Excel 直接分类完成: C2 外联 ${hostCompromiseIds.length} 个, 病毒木马 ${virusTrojanIds.length} 个`);
-  } else {
-    // 降级：从 API 分页拉取事件表（向后兼容）
-    logInfo(logger, '开始拉取事件表 GPT 研判结论统计...');
-    const pageSize = 20;
-    let offset = 0;
-    while (true) {
-      const response = await fetchMsswIncidentGptTablePage(cookieInfo, msswBaseUrl, companyId, {
-        offset,
-        limit: pageSize,
-        startTimeMs,
-        endTimeMs,
-        customerId: companyId
-      });
+  // 读取 GPT 定性结论
+  const excelData = await parseIncidentGptStats(incidentFilePath);
+  const gptSubResultMap = excelData.gptSubResultMap;
+  logInfo(logger, `Excel 直接分类完成: C2 外联 ${hostCompromiseIds.length} 个, 病毒木马 ${virusTrojanIds.length} 个`);
 
-      const data = response && response.data && typeof response.data === 'object' ? response.data : {};
-      const list = Array.isArray(data.list) ? data.list : [];
-      const total = Number(data.total || 0);
-
-      for (const item of list) {
-        if (!item || !item.incident_id) continue;
-
-        const gptResult = item.gpt_result && typeof item.gpt_result === 'object' ? item.gpt_result : {};
-        const gptResultValue = String(gptResult.render_value || '').trim();
-
-        if (gptResultValue === '主机失陷活动') {
-          hostCompromiseIds.push(item.incident_id);
-        } else if (gptResultValue === '病毒木马活动') {
-          virusTrojanIds.push(item.incident_id);
-        }
-
-        // 顺便收集 gpt_sub_result
-        const gptSubResult = item.gpt_sub_result && typeof item.gpt_sub_result === 'object' ? item.gpt_sub_result : {};
-        const subValue = String(gptSubResult.render_value || '').trim();
-        if (subValue && subValue !== '-') {
-          gptSubResultMap[item.incident_id] = subValue;
-        }
-      }
-
-      logInfo(logger, `事件表拉取进度: ${hostCompromiseIds.length + virusTrojanIds.length}/${total}（主机失陷: ${hostCompromiseIds.length}, 病毒木马: ${virusTrojanIds.length}）`);
-
-      if (list.length < pageSize) {
-        break;
-      }
-      offset += pageSize;
-    }
-    logInfo(logger, `事件表分类完成: 主机失陷活动 ${hostCompromiseIds.length} 个, 病毒木马活动 ${virusTrojanIds.length} 个`);
-  }
-
-  let confirmedVirusTrojanIds = virusTrojanIds.slice();
-  let confirmedHostCompromiseIds = hostCompromiseIds.slice();
-
-  if (!incidentFilePath) {
-    // 无事件表时继续沿用接口确认，保持旧兼容逻辑。
-    logInfo(logger, '开始确认病毒木马事件的恶意文件（查询 FILE 处置标签）...');
-    confirmedVirusTrojanIds = [];
-    for (let i = 0; i < virusTrojanIds.length; i += 1) {
-      const incidentId = virusTrojanIds[i];
-      try {
-        const disposalResponse = await fetchDisposalTabs(cookieInfo, msswBaseUrl, companyId, incidentId, 'FILE');
-        if (hasMaliciousEntity(disposalResponse)) {
-          confirmedVirusTrojanIds.push(incidentId);
-          logInfo(logger, `病毒木马事件 #${i + 1}/${virusTrojanIds.length} ${incidentId}: 确认成立`);
-        } else {
-          logInfo(logger, `病毒木马事件 #${i + 1}/${virusTrojanIds.length} ${incidentId}: 未确认（无恶意文件标签）`);
-        }
-      } catch (error) {
-        logInfo(logger, `病毒木马事件 #${i + 1}/${virusTrojanIds.length} ${incidentId} 处置标签(FILE)查询失败: ${error.message}`);
-      }
-    }
-
-    logInfo(logger, `病毒木马确认完成: ${confirmedVirusTrojanIds.length}/${virusTrojanIds.length} 个确认为病毒木马活动`);
-
-    logInfo(logger, '开始确认主机失陷事件的 C2 外联（查询 IP+DNS 处置标签）...');
-    confirmedHostCompromiseIds = [];
-    for (let i = 0; i < hostCompromiseIds.length; i += 1) {
-      const incidentId = hostCompromiseIds[i];
-      try {
-        const isConfirmed = await confirmHostCompromiseIncident(cookieInfo, msswBaseUrl, companyId, incidentId);
-        if (isConfirmed) {
-          confirmedHostCompromiseIds.push(incidentId);
-          logInfo(logger, `主机失陷事件 #${i + 1}/${hostCompromiseIds.length} ${incidentId}: 确认成立`);
-        } else {
-          logInfo(logger, `主机失陷事件 #${i + 1}/${hostCompromiseIds.length} ${incidentId}: 未确认（无恶意标签）`);
-        }
-      } catch (error) {
-        logInfo(logger, `主机失陷事件 #${i + 1}/${hostCompromiseIds.length} ${incidentId} C2确认查询失败: ${error.message}`);
-      }
-    }
-
-    logInfo(logger, `主机失陷确认完成: ${confirmedHostCompromiseIds.length}/${hostCompromiseIds.length} 个确认为 C2 外联`);
-  } else {
-    logInfo(logger, `事件表直读口径生效: C2 外联 ${confirmedHostCompromiseIds.length} 个, 病毒木马 ${confirmedVirusTrojanIds.length} 个`);
-  }
+  const confirmedHostCompromiseIds = hostCompromiseIds;
+  const confirmedVirusTrojanIds = virusTrojanIds;
 
   // Step 4: 对已确认的事件，从 gptSubResultMap 查询 GPT 定性结论并统计威胁家族
   const allIncidentIds = [...confirmedVirusTrojanIds, ...confirmedHostCompromiseIds];
   logInfo(logger, `开始统计已确认事件（病毒木马 ${confirmedVirusTrojanIds.length} + 主机失陷 ${confirmedHostCompromiseIds.length} = ${allIncidentIds.length}）的 GPT 定性结论...`);
 
-  if (incidentFilePath) {
-    // 从 Excel 的 GPT定性标签 列直接查找
-    for (let i = 0; i < allIncidentIds.length; i += 1) {
-      const incidentId = allIncidentIds[i];
-      const subValue = gptSubResultMap[incidentId] || '';
-      if (!subValue) {
-        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: 无 GPT 定性标签`);
-        continue;
-      }
-      const matchedActor = matchThreatActor(subValue);
-      if (matchedActor) {
-        threatActorCounts[matchedActor] = (threatActorCounts[matchedActor] || 0) + 1;
-        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${subValue}, 匹配=${matchedActor}`);
-      } else {
-        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${subValue}, 未匹配`);
-      }
+  for (let i = 0; i < allIncidentIds.length; i += 1) {
+    const incidentId = allIncidentIds[i];
+    const subValue = gptSubResultMap[incidentId] || '';
+    if (!subValue) {
+      logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: 无 GPT 定性标签`);
+      continue;
     }
-  } else {
-    // 降级：逐个调 API 查询
-    for (let i = 0; i < allIncidentIds.length; i += 1) {
-      const incidentId = allIncidentIds[i];
-      try {
-        const incidentResponse = await queryMsswIncidentBySearchKey(cookieInfo, msswBaseUrl, companyId, incidentId);
-        const gptSubResultValue = extractGptSubResultFromResponse(incidentResponse);
-        if (!gptSubResultValue) continue;
-
-        const matchedActor = matchThreatActor(gptSubResultValue);
-        if (matchedActor) {
-          threatActorCounts[matchedActor] = (threatActorCounts[matchedActor] || 0) + 1;
-          logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${gptSubResultValue}, 匹配=${matchedActor}`);
-        } else {
-          logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${gptSubResultValue}, 未匹配`);
-        }
-      } catch (error) {
-        logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId} GPT定性标签查询失败: ${error.message}`);
-      }
+    const matchedActor = matchThreatActor(subValue);
+    if (matchedActor) {
+      threatActorCounts[matchedActor] = (threatActorCounts[matchedActor] || 0) + 1;
+      logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${subValue}, 匹配=${matchedActor}`);
+    } else {
+      logInfo(logger, `事件 #${i + 1}/${allIncidentIds.length} ${incidentId}: GPT定性标签=${subValue}, 未匹配`);
     }
   }
 
@@ -3000,16 +2764,7 @@ module.exports = {
   fetchMsswLogCountByTable,
   formatTimestampToDateTime,
   THREAT_ACTOR_NAMES,
-  buildDisposalTabsRequestBody,
-  fetchDisposalTabs,
-  countMalwareFilesFromDisposalTabs,
-  hasMaliciousEntity,
-  confirmHostCompromiseIncident,
-  queryMsswIncidentBySearchKey,
-  extractGptSubResultFromResponse,
   matchThreatActor,
-  buildIncidentGptTableRequestBody,
-  fetchMsswIncidentGptTablePage,
   fetchMsswIncidentGptStats,
   DEVICE_TYPE_CATEGORIES,
   classifyDeviceType,
