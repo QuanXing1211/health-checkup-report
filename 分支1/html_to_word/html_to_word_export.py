@@ -1661,13 +1661,24 @@ class HtmlToWordExporter:
             gridCol.set(qn("w:w"), str(twips))
 
     def _render_cell_text_with_br(self, cell, cell_soup):
-        """将 HTML 单元格文本写入 docx cell，<br> 映射为 Word 软换行。"""
+        """将 HTML 单元格文本写入 docx cell，<br> 和块级标签（<div>、<p>）
+        都映射为 Word 软换行。"""
+        block_tags = {"div", "p"}
         parts = []
         current_text = []
-        for child in cell_soup.children:
+        children = list(cell_soup.children)
+        for i, child in enumerate(children):
             if isinstance(child, Tag) and child.name == "br":
                 parts.append(("text", "".join(current_text)))
                 parts.append(("br", None))
+                current_text = []
+            elif isinstance(child, Tag) and child.name in block_tags:
+                # 块级标签：先把累计文本 flush，再提取块文本
+                parts.append(("text", "".join(current_text)))
+                parts.append(("text", child.get_text(" ", strip=True)))
+                # 仅当不是最后一个子元素时才加换行，避免末尾多一个空行
+                if i < len(children) - 1:
+                    parts.append(("br", None))
                 current_text = []
             elif isinstance(child, NavigableString):
                 current_text.append(str(child))
