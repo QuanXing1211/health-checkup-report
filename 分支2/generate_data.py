@@ -135,11 +135,19 @@ def load_all_data():
         except KeyError:
             return wb.worksheets[0]
 
+    def find_sheet(wb, prefix):
+        """按前缀匹配 sheet 名，兼容无数据时「端口表（0）」等带括号后缀的情况"""
+        for name in wb.sheetnames:
+            stripped = name.split('（')[0].split('(')[0].strip()
+            if stripped == prefix:
+                return wb[name]
+        raise KeyError(f"Worksheet {prefix} does not exist.")
+
     return {
         "wb_exp": wb_exp,
-        "rows_web_risk":    get_rows(wb_exp["Web服务风险分布"]),
-        "rows_nonweb_risk": get_rows(wb_exp["非Web服务风险分布"]),
-        "rows_port":        get_rows(wb_exp["端口表"]),
+        "rows_web_risk":    get_rows(find_sheet(wb_exp, "Web服务风险分布")),
+        "rows_nonweb_risk": get_rows(find_sheet(wb_exp, "非Web服务风险分布")),
+        "rows_port":        get_rows(find_sheet(wb_exp, "端口表")),
         "rows_vuln":        get_rows(get_sheet(wb_vuln,  "漏洞")),
         "rows_weak":        get_rows(get_sheet(wb_weak,  "弱口令")),
         "rows_event":       get_rows(get_sheet(wb_event, "事件表")),
