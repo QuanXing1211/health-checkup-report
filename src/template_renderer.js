@@ -36,9 +36,7 @@ const SECTION_RENDERERS = {
   'internet.vuln.levelDetail': renderInternetVulnLevelDetail,
   'internet.vuln.prioritySummary': renderInternetVulnPrioritySummary,
   'internet.vuln.topAssetsBlock': renderInternetVulnTopAssetsBlock,
-  'internet.exposure.description': renderInternetExposureDescription,
   'intranet.vuln.levelDetail': renderIntranetVulnLevelDetail,
-  'intranet.vuln.description': renderIntranetVulnDescription,
   'intranet.vuln.prioritySummary': renderIntranetVulnPrioritySummary,
   'intranet.vuln.bizTopBlock': renderIntranetVulnBizTopBlock,
   'intranet.vuln.assetTopBlock': renderIntranetVulnAssetTopBlock
@@ -752,35 +750,6 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function renderInternetExposureDescription(data) {
-  const exp = (data.internet && data.internet.exposure) || {};
-  const assetCount = Number(exp.risk_asset_count || 0);
-  const portCount = Number(exp.port_count || 0);
-  const vulnCount = Number(exp.vuln_count || 0);
-
-  // 计算总分：1个资产0.2分、1个端口0.2分、1个漏洞35分
-  const score = assetCount * 0.2 + portCount * 0.2 + vulnCount * 35;
-
-  // 风险等级判定
-  let level;
-  if (score === 0) level = '优秀';
-  else if (score <= 30) level = '良好';
-  else if (score <= 70) level = '一般';
-  else level = '较差';
-
-  // 只有漏洞（端口和资产都为0）→ 简化版文案
-  if (portCount === 0 && assetCount === 0 && vulnCount > 0) {
-    return paragraph(`互联网业务风险${level}，存在<strong>${vulnCount}</strong>个互联网漏洞。`);
-  }
-
-  // 正常情况 → 完整版文案
-  return paragraph(
-    `互联网业务风险${level}，存在大量对外暴露的端口与服务。` +
-    `其中有 <strong>${assetCount}</strong> 个资产暴露了 <strong>${portCount}</strong> 个端口，` +
-    `存在 <strong>${vulnCount}</strong> 个漏洞。`
-  );
-}
-
 function renderInternetRiskSummary(data) {
   const rd = (data.risk_detail && data.risk_detail.internet) || {};
   const main = (
@@ -852,30 +821,6 @@ function renderInternetVulnTopAssetsBlock(data) {
     '<thead><tr><th>序号</th><th>风险资产</th><th>漏洞修复优先级</th></tr></thead>' +
     `<tbody>${tableRows}</tbody></table>`
   );
-}
-
-function renderIntranetVulnDescription(data) {
-  const v = (data.intranet && data.intranet.vuln) || {};
-  const total = Number(v.total || 0);
-  const critical = Number(v.critical || 0);
-  const high = Number(v.high || 0);
-  const medium = Number(v.medium || 0);
-  const low = Number(v.low || 0);
-
-  if (total === 0) {
-    return paragraph('当前内网业务整体风险优秀，没有发现漏洞。');
-  }
-
-  let level;
-  if (critical > 0 || high > 0) {
-    level = '较差';
-  } else if (medium > 0) {
-    level = '一般';
-  } else {
-    level = '良好';
-  }
-
-  return paragraph(`当前内网业务整体风险${level}，按照修复优先级来修复。`);
 }
 
 function renderIntranetVulnLevelDetail(data) {
