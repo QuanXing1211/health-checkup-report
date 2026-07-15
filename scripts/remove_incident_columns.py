@@ -67,16 +67,10 @@ def main():
         print(json.dumps({'filePath': output_path}, ensure_ascii=False))
         return
 
-    # 按列索引从大到小排序，从右往左删除（避免删除后索引偏移）
+    # 在原工作表上从右往左直接删列，保留其余单元格的样式、列宽和表头格式。
     to_remove_cols.sort(reverse=True)
-    all_rows = list(ws.iter_rows(min_row=1, values_only=True))
-    ws.delete_rows(1, ws.max_row)
-    for row in all_rows:
-        row_list = list(row)
-        for col_idx in to_remove_cols:
-            if col_idx < len(row_list):
-                del row_list[col_idx]
-        ws.append(row_list)
+    for col_idx in to_remove_cols:
+        ws.delete_cols(col_idx + 1, 1)
 
     wb.save(output_path)
     wb.close()
