@@ -23,7 +23,7 @@ import openpyxl
 # 常量
 # ──────────────────────────────────────────────
 
-API_URL = "https://pre.soar.sangfor.com/gateway/idps/openapi/idps/xdr/policy_check/result"
+API_URL = "https://sitmssw.soar.sangfor.com/gateway/idps/order/v1/tools/task/xdr_policy_check/result"
 PAGE_SIZE = 100
 DEFAULT_OUTPUT_PATH = "策略检查清单.xlsx"
 TMP_DIR = "tmp"
@@ -182,7 +182,6 @@ class PolicyCheckExporter:
         从策略检查结果查询接口分页获取指定 time_range 范围内的数据。
 
         依据 策略检查接口对齐.md 中的接口 3：
-          POST /openapi/idps/xdr/policy_check/result
           入参: company_id / dev_id_list / limit / time_range / offset
           time_range 为 ISO 日期字符串数组 [start, end]（YYYY-MM-DD）
           返回: code == 0 时，data 为结果条目数组
