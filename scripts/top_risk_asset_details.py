@@ -357,7 +357,7 @@ def build_detail_lines(asset, incident_counts, vuln_counts, weakpwd_counts, expo
             f"该资产共发现{total_exposures}个风险暴露面。"
             f"含{non_web_text}与{web_text}"
         )
-    lines.append(f"该资产{'已安装' if has_aes else '尚未安装'}aES")
+    lines.append(f"该资产{'已安装' if has_aes else '尚未安装'}EDR")
     return lines
 
 

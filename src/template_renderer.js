@@ -226,7 +226,7 @@ function renderSangforDeviceBreakdown(data) {
   const details = data.riskDetails || {};
   const items = [
     { label: 'AF', value: Number(details.af || 0) },
-    { label: 'aES', value: Number(details.aes || 0) },
+    { label: 'EDR', value: Number(details.aes || 0) },
     { label: 'SIP', value: Number(details.sip || 0) },
     { label: 'STA', value: Number(details.sta || 0) },
     { label: '其他', value: Number(details.other_sf || 0) }

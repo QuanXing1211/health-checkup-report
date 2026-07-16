@@ -293,7 +293,7 @@ function enrichReportData(reportData) {
       buildTopRiskAsset('10.128.165.53', '已托管', 'ERP系统', 814, [
         '漏洞风险 814 项，其中高危及以上 401 项',
         '最近 30 天发生 1 起病毒木马事件',
-        '该资产尚未安装aES',
+        '该资产尚未安装EDR',
         '建议优先执行补丁与终端防护加固'
       ]),
       buildTopRiskAsset('10.128.160.200', '已托管', '邮件系统', 236, [

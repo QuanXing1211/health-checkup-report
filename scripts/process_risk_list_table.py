@@ -32,8 +32,27 @@ ASSET_COLUMNS_TO_REMOVE = [
     '实时认证用户名',
 ]
 
+BUSINESS_COLUMN_ALIASES = ['所属业务']
+
+
 def normalize(value):
     return '' if value is None else str(value).strip()
+
+
+def clean_business_column(value):
+    """处理所属业务列：按逗号分隔，每个分段去掉 '/' 及其前面的部分，保留后面的内容。"""
+    text = normalize(value)
+    if not text:
+        return text
+    parts = text.split(',')
+    cleaned = []
+    for part in parts:
+        part = part.strip()
+        if '/' in part:
+            part = part.rsplit('/', 1)[-1].strip()
+        if part:
+            cleaned.append(part)
+    return ', '.join(cleaned) if cleaned else ''
 
 
 def build_col_header(ws):
@@ -46,7 +65,7 @@ def build_col_header(ws):
 
 
 def process_asset_table(input_path, output_dir):
-    """处理资产表：删除指定列，保留原文件名输出到 output_dir。"""
+    """处理资产表：删除指定列，清理所属业务列，保留原文件名输出到 output_dir。"""
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, os.path.basename(input_path))
 
@@ -54,16 +73,36 @@ def process_asset_table(input_path, output_dir):
     ws = wb.active
 
     col_map, header_row = build_col_header(ws)
+
+    # 1) 删除指定列
     to_remove_cols = []
     for col_name in ASSET_COLUMNS_TO_REMOVE:
         if col_name in col_map:
             to_remove_cols.append(col_map[col_name])
 
     if to_remove_cols:
-        # 按列索引从大到小直接删除原工作表中的列，避免重建单元格导致样式丢失。
         to_remove_cols.sort(reverse=True)
         for col_idx in to_remove_cols:
             ws.delete_cols(col_idx + 1, 1)
+
+    # 删除列后重新读取表头（列索引已变）
+    col_map, _ = build_col_header(ws)
+
+    # 2) 清理所属业务列
+    business_col_idx = None
+    for alias in BUSINESS_COLUMN_ALIASES:
+        if alias in col_map:
+            business_col_idx = col_map[alias]
+            break
+
+    if business_col_idx is not None:
+        for row in ws.iter_rows(min_row=header_row + 1):
+            cell = row[business_col_idx]
+            if cell.value is not None:
+                raw = normalize(cell.value)
+                cleaned = clean_business_column(raw)
+                if cleaned != raw:
+                    cell.value = cleaned
 
     wb.save(output_path)
     wb.close()
