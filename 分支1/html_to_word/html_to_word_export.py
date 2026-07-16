@@ -1382,12 +1382,48 @@ class HtmlToWordExporter:
         self._strip_paragraph_num_pr(p)
 
     def _map_paragraph(self, node, container):
-        text = node.get_text(" ", strip=True)
-        if not text:
-            return
-        p = container.add_paragraph(text)
-        # 普通段落也可能继承到 List Number 样式导致自动编号，兜底清掉
-        self._strip_paragraph_num_pr(p)
+        # 段落内部可能包含 <br> / 块级标签 / 行内标签，需要按 <br> 拆段，
+        # 与表格单元格 _render_cell_text_with_br 保持一致。
+        p = container.add_paragraph()
+        self._render_inline_with_br(p, node)
+        if not p.runs:
+            # 没有任何 run 说明未写入内容，移除该空段
+            p._element.getparent().remove(p._element)
+        else:
+            # 普通段落也可能继承到 List Number 样式导致自动编号，兜底清掉
+            self._strip_paragraph_num_pr(p)
+
+    def _render_inline_with_br(self, paragraph, node):
+        """把 node 子节点按 <br> / 块级标签拆分写入段落，<br> 映射为软换行。"""
+        block_tags = {"div", "p"}
+        parts = []
+        current_text = []
+        children = list(node.children)
+        for i, child in enumerate(children):
+            if isinstance(child, Tag) and child.name == "br":
+                parts.append(("text", "".join(current_text)))
+                parts.append(("br", None))
+                current_text = []
+            elif isinstance(child, Tag) and child.name in block_tags:
+                parts.append(("text", "".join(current_text)))
+                parts.append(("text", child.get_text(" ", strip=True)))
+                if i < len(children) - 1:
+                    parts.append(("br", None))
+                current_text = []
+            elif isinstance(child, NavigableString):
+                current_text.append(str(child))
+            elif isinstance(child, Tag):
+                current_text.append(child.get_text())
+        if current_text:
+            parts.append(("text", "".join(current_text)))
+        for ptype, content in parts:
+            if ptype == "text":
+                text = content.strip()
+                if text:
+                    paragraph.add_run(text)
+            elif ptype == "br":
+                run = paragraph.add_run()
+                run.add_break()
 
     def _map_list(self, node, container, ordered=False):
         for li in node.find_all("li", recursive=False):
@@ -1536,6 +1572,7 @@ class HtmlToWordExporter:
             return
         max_cols = 0
         grid = []
+        has_any_th = False
         for tr in rows:
             cells = tr.find_all(["td", "th"], recursive=False)
             col_sum = 0
@@ -1549,6 +1586,8 @@ class HtmlToWordExporter:
                     rowspan = int(c.get("rowspan", 1) or 1)
                 except (ValueError, TypeError):
                     rowspan = 1
+                if c.name == "th":
+                    has_any_th = True
                 row_data.append((c, colspan, rowspan))
                 col_sum += colspan
             max_cols = max(max_cols, col_sum)
@@ -1559,6 +1598,9 @@ class HtmlToWordExporter:
         occupied = {}
         for ri, row_data in enumerate(grid):
             ci = 0
+            is_header_row = (ri == 0 and not has_any_th) or all(
+                soup.name == "th" for soup, _, _ in row_data
+            )
             for cell_soup, colspan, rowspan in row_data:
                 while (ri, ci) in occupied:
                     ci += 1
@@ -1575,9 +1617,35 @@ class HtmlToWordExporter:
                     for r in range(1, rowspan):
                         for k in range(colspan):
                             occupied[(ri + r, ci + k)] = True
+                if is_header_row or cell_soup.name == "th":
+                    self._apply_table_header_cell_style(cell)
                 ci += colspan
         self._set_table_column_widths_by_header(table, grid[0])
         self._set_table_borders(table)
+
+    # 表头样式：浅蓝底（#EDF1F7）+ 深色字（#1A1F36），与 HTML .sr-tbl th 保持一致
+    _TABLE_HEADER_BG = "EDF1F7"
+    _TABLE_HEADER_FG = "1A1F36"
+
+    def _apply_table_header_cell_style(self, cell):
+        """给表头单元格应用浅蓝底 + 黑字样式（对齐 HTML .sr-tbl th 视觉）。"""
+        self._set_cell_shading(cell, self._TABLE_HEADER_BG)
+        for paragraph in cell.paragraphs:
+            for run in paragraph.runs:
+                run.font.color.rgb = RGBColor.from_string(self._TABLE_HEADER_FG)
+                run.bold = True
+
+    def _set_cell_shading(self, cell, hex_color):
+        """给单元格设置底色（w:shd 写入 tcPr）。"""
+        tcPr = cell._tc.get_or_add_tcPr()
+        old = tcPr.find(qn("w:shd"))
+        if old is not None:
+            tcPr.remove(old)
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:val"), "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"), hex_color)
+        tcPr.append(shd)
 
     def _set_table_column_widths_by_header(self, table, header_row):
         """根据表头单元格文本长度计算列宽并固定到 Word 表格。
