@@ -785,6 +785,9 @@ def build_output_excel(file_b: str, file_c: str, output_path: str,
                 for ri in sorted(to_del_conn, reverse=True):
                     dst_ws.delete_rows(ri)
                 log(f"  [filter] {name!r}: 端口连通性过滤，删除 {len(to_del_conn)} 行")
+                # 序号重排：删除行后A列序号从1重新排列
+                for i, row in enumerate(dst_ws.iter_rows(min_row=2, min_col=1, max_col=1), start=1):
+                    row[0].value = i
 
         if need_filter:
             if prefix in DIRECT_FILTER:
