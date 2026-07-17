@@ -6,7 +6,7 @@ const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
-const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails, extractIncidentDirectStats } = require('./src/incident_excel_stats');
+const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails, extractIncidentDirectStats, annotateIncidentGptConclusion } = require('./src/incident_excel_stats');
 const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
@@ -310,7 +310,19 @@ async function main() {
     reportData = mergeBranch1ReportPatch(reportData, branch1Result.reportPatch);
     logger('分支1 JSON 已合并到 report-data');
 
-    // 最后落盘前删除事件表中的"外网IP地址"、"域名"、"文件"三列
+    // 最后落盘前将统一分类追加到 GPT研判结论，再删除敏感实体列。
+    try {
+      const annotatedResult = await annotateIncidentGptConclusion(
+        incidentFilePath,
+        path.join(getTmpExportDir(), 'incident-classification')
+      );
+      incidentFilePath = annotatedResult.filePath; // eslint-disable-line no-param-reassign
+      logger(`事件表 GPT研判结论已追加分类: C2=${annotatedResult.classified.C2外联 || 0}, 病毒木马=${annotatedResult.classified.病毒木马 || 0}`);
+    } catch (error) {
+      logger(`追加事件 GPT研判分类失败（不阻断主流程）: ${error.message}`);
+    }
+
+    // 再删除事件表中的"外网IP地址"、"域名"、"文件"三列
     try {
       const strippedResult = await removeIncidentSensitiveColumns(incidentFilePath, getTmpExportDir());
       logger(`事件表已删除敏感列: ${strippedResult.filePath}`);

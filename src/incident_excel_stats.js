@@ -102,6 +102,29 @@ async function extractIncidentDirectStats(excelPath) {
   };
 }
 
+async function annotateIncidentGptConclusion(excelPath, outputDir) {
+  if (!excelPath || !outputDir) {
+    return {
+      filePath: excelPath || '',
+      classified: { C2外联: 0, 病毒木马: 0 }
+    };
+  }
+
+  const scriptPath = path.join(__dirname, '..', 'scripts', 'annotate_incident_gpt_conclusion.py');
+  const stdout = await execPythonWithArgs(
+    scriptPath,
+    [encodePath(excelPath), encodePath(outputDir)],
+    '追加事件 GPT 研判分类失败'
+  );
+  const parsed = JSON.parse(stdout);
+  return {
+    filePath: parsed.filePath || excelPath,
+    classified: parsed.classified && typeof parsed.classified === 'object'
+      ? parsed.classified
+      : { C2外联: 0, 病毒木马: 0 }
+  };
+}
+
 async function extractIncidentAssetInfo(incidentExcelPath, assetExcelPath, confirmedIds, virusIds) {
   if (!incidentExcelPath || !Array.isArray(confirmedIds) || !Array.isArray(virusIds)) {
     return {
@@ -310,6 +333,7 @@ module.exports = {
   removeIncidentRows,
   parseIncidentGptStats,
   extractIncidentDirectStats,
+  annotateIncidentGptConclusion,
   extractIncidentAssetInfo,
   summarizeTopRiskAssetDetails,
   extractC2ConnectionExamples,

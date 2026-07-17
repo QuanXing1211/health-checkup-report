@@ -78,10 +78,10 @@ node health_report.js `
 | `riskOverview.riskAssetCount` | 风险资产数 | 风险清单目录中的事件表 Excel + 弱口令表 Excel + 漏洞表 Excel + 暴露面表 Excel + 资产表 Excel | 在五张风险清单归档完成后综合统计：事件表取 `影响资产` 且排除 `处置状态 = 处置完成`；弱口令表取 `风险资产` 且若存在 `处置状态` 列则排除 `处置完成`；漏洞表取 `风险资产`；暴露面表中 `Web服务风险分布` 通过 `访问路径 -> 端口表.Host` 映射资产，`非Web服务风险分布` 直接取 `IP地址/子域名`；最后按资产键去重计数 |
 | `riskOverview.affectedAssetCount` | 影响资产数 | 导出的事件表 Excel | 直接复用 `riskDetails.uniqueAssetCount`；遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址后去重计数 |
 | `riskOverview.incidentGptStats.total` | 已确认的威胁运营事件总数 | MSSW 事件表 Excel | `incidentGptStats.hostCompromise.total + incidentGptStats.virusTrojan.total` |
-| `riskOverview.incidentGptStats.hostCompromise.total` | 已确认 C2 外联事件数 | MSSW 事件表 Excel | 筛出 `GPT研判结论 = 主机失陷活动` 且外网IP/域名列中存在标记为"黑"的实体的事件，计数 |
-| `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 已确认 C2 外联事件 ID 列表 | 同上 | 同上，按遍历顺序输出事件 ID |
-| `riskOverview.incidentGptStats.virusTrojan.total` | 已确认病毒木马事件数 | MSSW 事件表 Excel | 筛出 `GPT研判结论 = 病毒木马活动` 且文件列中存在标记为"黑"的实体的事件，计数 |
-| `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 已确认病毒木马事件 ID 列表 | 同上 | 同上，按遍历顺序输出事件 ID |
+| `riskOverview.incidentGptStats.hostCompromise.total` | 已确认 C2 外联事件数 | MSSW 事件表 Excel | 先筛 `GPT研判结论` 属于 `主机失陷活动 / 病毒木马活动` 的候选事件；再按 `外网IP地址`、`域名`、`文件` 顺序检查带 `（黑）` 的实体，网络字段任一命中即归类 C2 外联，计数 |
+| `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 已确认 C2 外联事件 ID 列表 | 同上 | 同上，按事件表遍历顺序输出事件 ID |
+| `riskOverview.incidentGptStats.virusTrojan.total` | 已确认病毒木马事件数 | MSSW 事件表 Excel | 同一候选池中，只有 `外网IP地址` 和 `域名` 都未命中 `（黑）`，且 `文件` 命中 `（黑）` 时归类病毒木马，计数 |
+| `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 已确认病毒木马事件 ID 列表 | 同上 | 同上，按事件表遍历顺序输出事件 ID |
 | `riskOverview.incidentGptStats.threatActorStats` | 威胁家族 Top2 | MSSW 事件表 Excel / MSSW 事件查询接口 | 遍历全部已确认事件的 `GPT定性结论`，按内置威胁家族关键字匹配并计数，按命中次数倒序取前 2 |
 | `riskOverview.incidentGptStats.threatTypeRanking` | 威胁类型 Top2 | 同上 | 在已命中的威胁家族集合上，按内置固定优先级顺序取前 2 |
 | `riskOverview.incidentGptStats.virusAttackAsset` | 首个病毒攻击资产 IP | 事件表 Excel + 资产表 Excel | 在已确认事件里，取第一个已确认病毒木马事件的 `影响资产` 中提取到的首个 IPv4 |
@@ -102,8 +102,8 @@ node health_report.js `
 | `riskDetails.uniqueAssetCount` | 涉及到的资产数 | 导出的事件表 Excel | 遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址（如 `10.5.40.62(未归类组)` 取 `10.5.40.62`）后去重计数 |
 | `riskDetails.managedAvgResponseTime` | 托管资产事件平均响应时间 | 导出的资产表 Excel + 事件表 Excel | 先筛出影响资产属于托管资产且 `处置状态 = 处置完成` 的事件，再用 `完成时间 - 事件创建时间` 计算每起事件的响应分钟数，最后求平均并保留 1 位小数；任一时间缺失或无法解析则跳过该事件 |
 | `riskDetails.highRiskIncidentExamples.vulnExploits` | 高危及以上事件举例-漏洞利用类 | 导出的事件表 Excel + `riskOverview.exploitStats.incidentIds` | 回查 `incidentIds` 命中的事件，读取 `等级` 列并按 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条；带出 `事件名称`、`受影响资产`、`最近发生时间`、`处置状态` |
-| `riskDetails.highRiskIncidentExamples.viruses` | 高危及以上事件举例-病毒木马类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 回查已确认病毒木马事件，先从 `文件` 列中提取所有标记为 `严重` 的 MD5 并用 `、` 拼接，再按 `等级` 列的 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
-| `riskDetails.highRiskIncidentExamples.c2Connections` | 高危及以上事件举例-C2外联类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 回查已确认 C2 外联事件，先从 `外网IP` 和 `域名` 列中提取所有标记为 `严重` 的实体并用 `、` 拼接，再按 `等级` 列的 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
+| `riskDetails.highRiskIncidentExamples.viruses` | 高危及以上事件举例-病毒木马类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 回查已确认病毒木马事件，先从 `文件` 列中提取所有标记为 `黑` 的 MD5 并用 `、` 拼接，再按 `等级` 列的 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
+| `riskDetails.highRiskIncidentExamples.c2Connections` | 高危及以上事件举例-C2外联类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 回查已确认 C2 外联事件，先从 `外网IP` 和 `域名` 列中提取所有标记为 `黑` 的实体并用 `、` 拼接，再按 `等级` 列的 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
 | `riskOverview.devices` | 接入组件数 | 深信服设备列表接口 + 第三方设备列表接口 | 深信服设备总数优先取 `/api/apex/device/v1/devices/list` 返回的 `data.total`，第三方设备数取 `/api/apex/thirdparty/v1/app/instance/list` 的 `data.count`，两者相加 |
 | `riskDetails.devices` | 接入安全设备数 | 深信服设备列表接口 + 第三方设备列表接口 | 保留兼容字段，值与 `riskDetails.sangfor + riskDetails.third` 一致 |
 | `riskDetails.sangfor` | 深信服设备数 | 深信服设备列表接口 | 取 `/api/apex/device/v1/devices/list` 返回的 `data.total` |

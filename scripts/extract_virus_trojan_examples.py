@@ -21,51 +21,26 @@
 """
 
 import json
-import re
 import sys
 
 from openpyxl import load_workbook
 
 from _path_helper import decode_argv, reset_read_only_dimensions
+from _incident_classification import (
+    build_col_map,
+    extract_severe_entities,
+    find_column,
+    normalize,
+)
 decode_argv()
 
 
-SEVERE_LABEL = "黑"
 LEVEL_PRIORITY = {
     "严重": 4,
     "高危": 3,
     "中危": 2,
     "低危": 1,
 }
-
-
-def normalize(value):
-    return "" if value is None else str(value).strip()
-
-
-def build_col_map(ws):
-    header = [normalize(cell) for cell in next(ws.iter_rows(values_only=True))]
-    return {name: i for i, name in enumerate(header) if name}
-
-
-def find_column(col_map, aliases):
-    for alias in aliases:
-        if alias in col_map:
-            return col_map[alias]
-    return None
-
-
-def extract_severe_entities(raw):
-    text = normalize(raw)
-    if not text:
-        return []
-
-    matches = re.findall(r'([^，,、()（）]+?)\s*[（(]\s*([^()（）]+?)\s*[）)]', text)
-    entities = []
-    for entity, severity in matches:
-        if normalize(severity) == SEVERE_LABEL:
-            entities.append(normalize(entity))
-    return entities
 
 
 def main():
@@ -81,7 +56,7 @@ def main():
     col_map = build_col_map(sheet)
 
     id_col = find_column(col_map, ["事件ID", "incident_id"])
-    file_col = find_column(col_map, ["文件", "文件MD5", "md5", "file"])
+    file_col = find_column(col_map, ["文件", "文件MD5", "md5", "file", "文件(标签)"])
     asset_col = find_column(col_map, ["受影响资产", "影响资产", "host_ip", "hostIp", "主机IP", "ip"])
     time_col = find_column(col_map, ["最近发生时间", "最近发现时间", "endTime", "结束时间"])
     status_col = find_column(col_map, ["处置状态", "dealStatus"])

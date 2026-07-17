@@ -1353,9 +1353,9 @@ async function fetchIncidentCaseStudy(options = {}) {
 async function fetchMsswIncidentGptStats(cookieInfo, msswBaseUrl, companyId, startTimeMs, endTimeMs, logger, incidentFilePath) {
   const threatActorCounts = {};
 
-  // 直接按事件表实体列判断 C2 / 病毒木马事件，和 4.1.3 高危事件明细保持同口径。
+  // 先以 GPT研判结论建立候选池，再按网络实体优先、文件实体其次的顺序分类。
   // extract_incident_direct_stats.py 已内置"黑"标签确认，无需二次查 API。
-  logInfo(logger, `从事件表 Excel 直接识别 C2 / 病毒木马事件: ${incidentFilePath}`);
+  logInfo(logger, `从事件表 Excel 统一识别 C2 / 病毒木马事件: ${incidentFilePath}`);
   const directStats = await extractIncidentDirectStats(incidentFilePath);
   const hostCompromiseIds = directStats.hostCompromiseIds;
   const virusTrojanIds = directStats.virusTrojanIds;
@@ -1363,7 +1363,7 @@ async function fetchMsswIncidentGptStats(cookieInfo, msswBaseUrl, companyId, sta
   // 读取 GPT 定性结论
   const excelData = await parseIncidentGptStats(incidentFilePath);
   const gptSubResultMap = excelData.gptSubResultMap;
-  logInfo(logger, `Excel 直接分类完成: C2 外联 ${hostCompromiseIds.length} 个, 病毒木马 ${virusTrojanIds.length} 个`);
+  logInfo(logger, `Excel 统一分类完成: C2 外联 ${hostCompromiseIds.length} 个, 病毒木马 ${virusTrojanIds.length} 个`);
 
   const confirmedHostCompromiseIds = hostCompromiseIds;
   const confirmedVirusTrojanIds = virusTrojanIds;

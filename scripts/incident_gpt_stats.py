@@ -20,6 +20,7 @@ import sys
 from openpyxl import load_workbook
 
 from _path_helper import decode_argv
+from _incident_classification import base_gpt_conclusion
 decode_argv()
 
 
@@ -67,7 +68,7 @@ def main():
         if not incident_id:
             continue
 
-        gpt_value = normalize(row[gpt_col]) if len(row) > gpt_col else ""
+        gpt_value = base_gpt_conclusion(row[gpt_col]) if len(row) > gpt_col else ""
 
         if gpt_value == GPT_RESULT_HOST_COMPROMISE:
             host_compromise_ids.append(incident_id)
