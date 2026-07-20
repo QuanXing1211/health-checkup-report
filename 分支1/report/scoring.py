@@ -503,7 +503,7 @@ class ScoringEngine:
 
         for row in weak_data:
             level = str(row.get(risk_col, "")).strip()
-            level_key = level_map.get(level, "")
+            level_key = level_map.get(level, "") or "medium"
 
             if level_key in ("critical", "high"):
                 high_count += 1
