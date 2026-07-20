@@ -224,13 +224,13 @@ async function main() {
     }
   }
 
-  // 事件类型分布超过 5 项时才在末尾补充"其他"（取值 = 总事件数 - 已有类型事件数之和）
+  // 事件类型分布超过 5 项时才在末尾补充"其它"（取值 = 总事件数 - 已有类型事件数之和）
   const dist = reportData.riskDetails.eventTypeDistribution;
   if (Array.isArray(dist) && dist.length >= 5) {
     const sum = dist.reduce((acc, item) => acc + (item.value || 0), 0);
     const otherValue = (reportData.riskDetails.totalEvents || 0) - sum;
-    dist.push({ name: '其他', value: otherValue >= 0 ? otherValue : 0 });
-    logger(`事件类型分布已补充"其他": ${otherValue} 起`);
+    dist.push({ name: '其它', value: otherValue >= 0 ? otherValue : 0 });
+    logger(`事件类型分布已补充"其它": ${otherValue} 起`);
   }
 
   if (options['mssw-cookie-path']) {
