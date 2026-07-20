@@ -159,12 +159,12 @@ function patchKnownText(html, data) {
     .replace(/示例科技有限公司/g, escapeHtml(customer))
     .replace(/2026-01-01 ~ 2026-03-31/g, escapeHtml(period));
 
-  // 4.1.3 无内容时，4.1.4 若有内容则顺延为 4.1.3，正文标题、目录和导航同步更新。
+  // 3.2.3 无内容时，3.2.4 若有内容则顺延为 3.2.3，正文标题、目录和导航同步更新。
   if (riskDetails.highRiskEventsSectionHide === true && riskDetails.caseStudySectionHide !== true) {
     html = html
-      .replace(/(data-nav="sec-case-study"[^>]*>)4\.1\.4 典型案例/g, '$1' + '4.1.3 典型案例')
-      .replace(/(<span class="sr-toc-index">)4\.1\.4(<\/span>\s*<span class="sr-toc-label">典型案例)/g, '$1' + '4.1.3$2')
-      .replace(/(<h4 class="sr-h4" id="sec-case-study">)4\.1\.4 典型案例/g, '$1' + '4.1.3 典型案例');
+      .replace(/(data-nav="sec-case-study"[^>]*>)3\.2\.4 典型案例/g, '$1' + '3.2.3 典型案例')
+      .replace(/(<span class="sr-toc-index">)3\.2\.4(<\/span>\s*<span class="sr-toc-label">典型案例)/g, '$1' + '3.2.3$2')
+      .replace(/(<h4 class="sr-h4" id="sec-case-study">)3\.2\.4 典型案例/g, '$1' + '3.2.3 典型案例');
   }
 
   return html;
