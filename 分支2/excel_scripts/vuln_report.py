@@ -1069,6 +1069,19 @@ def main():
             ws_out.cell(row=row_num, column=ci, value=record.get(header, ""))
         row_num += 1
 
+    # 后处理：删除「托管状态」列（最终交付文件不需要此字段）
+    DROP_COLUMNS = {"托管状态"}
+    drop_indices = sorted(
+        [ci for ci, header in enumerate(C_HEADERS, start=1) if header in DROP_COLUMNS],
+        reverse=True
+    )
+    if drop_indices:
+        for idx in drop_indices:
+            ws_out.delete_cols(idx, 1)
+        log(f"  已删除列: {DROP_COLUMNS}（最终文件不含此字段）")
+    else:
+        log(f"  未找到列: {DROP_COLUMNS}，跳过删除")
+
     wb_out.save(OUTPUT_FILE)
     wb_out.close()
 
