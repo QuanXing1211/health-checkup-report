@@ -313,8 +313,7 @@ def build_asset_business_map(filepath):
         asset = normalize_asset_key(row[ip_col] if len(row) > ip_col else '')
         business = normalize(row[business_col] if len(row) > business_col else '')
         if asset and business:
-            # 所属业务支持英文逗号分隔多个值，拆分成列表
-            asset_business_map[asset] = [b.strip() for b in business.split(',') if b.strip()]
+            asset_business_map[asset] = business
     return asset_business_map
 
 
@@ -509,7 +508,7 @@ def main():
     asset_business_map = build_asset_business_map(asset_path)
     asset_all_business_map = build_asset_all_business_map(asset_path)
     asset_detail_map = build_asset_detail_map(asset_path)
-    business_systems = sorted({b for asset in all_assets if asset in asset_business_map for b in asset_business_map[asset]})
+    business_systems = sorted({asset_business_map[asset] for asset in all_assets if asset in asset_business_map})
     top1_business_system = resolve_top1_business_system(typed_risk_records, asset_all_business_map)
     risk_asset_top5 = rank_risk_assets(top_typed_risk_records, top_risk_records, asset_detail_map, 5)
 
