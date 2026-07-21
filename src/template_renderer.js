@@ -86,6 +86,17 @@ function extractGradeAssets(template) {
 function renderTemplate(template, reportData, gradeAssets) {
   let html = template;
 
+  // 文档信息表动态化：制作/复审日期取报告生成日期（docName 复用封面 projectBackground.customerName，HTML 模板内拼接）
+  const _pb = getProjectBackground(reportData);
+  const _genDate = new Date(_pb.generatedAt);
+  const _pad = (n) => String(n).padStart(2, '0');
+  const _dateStr = `${_genDate.getFullYear()}-${_pad(_genDate.getMonth() + 1)}-${_pad(_genDate.getDate())}`;
+  reportData.copyright = {
+    ...(reportData.copyright || {}),
+    createdAt: _dateStr,
+    reviewedAt: _dateStr,
+  };
+
   html = replaceHandlebarsTokens(html, reportData);
   html = renderSections(html, reportData);
   html = renderRepeats(html, reportData);
@@ -160,12 +171,12 @@ function patchKnownText(html, data) {
     .replace(/示例科技有限公司/g, escapeHtml(customer))
     .replace(/2026-01-01 ~ 2026-03-31/g, escapeHtml(period));
 
-  // 3.2.3 无内容时，3.2.4 若有内容则顺延为 3.2.3，正文标题、目录和导航同步更新。
+  // 3.2.4 无内容时，3.2.5 若有内容则顺延为 3.2.4，正文标题、目录和导航同步更新。
   if (riskDetails.highRiskEventsSectionHide === true && riskDetails.caseStudySectionHide !== true) {
     html = html
-      .replace(/(data-nav="sec-case-study"[^>]*>)3\.2\.4 典型案例/g, '$1' + '3.2.3 典型案例')
-      .replace(/(<span class="sr-toc-index">)3\.2\.4(<\/span>\s*<span class="sr-toc-label">典型案例)/g, '$1' + '3.2.3$2')
-      .replace(/(<h4 class="sr-h4" id="sec-case-study">)3\.2\.4 典型案例/g, '$1' + '3.2.3 典型案例');
+      .replace(/(data-nav="sec-case-study"[^>]*>)3\.2\.5 典型案例/g, '$1' + '3.2.4 典型案例')
+      .replace(/(<span class="sr-toc-index">)3\.2\.5(<\/span>\s*<span class="sr-toc-label">典型案例)/g, '$1' + '3.2.4$2')
+      .replace(/(<h4 class="sr-h4" id="sec-case-study">)3\.2\.5 典型案例/g, '$1' + '3.2.4 典型案例');
   }
 
   return html;

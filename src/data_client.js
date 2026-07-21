@@ -1,6 +1,6 @@
 'use strict';
 
-const { fetchMsswAssetOverview } = require('./mssw_client');
+const { fetchMsswAssetOverview, fetchSecurityCheckReportStats, calculateAttackOverview, readMsswCookieInfo } = require('./mssw_client');
 
 async function collectReportData(input) {
   if (input.msswCookiePath) {
@@ -28,6 +28,7 @@ async function collectReportData(input) {
     merged.assetLedger.core_asset = 0;
     merged = applyAssetStatusStats(merged, input.assetStatusStats);
     merged = applyIncidentStatusStats(merged, input.incidentStatusStats);
+    merged = await applyAttackOverview(merged, input);
     return merged;
   }
 
@@ -36,6 +37,59 @@ async function collectReportData(input) {
   let merged = applyAssetStatusStats(baseData, input.assetStatusStats);
   merged = applyIncidentStatusStats(merged, input.incidentStatusStats);
   return merged;
+}
+
+/**
+ * 调用安全体检报告统计接口，计算攻击态势总览数据并合并到 reportData.attackOverview。
+ * 失败不阻断主流程，仅在日志中提示。
+ */
+async function applyAttackOverview(reportData, input) {
+  const merged = { ...reportData };
+  merged.attackOverview = buildEmptyAttackOverview();
+
+  if (!input.msswCookiePath || !input.customerId || !input.start || !input.end) {
+    logInfo(input.logger, '跳过攻击态势接口查询: 缺少 msswCookiePath/customerId/start/end');
+    return merged;
+  }
+
+  try {
+    const cookieInfo = await readMsswCookieInfo(input.msswCookiePath);
+    const stats = await fetchSecurityCheckReportStats(
+      cookieInfo,
+      input.msswBaseUrl,
+      input.customerId,
+      input.customer,
+      input.start,
+      input.end
+    );
+
+    if (!stats) {
+      logInfo(input.logger, '攻击态势接口返回空数据: 报告范围可能不在近 31 天内');
+      return merged;
+    }
+
+    const overview = calculateAttackOverview(stats);
+    if (overview) {
+      merged.attackOverview = overview;
+      logInfo(input.logger, `攻击态势数据已合并: total=${overview.total_attack_count}, dailyAvg=${overview.daily_avg}, night=${overview.night_attack_count}, ratio=${overview.night_ratio}%, days=${overview.trend_dates.length}`);
+    }
+  } catch (error) {
+    logInfo(input.logger, `攻击态势接口调用失败（不影响主流程）: ${error.message}`);
+  }
+
+  return merged;
+}
+
+function buildEmptyAttackOverview() {
+  return {
+    total_attack_count: 0,
+    night_attack_count: 0,
+    daily_avg: 0,
+    night_ratio: '0.00',
+    trend_dates: [],
+    trend_values: [],
+    error: ''
+  };
 }
 
 function logInfo(logger, message) {
