@@ -45,6 +45,16 @@ DEV_TYPE_DICT = {
     3: "AF",
     9: "SIP",
     12: "EDR",
+    25: "STA",
+    72: "云镜-服务版",
+    50038: "EDR-探针版",
+    19: "aTrust",
+    2: "AC",
+    15: "云镜",
+    100012: "SAAS EDR",
+    69: "SaaS NGES",
+    37: "CWPP",
+    100038: "SaaS-EDR-探针版",
 }
 
 
