@@ -86,11 +86,23 @@ function extractGradeAssets(template) {
 function renderTemplate(template, reportData, gradeAssets) {
   let html = template;
 
+  // 文档信息表动态化：制作/复审日期取报告生成日期（docName 复用封面 projectBackground.customerName，HTML 模板内拼接）
+  const _pb = getProjectBackground(reportData);
+  const _genDate = new Date(_pb.generatedAt);
+  const _pad = (n) => String(n).padStart(2, '0');
+  const _dateStr = `${_genDate.getFullYear()}-${_pad(_genDate.getMonth() + 1)}-${_pad(_genDate.getDate())}`;
+  reportData.copyright = {
+    ...(reportData.copyright || {}),
+    createdAt: _dateStr,
+    reviewedAt: _dateStr,
+  };
+
   html = replaceHandlebarsTokens(html, reportData);
   html = renderSections(html, reportData);
   html = renderRepeats(html, reportData);
   html = patchKnownText(html, reportData);
   html = patchDataFields(html, reportData);
+  html = patchPolicyCheckKpiCards(html, reportData);
   html = patchGrade(html, reportData, gradeAssets);
   html = injectReportData(html, reportData);
   html = patchOps3DeviceCells(html, reportData);
@@ -159,12 +171,12 @@ function patchKnownText(html, data) {
     .replace(/示例科技有限公司/g, escapeHtml(customer))
     .replace(/2026-01-01 ~ 2026-03-31/g, escapeHtml(period));
 
-  // 3.2.3 无内容时，3.2.4 若有内容则顺延为 3.2.3，正文标题、目录和导航同步更新。
+  // 3.2.4 无内容时，3.2.5 若有内容则顺延为 3.2.4，正文标题、目录和导航同步更新。
   if (riskDetails.highRiskEventsSectionHide === true && riskDetails.caseStudySectionHide !== true) {
     html = html
-      .replace(/(data-nav="sec-case-study"[^>]*>)3\.2\.4 典型案例/g, '$1' + '3.2.3 典型案例')
-      .replace(/(<span class="sr-toc-index">)3\.2\.4(<\/span>\s*<span class="sr-toc-label">典型案例)/g, '$1' + '3.2.3$2')
-      .replace(/(<h4 class="sr-h4" id="sec-case-study">)3\.2\.4 典型案例/g, '$1' + '3.2.3 典型案例');
+      .replace(/(data-nav="sec-case-study"[^>]*>)3\.2\.5 典型案例/g, '$1' + '3.2.4 典型案例')
+      .replace(/(<span class="sr-toc-index">)3\.2\.5(<\/span>\s*<span class="sr-toc-label">典型案例)/g, '$1' + '3.2.4$2')
+      .replace(/(<h4 class="sr-h4" id="sec-case-study">)3\.2\.5 典型案例/g, '$1' + '3.2.4 典型案例');
   }
 
   return html;
@@ -176,6 +188,30 @@ function patchDataFields(html, data) {
     const value = getPath(data, keyPath);
     return value === undefined || value === null ? match : `${open}${escapeHtml(String(value))}${close}`;
   });
+}
+
+// 策略检查章节 KPI 卡：当 total/total_component_count 为 0（无数据）时，
+// 数值行替换为「暂无数据」文本，避免出现 0/0
+function patchPolicyCheckKpiCards(html, data) {
+  const policyStats = getPath(data, 'protection_effectiveness.policy_stats') || {};
+  const total = Number(policyStats.total || 0);
+  const totalComponent = Number(policyStats.total_component_count || 0);
+
+  // 策略检查项卡：把整段 sr-kpi-val 内容替换为「暂无数据」
+  if (total === 0) {
+    html = html.replace(
+      /(<div class="sr-kpi-card-hd">📋 策略检查项<\/div>\s*)<div class="sr-kpi-val[^"]*">[\s\S]*?<\/div>/,
+      '$1<div class="sr-kpi-val sr-kpi-val--empty">暂无数据</div>'
+    );
+  }
+  // 涉及组件卡
+  if (totalComponent === 0) {
+    html = html.replace(
+      /(<div class="sr-kpi-card-hd">📦 涉及组件<\/div>\s*)<div class="sr-kpi-val[^"]*">[\s\S]*?<\/div>/,
+      '$1<div class="sr-kpi-val sr-kpi-val--empty">暂无数据</div>'
+    );
+  }
+  return html;
 }
 
 function renderSections(html, data) {

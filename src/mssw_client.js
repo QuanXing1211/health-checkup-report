@@ -40,6 +40,7 @@ const MSSW_ASSET_DOWNLOAD_ENDPOINT = '/apps/asset/view/asset/download_file';
 const MSSW_ASSET_COUNT_ENDPOINT = '/apps/asset/view/asset/asset_view/count?_method=GET';
 const MSSW_INCIDENT_TABLE_ENDPOINT = '/gateway/mss-mdr/web/api/mssw/mss-mdr/v1/incident_table';
 const MSSW_LOG_SEARCH_COUNT_ENDPOINT = '/gateway/log-search-center-service/datalake/v1/ckCount';
+const SECURITY_CHECK_REPORT_STATS_ENDPOINT = '/gateway/log-search-center-service/datalake/v1/personalized_report/security_check_report_stats';
 const ATTCK_COUNT_ENDPOINT = '/ngsoc/INCIDENT/api/v1/incidents/attckCount';
 const INCIDENT_TABLE_QUERY_ENDPOINT = '/ngsoc/INCIDENT/api/v1/table/query/incidentTableQueryHandler';
 const CASE_STUDY_SEVERITY_ORDER = ['严重', '高危', '中危', '低危'];
@@ -2724,6 +2725,126 @@ async function fetchMsswSecurityLogCount(cookieInfo, msswBaseUrl, companyId, opt
   return networkLogTotal + endpointLogTotal;
 }
 
+/**
+ * 计算近 31 天的有效时间范围（接口仅支持近 31 天数据）。
+ * 取用户报告范围与「今天往前推 31 天」的交集。
+ * @param {string} start - YYYY-MM-DD
+ * @param {string} end   - YYYY-MM-DD
+ * @returns {{from_date:number, to_date:number, effectiveStart:string, effectiveEnd:string}}
+ */
+function resolveSecurityStatsTimeRange(start, end) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 近 31 天：今天往前推 30 天（含今天，共 31 天）
+  const recentStart = new Date(today);
+  recentStart.setDate(recentStart.getDate() - 30);
+  const recentStartMs = recentStart.getTime();
+  const recentEndMs = today.getTime() + 24 * 60 * 60 * 1000 - 1; // 含今日全天
+
+  const userStartMs = parseLocalDate(start, false) * 1000;
+  const userEndMs = parseLocalDate(end, true) * 1000;
+
+  // 取交集：报告范围 ∩ 近31天
+  const effectiveStartMs = Math.max(userStartMs, recentStartMs);
+  const effectiveEndMs = Math.min(userEndMs, recentEndMs);
+
+  if (effectiveStartMs > effectiveEndMs) {
+    return null; // 无交集
+  }
+
+  return {
+    from_date: Math.floor(effectiveStartMs / 1000),
+    to_date: Math.floor(effectiveEndMs / 1000),
+    effectiveStartMs,
+    effectiveEndMs
+  };
+}
+
+/**
+ * 调用安全体检报告统计接口，获取攻击态势数据。
+ * POST /gateway/log-search-center-service/datalake/v1/personalized_report/security_check_report_stats
+ * @param {object} cookieInfo  - readMsswCookieInfo 返回的 cookie 信息
+ * @param {string} msswBaseUrl - MSSW 基础域名（动态）
+ * @param {string} customerId  - 客户 ID
+ * @param {string} customerName - 客户名（写入 tenant_info.tenant_name）
+ * @param {string} start - YYYY-MM-DD 报告起始时间
+ * @param {string} end   - YYYY-MM-DD 报告结束时间
+ * @returns {Promise<object|null>} 接口响应 data.list[0]，无交集/接口失败时返回 null
+ */
+async function fetchSecurityCheckReportStats(cookieInfo, msswBaseUrl, customerId, customerName, start, end) {
+  const timeRange = resolveSecurityStatsTimeRange(start, end);
+  if (!timeRange) {
+    return null; // 报告范围不在近 31 天内
+  }
+
+  const url = 'https://' + normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL) + SECURITY_CHECK_REPORT_STATS_ENDPOINT;
+  const headers = buildMsswLogSearchCountHeaders(cookieInfo, msswBaseUrl);
+  const body = JSON.stringify({
+    condition: {
+      from_date: timeRange.from_date,
+      to_date: timeRange.to_date
+    },
+    top_n: 1,
+    tenant_info: [
+      {
+        tenant_id: String(customerId || ''),
+        tenant_name: String(customerName || '')
+      }
+    ]
+  });
+
+  const response = await requestJson(url, { headers, body });
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`攻击态势接口查询失败: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  const list = response && response.data && Array.isArray(response.data.list) ? response.data.list : [];
+  return list.length ? list[0] : null;
+}
+
+/**
+ * 计算攻击态势总览展示数据。
+ * - daily_avg = total_attack_count / count_list.length（总次数/天数，向下取整）
+ * - night_ratio = night_attack_count / total_attack_count（百分数保留两位小数）
+ * - trend_dates = report_date 仅取 MM-DD
+ * - trend_values = attack_count
+ * @param {object} stats - 接口返回的 list[0]
+ * @returns {object} attackOverview 字段
+ */
+function calculateAttackOverview(stats) {
+  if (!stats || typeof stats !== 'object') {
+    return null;
+  }
+
+  const totalAttack = Number(stats.total_attack_count || 0);
+  const nightAttack = Number(stats.night_attack_count || 0);
+  const countList = Array.isArray(stats.count_list) ? stats.count_list : [];
+  const dayCount = countList.length;
+  const dailyAvg = dayCount > 0 ? Math.floor(totalAttack / dayCount) : 0;
+  const nightRatio = totalAttack > 0
+    ? ((nightAttack / totalAttack) * 100).toFixed(2)
+    : '0.00';
+
+  const trendDates = countList.map((item) => {
+    const reportDate = String(item && item.report_date || '');
+    // YYYY-MM-DD → MM-DD
+    return reportDate.length >= 10 ? reportDate.slice(5, 10) : reportDate;
+  });
+  const trendValues = countList.map((item) => Number(item && item.attack_count || 0));
+
+  return {
+    total_attack_count: totalAttack,
+    night_attack_count: nightAttack,
+    daily_avg: dailyAvg,
+    night_ratio: nightRatio,
+    trend_dates: trendDates,
+    trend_values: trendValues,
+    error: stats.error || ''
+  };
+}
+
 module.exports = {
   DEFAULT_MSSW_BASE_URL,
   DEFAULT_SOAR_BASE_URL,
@@ -2762,6 +2883,10 @@ module.exports = {
   buildMsswLogSearchCountRequestBody,
   buildMsswLogSearchCountHeaders,
   fetchMsswLogCountByTable,
+  SECURITY_CHECK_REPORT_STATS_ENDPOINT,
+  fetchSecurityCheckReportStats,
+  resolveSecurityStatsTimeRange,
+  calculateAttackOverview,
   formatTimestampToDateTime,
   THREAT_ACTOR_NAMES,
   matchThreatActor,

@@ -590,6 +590,9 @@ class HtmlToWordExporter:
         # 封面 .sr-cover 在 dom_root 之外（HTML 中作为页面顶层 header 存在），
         # 此处先从 soup 抓取并缓存，避免 _extract_cover_info 在 root 内找不到。
         self._cover_node = soup.select_one(".sr-cover")
+        # 文档信息页 .sr-doc-info-page 在 dom_root 之内，但要单独成页并排在 TOC 前，
+        # 此处先从 soup 抓取并缓存，避免正文流里重复映射。
+        self._doc_info_node = soup.select_one(".sr-doc-info-page")
         # 剔除 skip_selectors 节点
         for sel in self.config.get("skip_selectors", []):
             for node in root.select(sel):
@@ -642,6 +645,8 @@ class HtmlToWordExporter:
         self._insert_cover_page(doc, cover_info)
         # 切换到正文 section：在封面后新增一个 next-page section break，恢复横版
         self._switch_to_body_section(doc)
+        # 文档信息页：单独成页，排在 TOC 前
+        self._insert_doc_info_page(doc)
         # 在正文 section 开头插入目录（TOC 域）
         self._insert_toc(doc, levels="1-3")
         container = _Container(doc, fonts=self.config.get("fonts", {}) or {})
@@ -870,6 +875,34 @@ class HtmlToWordExporter:
         run_end._element.append(fld_end)
 
         # 在目录后插入分页符，让正文从新页开始
+        page_break_p = doc.add_paragraph()
+        pb_run = page_break_p.add_run()
+        br = OxmlElement("w:br")
+        br.set(qn("w:type"), "page")
+        pb_run._element.append(br)
+
+    def _insert_doc_info_page(self, doc):
+        """插入文档信息页：把缓存的 .sr-doc-info-page 节点映射到正文 section，
+        末尾插分页符让其单独成页，排在 TOC 前。
+
+        节点结构：
+          <section class="sr-doc-info-page">
+            <h2>版权申明</h2>
+            <p>本文档...</p>
+            <h3>文档信息</h3>
+            <table class="sr-tbl sr-copyright-meta">...</table>
+          </section>
+        """
+        node = getattr(self, "_doc_info_node", None)
+        if node is None:
+            _log("未找到 .sr-doc-info-page 节点，跳过文档信息页插入", "WARNING")
+            return
+        fonts_cfg = self.config.get("fonts", {}) or {}
+        container = _Container(doc, fonts=fonts_cfg)
+        # 按顺序映射直接子节点（h2 / p / h3 / table）
+        for child in node.children:
+            self._map_node(child, container)
+        # 末尾插分页符，让 TOC 从新页开始
         page_break_p = doc.add_paragraph()
         pb_run = page_break_p.add_run()
         br = OxmlElement("w:br")
@@ -1254,6 +1287,10 @@ class HtmlToWordExporter:
         # 此处跳过避免正文流里重复出现。
         if node.name == "header" and "sr-cover" in (node.get("class") or []):
             return
+        # 文档信息页 .sr-doc-info-page 已在 _insert_doc_info_page 中单独渲染，
+        # 此处跳过避免正文流里重复出现。
+        if node.name == "section" and "sr-doc-info-page" in (node.get("class") or []):
+            return
         # 检查 class 匹配的 style_map 项（优先于标签）
         handler = self._lookup_style_handler(node)
         if handler:
@@ -1570,6 +1607,9 @@ class HtmlToWordExporter:
         rows = node.find_all("tr", recursive=True)
         if not rows:
             return
+        # 文档信息表（sr-copyright-meta）单独设垂直居中，其他表保持默认顶部对齐
+        node_classes = node.get("class") or []
+        is_doc_info_table = "sr-copyright-meta" in node_classes
         max_cols = 0
         grid = []
         has_any_th = False
@@ -1606,6 +1646,13 @@ class HtmlToWordExporter:
                     ci += 1
                 cell = table.cell(ri, ci)
                 self._render_cell_text_with_br(cell, cell_soup)
+                # 文档信息表单元格垂直居中（水平保持左对齐）
+                if is_doc_info_table:
+                    try:
+                        from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+                        cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+                    except Exception as e:
+                        _log(f"设置单元格垂直居中失败: {e}", "WARNING")
                 if colspan > 1:
                     for k in range(1, colspan):
                         try:
@@ -1620,7 +1667,7 @@ class HtmlToWordExporter:
                 if is_header_row or cell_soup.name == "th":
                     self._apply_table_header_cell_style(cell)
                 ci += colspan
-        self._set_table_column_widths_by_header(table, grid[0])
+        self._set_table_column_widths_by_grid(table, grid)
         self._set_table_borders(table)
 
     # 表头样式：浅蓝底（#EDF1F7）+ 深色字（#1A1F36），与 HTML .sr-tbl th 保持一致
@@ -1646,6 +1693,108 @@ class HtmlToWordExporter:
         shd.set(qn("w:color"), "auto")
         shd.set(qn("w:fill"), hex_color)
         tcPr.append(shd)
+
+    def _set_table_column_widths_by_grid(self, table, grid):
+        """根据全表所有行计算列宽并固定到 Word 表格。
+
+        旧 _set_table_column_widths_by_header 只用 grid[0] 算权重，遇到首行列数
+        < max_cols 的表（如文档信息表：首行 2 列、中间行 4 列），zip 会截断，
+        剩下列宽度未设导致 Word 按内容撑开溢出。
+        本函数扫全 grid，按 colspan 展开到 max_cols 槽位，对每列取该列出现过的
+        最大权重，统一归一化到内容宽度。
+
+        策略：
+          - 中文字符按 2 宽度权重，英文/数字按 1 宽度
+          - 每列权重 = 该列在所有行出现过的单元格权重的最大值
+          - 按权重比例分配页面内容宽度（page_width - 2 * margin）
+          - 最小列宽 10mm，避免空列宽为 0
+          - 关闭 autofit + 设置 tblLayout=fixed，确保 Word 按指定列宽渲染
+
+        Args:
+            table: docx Table 对象
+            grid: 全表行数据 [[(cell_soup, colspan, rowspan), ...], ...]，
+                  与 _map_table 中 grid 一致
+        """
+        if not grid:
+            return
+        max_cols = 0
+        for row_data in grid:
+            cols = sum(int(cs or 1) for _, cs, _ in row_data)
+            max_cols = max(max_cols, cols)
+        if max_cols == 0:
+            return
+        cfg = self.config.get("docx", {})
+        page_w_mm = cfg.get("page_width_mm", 210)
+        margin_mm = cfg.get("margin_mm", 20)
+        content_w_mm = page_w_mm - 2 * margin_mm
+        min_col_mm = 10
+
+        # 扫全 grid，按 colspan 展开到 max_cols 槽位，每列取出现过的最大权重
+        col_weights = [0.0] * max_cols
+        for row_data in grid:
+            ci = 0
+            for cell_soup, colspan, rowspan in row_data:
+                n = max(int(colspan or 1), 1)
+                if cell_soup is None:
+                    weight = 0.0
+                else:
+                    text = cell_soup.get_text(strip=True) or ""
+                    # 中文字符（ord > 127）按 2 宽度，其他按 1
+                    weight = sum(2 if ord(c) > 127 else 1 for c in text)
+                # 单元格权重按 colspan 平摊到每个槽位
+                each_w = weight / n
+                for k in range(n):
+                    if ci + k < max_cols and each_w > col_weights[ci + k]:
+                        col_weights[ci + k] = each_w
+                ci += n
+        # 空列兜底权重 1.0，避免后续归一时除 0 或被忽略
+        col_weights = [max(w, 1.0) for w in col_weights]
+
+        # 列数过多退化到平均分配；否则按权重比例分配并兜底最小列宽
+        if min_col_mm * max_cols >= content_w_mm:
+            each = content_w_mm / max_cols
+            col_widths_mm = [each] * max_cols
+        else:
+            total_weight = sum(col_weights)
+            col_widths_mm = [content_w_mm * w / total_weight for w in col_weights]
+            col_widths_mm = [max(w, min_col_mm) for w in col_widths_mm]
+            # 拉底后总宽可能超 content_w，按比例归一
+            total = sum(col_widths_mm)
+            if total > content_w_mm and total > 0:
+                scale = content_w_mm / total
+                col_widths_mm = [w * scale for w in col_widths_mm]
+
+        # 关闭 autofit，设置 tblLayout=fixed
+        table.autofit = False
+        table.allow_autofit = False
+        tbl = table._tbl
+        tblPr = tbl.find(qn("w:tblPr"))
+        if tblPr is None:
+            tblPr = OxmlElement("w:tblPr")
+            tbl.insert(0, tblPr)
+
+        layout = tblPr.find(qn("w:tblLayout"))
+        if layout is None:
+            layout = OxmlElement("w:tblLayout")
+            tblPr.append(layout)
+        layout.set(qn("w:type"), "fixed")
+
+        # tblW 总宽（dxa = twips）
+        total_twips = int(round(content_w_mm * 1440 / 25.4))
+        tblW = tblPr.find(qn("w:tblW"))
+        if tblW is None:
+            tblW = OxmlElement("w:tblW")
+            tblPr.append(tblW)
+        tblW.set(qn("w:type"), "dxa")
+        tblW.set(qn("w:w"), str(total_twips))
+
+        # 各 gridCol 宽度（twips）
+        tblGrid = tbl.find(qn("w:tblGrid"))
+        if tblGrid is None:
+            return
+        for gridCol, width_mm in zip(tblGrid.findall(qn("w:gridCol")), col_widths_mm):
+            twips = int(round(width_mm * 1440 / 25.4))
+            gridCol.set(qn("w:w"), str(twips))
 
     def _set_table_column_widths_by_header(self, table, header_row):
         """根据表头单元格文本长度计算列宽并固定到 Word 表格。
@@ -1741,6 +1890,16 @@ class HtmlToWordExporter:
                 parts.append(("br", None))
                 current_text = []
             elif isinstance(child, Tag) and child.name in block_tags:
+                # 专门处理 sr-component-name-row：把组件名称和类型标签
+                # 作为两个独立 run 渲染到同一段落，保留视觉区分
+                classes = child.get("class", []) or []
+                if isinstance(classes, str):
+                    classes = classes.split()
+                if "sr-component-name-row" in classes:
+                    parts.append(("text", "".join(current_text)))
+                    parts.append(("component_name_row", child))
+                    current_text = []
+                    continue
                 # 块级标签：先把累计文本 flush，再提取块文本
                 parts.append(("text", "".join(current_text)))
                 parts.append(("text", child.get_text(" ", strip=True)))
@@ -1769,6 +1928,39 @@ class HtmlToWordExporter:
                 # 在新 run 中插入软换行（<w:br/>，必须在 <w:r> 内部）
                 run = paragraph.add_run()
                 run.add_break()
+            elif ptype == "component_name_row":
+                self._render_component_name_row(paragraph, content)
+
+    def _render_component_name_row(self, paragraph, div_node):
+        """渲染组件名称行：组件名称（默认字号、加粗、黑色）+ 类型（括号形式、灰色小字）
+        作为两个独立 run 渲染到同一段落，保留视觉区分度。"""
+        # 组件名称
+        name_tag = div_node.find("span", class_="sr-component-name")
+        if name_tag is not None:
+            name_text = name_tag.get_text(strip=True)
+            if name_text:
+                name_run = paragraph.add_run(name_text)
+                name_run.font.size = Pt(10.5)
+                name_run.font.bold = True
+                name_run.font.color.rgb = RGBColor(0x1F, 0x23, 0x2E)
+
+        # 类型标签（sr-tag sr-tag--light sr-tag--blue）
+        type_tag = None
+        for span in div_node.find_all("span", class_="sr-tag"):
+            classes = span.get("class", []) or []
+            if isinstance(classes, str):
+                classes = classes.split()
+            if "sr-tag--blue" in classes or "sr-tag--light" in classes:
+                type_tag = span
+                break
+        if type_tag is not None:
+            type_text = type_tag.get_text(strip=True)
+            if type_text:
+                # 名称与类型之间留一个空格分隔，类型用括号形式、灰色小字
+                paragraph.add_run(" ")
+                type_run = paragraph.add_run(f"({type_text})")
+                type_run.font.size = Pt(8)
+                type_run.font.color.rgb = RGBColor(0x8A, 0x8F, 0x9A)
 
     # ── 工具：shading / borders ─────────────────────
 
