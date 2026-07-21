@@ -7,7 +7,7 @@ const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails, extractIncidentDirectStats, annotateIncidentGptConclusion } = require('./src/incident_excel_stats');
-const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, processRiskListTable } = require('./src/mssw_client');
+const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, processRiskListTable, fetchContainedAlertCount } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
 const { rankBusinessSystems } = require('./src/business_system_ranking');
@@ -149,7 +149,7 @@ async function main() {
   if (assetFilePath && incidentFilePath) {
     try {
       managedAssetIncidentStats = await summarizeManagedAssetIncidents(assetFilePath, incidentFilePath);
-      logger(`托管资产事件统计: 共 ${managedAssetIncidentStats.managedAssetEvents} 起事件, 涉及 ${managedAssetIncidentStats.managedAssetCount} 个托管资产, 已遏制 ${managedAssetIncidentStats.managedAssetContainedEvents} 起, 处置完成 ${managedAssetIncidentStats.managedAssetDisposedEvents} 起, 闭环率 ${managedAssetIncidentStats.managedEventCloseRate}%`);
+      logger(`全量事件响应时间统计: AvgResponseTime=${managedAssetIncidentStats.AvgResponseTime}分钟, 托管资产数=${managedAssetIncidentStats.managedAssetCount}`);
     } catch (error) {
       logger(`托管资产事件统计失败（不影响主流程）: ${error.message}`);
     }
@@ -182,31 +182,43 @@ async function main() {
   }
   reportData.riskDetails.highRiskIncidentExamples.vulnExploits = vulnExploitExamples;
 
-  // 合并托管资产事件统计到报告数据（始终写入默认值，有数据时覆盖）
+    // 通过 API 查询已遏制告警数量，覆盖两处已遏制事件统计
+  let containedFromApi = 0;
+  if (msswCookie && customerId && effectiveTimeRange.start && effectiveTimeRange.end) {
+    try {
+      containedFromApi = await fetchContainedAlertCount(msswCookie, options['mssw-base-url'], customerId, {
+        start: effectiveTimeRange.start,
+        end: effectiveTimeRange.end
+      });
+      logger(`API 查询已遏制告警数量: ${containedFromApi} 起`);
+    } catch (error) {
+      logger(`API 查询已遏制告警数量失败（保留原统计值）: ${error.message}`);
+    }
+  }
+  if (containedFromApi > 0) {
+    // 覆盖全量事件统计中的已遏制数
+    if (incidentStatusStats) {
+      incidentStatusStats.containedEvents = containedFromApi;
+    }
+  }
+
+// 合并全量事件响应时间统计到报告数据（始终写入默认值，有数据时覆盖）
   Object.assign(reportData.riskDetails, {
-    managedAssetEvents: 0,
-    managedAssetContainedEvents: 0,
-    managedAssetDisposedEvents: 0,
-    managedEventCloseRate: 0,
-    managedAssetCount: 0,
-    managedAvgResponseTime: 0,
+    AvgResponseTime: 0,
     topEventType: '',
     top3BusinessSystems: '',
-    businessSystemEventDistribution: []
+    businessSystemEventDistribution: [],
+    managedAssetCount: 0,
   });
   if (managedAssetIncidentStats) {
     Object.assign(reportData.riskDetails, {
-      managedAssetEvents: managedAssetIncidentStats.managedAssetEvents,
-      managedAssetContainedEvents: managedAssetIncidentStats.managedAssetContainedEvents,
-      managedAssetDisposedEvents: managedAssetIncidentStats.managedAssetDisposedEvents,
-      managedEventCloseRate: managedAssetIncidentStats.managedEventCloseRate,
+      AvgResponseTime: managedAssetIncidentStats.AvgResponseTime,
       managedAssetCount: managedAssetIncidentStats.managedAssetCount,
-      managedAvgResponseTime: managedAssetIncidentStats.managedAvgResponseTime,
       topEventType: managedAssetIncidentStats.topEventType,
       top3BusinessSystems: managedAssetIncidentStats.top3BusinessSystems,
       businessSystemEventDistribution: managedAssetIncidentStats.businessSystemEventDistribution
     });
-    logger(`托管资产事件数据已合并: events=${managedAssetIncidentStats.managedAssetEvents}, contained=${managedAssetIncidentStats.managedAssetContainedEvents}, disposed=${managedAssetIncidentStats.managedAssetDisposedEvents}, closeRate=${managedAssetIncidentStats.managedEventCloseRate}%, avgResponseTime=${managedAssetIncidentStats.managedAvgResponseTime}分钟`);
+    logger(`全量事件响应时间已合并: AvgResponseTime=${managedAssetIncidentStats.AvgResponseTime}分钟`);
     logger(`最多类型事件: ${managedAssetIncidentStats.topEventType}`);
     logger(`TOP3业务系统: ${managedAssetIncidentStats.top3BusinessSystems}`);
     logger(`业务系统安全事件分布: ${JSON.stringify(managedAssetIncidentStats.businessSystemEventDistribution)}`);

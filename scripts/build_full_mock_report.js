@@ -324,12 +324,8 @@ function enrichReportData(reportData) {
   reportData.riskDetails.processingEvents = positiveNumberOr(reportData.riskDetails.processingEvents, 64);
   reportData.riskDetails.closeRate = positiveNumberOr(reportData.riskDetails.closeRate, reportData.riskOverview.closeRate);
   reportData.riskDetails.uniqueAssetCount = positiveNumberOr(reportData.riskDetails.uniqueAssetCount, reportData.riskOverview.affectedAssetCount);
-  reportData.riskDetails.managedAssetEvents = positiveNumberOr(reportData.riskDetails.managedAssetEvents, 280);
-  reportData.riskDetails.managedAssetContainedEvents = positiveNumberOr(reportData.riskDetails.managedAssetContainedEvents, 88);
-  reportData.riskDetails.managedAssetDisposedEvents = positiveNumberOr(reportData.riskDetails.managedAssetDisposedEvents, 176);
-  reportData.riskDetails.managedEventCloseRate = positiveNumberOr(reportData.riskDetails.managedEventCloseRate, 63);
+  reportData.riskDetails.AvgResponseTime = positiveNumberOr(reportData.riskDetails.AvgResponseTime, 42);
   reportData.riskDetails.managedAssetCount = positiveNumberOr(reportData.riskDetails.managedAssetCount, 200);
-  reportData.riskDetails.managedAvgResponseTime = positiveNumberOr(reportData.riskDetails.managedAvgResponseTime, 47);
   reportData.riskDetails.topEventType = reportData.riskDetails.topEventType || '恶意文件检出';
   reportData.riskDetails.top3BusinessSystems = reportData.riskDetails.top3BusinessSystems || 'OA系统、ERP系统、邮件系统';
   reportData.riskDetails.businessSystemEventDistribution = ensureArrayObjects(

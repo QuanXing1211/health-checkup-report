@@ -100,7 +100,7 @@ node health_report.js `
 | `riskDetails.closeRate` | 闭环率 | 导出的事件表 Excel | 用 `closedEvents / totalEvents * 100` 计算，结果保留两位小数 |
 | `riskDetails.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果保留两位小数 |
 | `riskDetails.uniqueAssetCount` | 涉及到的资产数 | 导出的事件表 Excel | 遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址（如 `10.5.40.62(未归类组)` 取 `10.5.40.62`）后去重计数 |
-| `riskDetails.managedAvgResponseTime` | 托管资产事件平均响应时间 | 导出的资产表 Excel + 事件表 Excel | 先筛出影响资产属于托管资产且 `处置状态 = 处置完成` 的事件，再用 `完成时间 - 事件创建时间` 计算每起事件的响应分钟数，最后求平均并保留 1 位小数；任一时间缺失或无法解析则跳过该事件 |
+| `riskDetails.AvgResponseTime` | 全量事件平均响应时间 | 导出的资产表 Excel + 事件表 Excel | 遍历所有 `处置状态 = 处置完成` 的事件，用 `完成时间 - 事件创建时间` 计算每起事件的响应分钟数，最后求平均并保留 1 位小数；任一时间缺失或无法解析则跳过该事件 |
 | `riskDetails.highRiskIncidentExamples.vulnExploits` | 高危及以上事件举例-漏洞利用类 | 导出的事件表 Excel + `riskOverview.exploitStats.incidentIds` | 回查 `incidentIds` 命中的事件，读取 `等级` 列并按 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条；带出 `事件名称`、`受影响资产`、`最近发生时间`、`处置状态` |
 | `riskDetails.highRiskIncidentExamples.viruses` | 高危及以上事件举例-病毒木马类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.virusTrojan.confirmedIncidentIds` | 回查已确认病毒木马事件，先从 `文件` 列中提取所有标记为 `黑` 的 MD5 并用 `、` 拼接，再按 `等级` 列的 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
 | `riskDetails.highRiskIncidentExamples.c2Connections` | 高危及以上事件举例-C2外联类 | MSSW 事件表 Excel + `riskOverview.incidentGptStats.hostCompromise.confirmedIncidentIds` | 回查已确认 C2 外联事件，先从 `外网IP` 和 `域名` 列中提取所有标记为 `黑` 的实体并用 `、` 拼接，再按 `等级` 列的 `严重 > 高危 > 中危 > 低危` 排序，同等级保持事件表原始顺序，最多取 5 条，同时带出 `受影响资产`、`最近发生时间`、`处置状态` |
