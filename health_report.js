@@ -543,8 +543,8 @@ Options:
   --mssw-base-url <host>         MSSW base host (default pre.soar.sangfor.com)
   --soar-base-url <host>         SOAR base host for EASM interfaces (default soar59.sangfor.com.cn)
   --xdr-cookie-path <path>       Optional, XDR cookie file path
-  --start <YYYY-MM-DD>           Optional report start date
-  --end <YYYY-MM-DD>             Optional report end date
+  --start <YYYY-MM-DD>           Optional report start date (最大范围 30 天)
+  --end <YYYY-MM-DD>             Optional report end date (最大范围 30 天)
   --cookie-path <path>           SOAR cookie file path (soar.sangfor.com.cn)
   --xdr-tables <names>           Optional MSSW export tables, default asset,incident
   --download-dir <path>          Optional export directory override
@@ -569,6 +569,7 @@ async function exportConfiguredXdrTables(options) {
 
   for (const table of tables) {
     if (table === 'asset') {
+      // 原 MSSW 真实下载逻辑（已重新启用）
       logWith(options.logger, '开始处理表格: asset (MSSW 真实下载)');
       results.asset = await exportMsswAssetList({
         msswCookiePath: options.msswCookiePath,
@@ -579,7 +580,7 @@ async function exportConfiguredXdrTables(options) {
         logger: options.logger
       });
 
-      // 改为固定读项目根目录的资产表
+      // 本地 mock 逻辑（已注释）
       // logWith(options.logger, '开始处理表格: asset (读取本地资产列表.xlsx)');
       // const localAssetPath = path.join(__dirname, '资产列表.xlsx');
       // const processedResult = await processRiskListTable('asset', localAssetPath);
@@ -807,6 +808,26 @@ function replaceExtension(filePath, extension) {
   return path.join(parsed.dir, `${parsed.name}${extension}`);
 }
 
+const MAX_QUERY_DAY_SPAN = 30;
+
+function computeDaySpan(startStr, endStr) {
+  const startMatch = String(startStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const endMatch = String(endStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!startMatch || !endMatch) return null;
+  const startDate = new Date(+startMatch[1], +startMatch[2] - 1, +startMatch[3]);
+  const endDate = new Date(+endMatch[1], +endMatch[2] - 1, +endMatch[3]);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((endDate.getTime() - startDate.getTime()) / msPerDay) + 1;
+}
+
+function subtractDays(dateStr, days) {
+  const match = String(dateStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const date = new Date(+match[1], +match[2] - 1, +match[3]);
+  date.setDate(date.getDate() - days);
+  return formatDate(date);
+}
+
 async function resolveEffectiveTimeRange({ options, customerId, msswCookie, reportGeneratedAt, logger }) {
   const hasStart = options.start !== undefined && options.start !== null && String(options.start).trim() !== '';
   const hasEnd = options.end !== undefined && options.end !== null && String(options.end).trim() !== '';
@@ -856,6 +877,11 @@ async function resolveEffectiveTimeRange({ options, customerId, msswCookie, repo
       }
     }
 
+    const daySpan = computeDaySpan(effectiveStart, effectiveEnd);
+    if (daySpan !== null && daySpan > MAX_QUERY_DAY_SPAN) {
+      throw new Error(`查询时间范围不能超过 ${MAX_QUERY_DAY_SPAN} 天（当前 ${daySpan} 天），请缩小范围后重新输入`);
+    }
+
     validateDateRange(effectiveStart, effectiveEnd);
     const clamped = effectiveStart !== String(options.start).trim() || effectiveEnd !== String(options.end).trim();
     logger(`最终时间范围: ${effectiveStart} ~ ${effectiveEnd}`);
@@ -869,6 +895,16 @@ async function resolveEffectiveTimeRange({ options, customerId, msswCookie, repo
   // 用户未传时间，使用接口返回的服务时间范围
   if (!serviceTimeRange) {
     throw new Error('未传 --start/--end 时，需要提供 --mssw-cookie-path 和有效的 company_id 以自动推导默认时间范围');
+  }
+
+  // 最多只取最近 30 天：start 不能早于 end-29 天
+  const daySpan = computeDaySpan(serviceTimeRange.start, serviceTimeRange.end);
+  if (daySpan !== null && daySpan > MAX_QUERY_DAY_SPAN) {
+    const cappedStart = subtractDays(serviceTimeRange.end, MAX_QUERY_DAY_SPAN - 1);
+    if (cappedStart) {
+      logger(`服务时间范围 ${serviceTimeRange.start} ~ ${serviceTimeRange.end} 超过 ${MAX_QUERY_DAY_SPAN} 天，自动截取最近 ${MAX_QUERY_DAY_SPAN} 天: ${cappedStart} ~ ${serviceTimeRange.end}`);
+      serviceTimeRange.start = cappedStart;
+    }
   }
 
   validateDateRange(serviceTimeRange.start, serviceTimeRange.end);

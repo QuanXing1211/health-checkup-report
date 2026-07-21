@@ -29,12 +29,12 @@ node "$HOME\.openclaw\workspace\skills\health-checkup-report\health_report.js" `
   --customer "<客户名>"
 ```
 
-如需显式指定时间，`--start` 和 `--end` 必须同时传入。
+如需显式指定时间，`--start` 和 `--end` 必须同时传入。**查询时间范围最大 30 天**，超出会报错提示用户缩小范围。
 
-未传时间时，脚本会通过 MSSW 项目列表接口自动推导：
+未传时间时，脚本会通过 MSSW 项目列表接口自动推导，并在 30 天上限内自动截取：
 
-- 开始时间 = 最早 `service_start`
-- 结束时间 = `min(报告生成时刻, 最早非空 service_end)`
+- 开始时间 = `max(最早 service_start, 结束时间 - 29 天)`
+- 结束时间 = `min(报告生成日前一天, 最早非空 service_end)`
 
 ## 输出
 
@@ -46,4 +46,4 @@ node "$HOME\.openclaw\workspace\skills\health-checkup-report\health_report.js" `
 
 - `customer`
 
-缺少客户时先追问，不要猜。时间没传时不要追问，直接走默认时间推导。
+缺少客户时先追问，不要猜。时间没传时不要追问，直接走默认时间推导（自动取最近 30 天）。
