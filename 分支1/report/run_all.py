@@ -1,4 +1,4 @@
-"""
+﻿"""
 分支1统一入口。
 
 职责：
@@ -166,7 +166,7 @@ def parse_args():
     parser.add_argument("--asset-sheet", default="Sheet1")
     parser.add_argument("--event-sheet", default="事件表")
     parser.add_argument("--vuln-sheet", default="漏洞")
-    parser.add_argument("--weakpwd-sheet", default="弱密码")
+    parser.add_argument("--weakpwd-sheet", default="弱口令")
     parser.add_argument("--exposure-sheet", default="端口表")
     parser.add_argument("--policy-sheet", default="策略检查")
     parser.add_argument("--asset-header-row", type=int, default=2)

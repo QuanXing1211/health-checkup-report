@@ -91,6 +91,7 @@ function renderTemplate(template, reportData, gradeAssets) {
   html = renderRepeats(html, reportData);
   html = patchKnownText(html, reportData);
   html = patchDataFields(html, reportData);
+  html = patchPolicyCheckKpiCards(html, reportData);
   html = patchGrade(html, reportData, gradeAssets);
   html = injectReportData(html, reportData);
   html = patchOps3DeviceCells(html, reportData);
@@ -176,6 +177,30 @@ function patchDataFields(html, data) {
     const value = getPath(data, keyPath);
     return value === undefined || value === null ? match : `${open}${escapeHtml(String(value))}${close}`;
   });
+}
+
+// 策略检查章节 KPI 卡：当 total/total_component_count 为 0（无数据）时，
+// 数值行替换为「暂无数据」文本，避免出现 0/0
+function patchPolicyCheckKpiCards(html, data) {
+  const policyStats = getPath(data, 'protection_effectiveness.policy_stats') || {};
+  const total = Number(policyStats.total || 0);
+  const totalComponent = Number(policyStats.total_component_count || 0);
+
+  // 策略检查项卡：把整段 sr-kpi-val 内容替换为「暂无数据」
+  if (total === 0) {
+    html = html.replace(
+      /(<div class="sr-kpi-card-hd">📋 策略检查项<\/div>\s*)<div class="sr-kpi-val[^"]*">[\s\S]*?<\/div>/,
+      '$1<div class="sr-kpi-val sr-kpi-val--empty">暂无数据</div>'
+    );
+  }
+  // 涉及组件卡
+  if (totalComponent === 0) {
+    html = html.replace(
+      /(<div class="sr-kpi-card-hd">📦 涉及组件<\/div>\s*)<div class="sr-kpi-val[^"]*">[\s\S]*?<\/div>/,
+      '$1<div class="sr-kpi-val sr-kpi-val--empty">暂无数据</div>'
+    );
+  }
+  return html;
 }
 
 function renderSections(html, data) {

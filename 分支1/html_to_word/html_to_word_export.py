@@ -1741,6 +1741,16 @@ class HtmlToWordExporter:
                 parts.append(("br", None))
                 current_text = []
             elif isinstance(child, Tag) and child.name in block_tags:
+                # 专门处理 sr-component-name-row：把组件名称和类型标签
+                # 作为两个独立 run 渲染到同一段落，保留视觉区分
+                classes = child.get("class", []) or []
+                if isinstance(classes, str):
+                    classes = classes.split()
+                if "sr-component-name-row" in classes:
+                    parts.append(("text", "".join(current_text)))
+                    parts.append(("component_name_row", child))
+                    current_text = []
+                    continue
                 # 块级标签：先把累计文本 flush，再提取块文本
                 parts.append(("text", "".join(current_text)))
                 parts.append(("text", child.get_text(" ", strip=True)))
@@ -1769,6 +1779,39 @@ class HtmlToWordExporter:
                 # 在新 run 中插入软换行（<w:br/>，必须在 <w:r> 内部）
                 run = paragraph.add_run()
                 run.add_break()
+            elif ptype == "component_name_row":
+                self._render_component_name_row(paragraph, content)
+
+    def _render_component_name_row(self, paragraph, div_node):
+        """渲染组件名称行：组件名称（默认字号、加粗、黑色）+ 类型（括号形式、灰色小字）
+        作为两个独立 run 渲染到同一段落，保留视觉区分度。"""
+        # 组件名称
+        name_tag = div_node.find("span", class_="sr-component-name")
+        if name_tag is not None:
+            name_text = name_tag.get_text(strip=True)
+            if name_text:
+                name_run = paragraph.add_run(name_text)
+                name_run.font.size = Pt(10.5)
+                name_run.font.bold = True
+                name_run.font.color.rgb = RGBColor(0x1F, 0x23, 0x2E)
+
+        # 类型标签（sr-tag sr-tag--light sr-tag--blue）
+        type_tag = None
+        for span in div_node.find_all("span", class_="sr-tag"):
+            classes = span.get("class", []) or []
+            if isinstance(classes, str):
+                classes = classes.split()
+            if "sr-tag--blue" in classes or "sr-tag--light" in classes:
+                type_tag = span
+                break
+        if type_tag is not None:
+            type_text = type_tag.get_text(strip=True)
+            if type_text:
+                # 名称与类型之间留一个空格分隔，类型用括号形式、灰色小字
+                paragraph.add_run(" ")
+                type_run = paragraph.add_run(f"({type_text})")
+                type_run.font.size = Pt(8)
+                type_run.font.color.rgb = RGBColor(0x8A, 0x8F, 0x9A)
 
     # ── 工具：shading / borders ─────────────────────
 
