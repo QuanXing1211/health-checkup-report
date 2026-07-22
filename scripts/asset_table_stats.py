@@ -80,7 +80,23 @@ def main():
 
     workbook = load_workbook(sys.argv[1], read_only=True, data_only=True)
     sheet = workbook.active
-    header_row = next(sheet.iter_rows(min_row=2, max_row=2, values_only=True), ())
+    # 自适应表头行：原始批次 xlsx 第 1 行空 + 第 2 行表头；
+    # merge_xlsx_batches 合并后的 xlsx 第 1 行直接是表头。
+    # 取前 2 行扫描，含 "IP 地址" 或 "审核状态" 等已知列名的就是表头行。
+    candidate_rows = list(sheet.iter_rows(min_row=1, max_row=2, values_only=True))
+    header_row = ()
+    header_row_idx = 1
+    known_aliases = ("ip地址", "资产类型", "审核状态", "agent状态", "托管状态", "数据源")
+    for idx, row in enumerate(candidate_rows, start=1):
+        normalized = [normalize_header(c) for c in row if c is not None]
+        if any(any(alias in h for h in normalized) for alias in known_aliases):
+            header_row = row
+            header_row_idx = idx
+            break
+    if not header_row:
+        # 兜底：默认 row 1
+        header_row = candidate_rows[0] if candidate_rows else ()
+        header_row_idx = 1
     headers = list(header_row)
 
     # 列匹配（仅指定的列名）
@@ -105,7 +121,7 @@ def main():
     wait_approve_count = 0  # 待审核资产数量
     current_asset_count = 0  # 资产台账（已审核）数量
 
-    for row in sheet.iter_rows(min_row=3, values_only=True):
+    for row in sheet.iter_rows(min_row=header_row_idx + 1, values_only=True):
         if not any(normalize(cell) for cell in row):
             continue
 
