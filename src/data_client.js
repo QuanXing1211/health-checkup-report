@@ -84,8 +84,9 @@ function buildEmptyAttackOverview() {
   return {
     total_attack_count: 0,
     night_attack_count: 0,
+    workday_attack_count: 0,
     daily_avg: 0,
-    night_ratio: '0.00',
+    night_ratio: '0',
     trend_dates: [],
     trend_values: [],
     error: ''
@@ -137,6 +138,26 @@ function applyIncidentStatusStats(reportData, stats) {
     merged.riskOverview.totalEvents = merged.riskDetails.totalEvents;
     merged.riskOverview.alertReductionRate = merged.riskDetails.alertReductionRate;
     merged.riskOverview.affectedAssetCount = merged.riskDetails.uniqueAssetCount;
+  }
+
+  // === ABCDE 派生计算（2 节风险总览总结文案）===
+  // C = 威胁预防风险总数（5 项求和，全部来自 2 节图右侧"威胁预防"面板）
+  const internetRiskPorts = Number((merged.summary && merged.summary.internet && merged.summary.internet.exposure && merged.summary.internet.exposure.risk_ports) || 0);
+  const internetVulnTotal = Number((merged.summary && merged.summary.internet && merged.summary.internet.vuln && merged.summary.internet.vuln.total) || 0);
+  const internetWeakPwdTotal = Number((merged.summary && merged.summary.internet && merged.summary.internet.weak_pwd && merged.summary.internet.weak_pwd.total) || 0);
+  const intranetVulnTotal = Number((merged.summary && merged.summary.intranet && merged.summary.intranet.vuln && merged.summary.intranet.vuln.total) || 0);
+  const intranetWeakPwdTotal = Number((merged.summary && merged.summary.intranet && merged.summary.intranet.weak_pwd && merged.summary.intranet.weak_pwd.total) || 0);
+  const threatPreventionRiskCount = internetRiskPorts + internetVulnTotal + internetWeakPwdTotal + intranetVulnTotal + intranetWeakPwdTotal;
+
+  // M = 组件策略检查风险项
+  const policyAbnormalCount = Number((merged.protection_effectiveness && merged.protection_effectiveness.policy_stats && merged.protection_effectiveness.policy_stats.abnormal_count) || 0);
+
+  // A = B + C + M
+  const totalRiskCount = Number(merged.riskOverview.totalEvents || 0) + threatPreventionRiskCount + policyAbnormalCount;
+
+  if (merged.riskOverview) {
+    merged.riskOverview.threatPreventionRiskCount = threatPreventionRiskCount;
+    merged.riskOverview.totalRiskCount = totalRiskCount;
   }
 
   return merged;

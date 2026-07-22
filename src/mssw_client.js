@@ -2865,8 +2865,8 @@ async function fetchMsswSecurityLogCount(cookieInfo, msswBaseUrl, companyId, opt
 }
 
 /**
- * 计算近 31 天的有效时间范围（接口仅支持近 31 天数据）。
- * 取用户报告范围与「今天往前推 31 天」的交集。
+ * 计算近 30 天的有效时间范围（接口仅支持近 30 天数据）。
+ * 取用户报告范围与「今天往前推 30 天」的交集。r
  * @param {string} start - YYYY-MM-DD
  * @param {string} end   - YYYY-MM-DD
  * @returns {{from_date:number, to_date:number, effectiveStart:string, effectiveEnd:string}}
@@ -2875,9 +2875,9 @@ function resolveSecurityStatsTimeRange(start, end) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // 近 31 天：今天往前推 30 天（含今天，共 31 天）
+  // 近 30 天：今天往前推 29 天（含今天，共 30 天）
   const recentStart = new Date(today);
-  recentStart.setDate(recentStart.getDate() - 30);
+  recentStart.setDate(recentStart.getDate() - 29);
   const recentStartMs = recentStart.getTime();
   const recentEndMs = today.getTime() + 24 * 60 * 60 * 1000 - 1; // 含今日全天
 
@@ -2914,7 +2914,7 @@ function resolveSecurityStatsTimeRange(start, end) {
 async function fetchSecurityCheckReportStats(cookieInfo, msswBaseUrl, customerId, customerName, start, end) {
   const timeRange = resolveSecurityStatsTimeRange(start, end);
   if (!timeRange) {
-    return null; // 报告范围不在近 31 天内
+    return null; // 报告范围不在近 30 天内
   }
 
   const url = 'https://' + normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL) + SECURITY_CHECK_REPORT_STATS_ENDPOINT;
@@ -2944,9 +2944,29 @@ async function fetchSecurityCheckReportStats(cookieInfo, msswBaseUrl, customerId
 }
 
 /**
+ * 格式化攻击态势的占比百分数。
+ * 规则：
+ *   - totalAttack <= 0 时返回 '0'（话术渲染为「0%」）
+ *   - 能除尽（整数 / 一位小数 / 两位小数）则按实际位数返回，去掉末尾多余的 0
+ *   - 除不尽则四舍五入保留最多两位小数
+ * @param {number} nightAttack
+ * @param {number} totalAttack
+ * @returns {string} 百分数的数字部分（不含 %）
+ */
+function formatAttackRatio(nightAttack, totalAttack) {
+  if (!totalAttack || totalAttack <= 0) {
+    return '0';
+  }
+  const ratio = (Number(nightAttack || 0) / totalAttack) * 100;
+  // 先按两位小数四舍五入，再去掉末尾多余的 0 和小数点
+  return String(Math.round(ratio * 100) / 100);
+}
+
+/**
  * 计算攻击态势总览展示数据。
- * - daily_avg = total_attack_count / count_list.length（总次数/天数，向下取整）
- * - night_ratio = night_attack_count / total_attack_count（百分数保留两位小数）
+ * - daily_avg = total_attack_count / count_list.length（总次数/天数，四舍五入；dayCount=0 时兜底为 0）
+ * - night_ratio = night_attack_count / total_attack_count（百分数：能除尽则按实际位数显示，除不尽四舍五入保留最多两位小数；
+ *   去掉末尾多余的 0，整数结果不带小数点；totalAttack=0 时返回 '0'）
  * - trend_dates = report_date 仅取 MM-DD
  * - trend_values = attack_count
  * @param {object} stats - 接口返回的 list[0]
@@ -2959,12 +2979,11 @@ function calculateAttackOverview(stats) {
 
   const totalAttack = Number(stats.total_attack_count || 0);
   const nightAttack = Number(stats.night_attack_count || 0);
+  const workdayAttack = Math.max(totalAttack - nightAttack, 0);
   const countList = Array.isArray(stats.count_list) ? stats.count_list : [];
   const dayCount = countList.length;
-  const dailyAvg = dayCount > 0 ? Math.floor(totalAttack / dayCount) : 0;
-  const nightRatio = totalAttack > 0
-    ? ((nightAttack / totalAttack) * 100).toFixed(2)
-    : '0.00';
+  const dailyAvg = dayCount > 0 ? Math.round(totalAttack / dayCount) : 0;
+  const nightRatio = formatAttackRatio(nightAttack, totalAttack);
 
   const trendDates = countList.map((item) => {
     const reportDate = String(item && item.report_date || '');
@@ -2976,6 +2995,7 @@ function calculateAttackOverview(stats) {
   return {
     total_attack_count: totalAttack,
     night_attack_count: nightAttack,
+    workday_attack_count: workdayAttack,
     daily_avg: dailyAvg,
     night_ratio: nightRatio,
     trend_dates: trendDates,
