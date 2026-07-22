@@ -791,26 +791,39 @@ function renderInternetExposureDescription(data) {
   const portCount = Number(exp.port_count || 0);
   const vulnCount = Number(exp.vuln_count || 0);
 
-  // 计算总分：1个资产0.2分、1个端口0.2分、1个漏洞35分
-  const score = assetCount * 0.2 + portCount * 0.2 + vulnCount * 35;
+  // 风险端口数（从 2 节风险总览的 summary 取）
+  const riskPorts = Number((data.summary && data.summary.internet && data.summary.internet.exposure && data.summary.internet.exposure.risk_ports) || 0);
 
-  // 风险等级判定
+  // 新评分公式：风险端口 * 5 + 漏洞 * 35
+  const score = riskPorts * 5 + vulnCount * 35;
+
+  // 风险等级判定（三级：良好 / 一般 / 较差）
   let level;
-  if (score === 0) level = '优秀';
-  else if (score <= 30) level = '良好';
+  if (score <= 30) level = '良好';
   else if (score <= 70) level = '一般';
   else level = '较差';
 
-  // 只有漏洞（端口和资产都为0）→ 简化版文案
-  if (portCount === 0 && assetCount === 0 && vulnCount > 0) {
-    return paragraph(`互联网业务风险${level}，存在<strong>${vulnCount}</strong>个互联网漏洞。`);
+  // 情况 1 [0, 30] 特殊分支：资产、端口、风险端口、漏洞都为 0
+  //   正常数据流下 portCount=0 已隐含 riskPorts=0、score≤30 已隐含 vulnCount=0，
+  //   此处显式列出 4 个字段是为了防御脏数据 + 让判断条件与话术语义自洽
+  if (score <= 30 && assetCount === 0 && portCount === 0 && riskPorts === 0 && vulnCount === 0) {
+    return paragraph('互联网业务风险良好，未发现对外暴露的端口与服务，未发现互联网漏洞。');
   }
 
-  // 正常情况 → 完整版文案
+  // 情况 1 [0, 30]：有资产或端口 > 0，末句固定"未发现互联网漏洞"
+  if (score <= 30) {
+    return paragraph(
+      `互联网业务风险${level}，存在一些对外暴露的端口与服务。` +
+      `其中有 <strong>${assetCount}</strong> 个资产暴露了 <strong>${portCount}</strong> 个端口` +
+      `（风险端口<strong>${riskPorts}</strong>个），未发现互联网漏洞。`
+    );
+  }
+
+  // 情况 2 (30, 70] 和 情况 3 > 70：末句固定"存在 N 个互联网漏洞"
   return paragraph(
-    `互联网业务风险${level}，存在大量对外暴露的端口与服务。` +
-    `其中有 <strong>${assetCount}</strong> 个资产暴露了 <strong>${portCount}</strong> 个端口，` +
-    `存在 <strong>${vulnCount}</strong> 个漏洞。`
+    `互联网业务风险${level}，存在一些对外暴露的端口与服务。` +
+    `其中有 <strong>${assetCount}</strong> 个资产暴露了 <strong>${portCount}</strong> 个端口` +
+    `（风险端口<strong>${riskPorts}</strong>个），存在 <strong>${vulnCount}</strong> 个互联网漏洞。`
   );
 }
 
