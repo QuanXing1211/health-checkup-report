@@ -5,7 +5,7 @@
 规则：
 1. 核心业务系统排序仅使用：漏洞表 + 事件表 + 弱口令表
 2. 弱口令统一按“中危”处理
-3. 业务归因仅使用资产表中“重要级别 = 核心”的资产，映射字段为：IP地址 -> 所属业务
+3. 业务归因使用资产表中所有具备“所属业务”的资产，映射字段为：IP地址 -> 所属业务
 4. 暴露面不参与核心业务系统排序，仅参与总风险数统计
 """
 
@@ -208,16 +208,14 @@ def parse_core_assets(filepath):
     col_map, header_row = build_col_map(ws)
     ip_col = col_map.get('IP地址')
     biz_col = col_map.get('所属业务')
-    level_col = col_map.get('重要级别')
 
-    if ip_col is None or biz_col is None or level_col is None:
+    if ip_col is None or biz_col is None:
         return asset_map
 
     for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
         asset_ip = normalize(row[ip_col] if len(row) > ip_col else '')
         system_name = normalize(row[biz_col] if len(row) > biz_col else '')
-        asset_level = normalize(row[level_col] if len(row) > level_col else '')
-        if asset_ip and system_name and asset_level == '核心':
+        if asset_ip and system_name:
             asset_map[asset_ip] = system_name
     return asset_map
 

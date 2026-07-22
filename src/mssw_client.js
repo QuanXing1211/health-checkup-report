@@ -1602,7 +1602,7 @@ function mapExposureTypeLabels(typeData) {
   const items = [
     ['server', '服务器'],
     ['terminal', '终端'],
-    ['other', '其他']
+    ['other', '其它']
   ];
 
   return items
@@ -1618,7 +1618,7 @@ function mapAssetTypeLabels(typeData) {
   const items = [
     ['server', '服务器'],
     ['terminal', '终端'],
-    ['other', '其他']
+    ['other', '其它']
   ];
 
   return items
@@ -2490,7 +2490,11 @@ async function fetchMsswAssetOverview(options = {}) {
       confirmedIncidentIds: []
     },
     threatActorStats: [],
+    virusAttackAsset: '',
+    virusAttackAssetEmpty: true,
     nonAesCoveredAssetsHideHint: true,
+    nonAesCoveredAssetsAllInstalledHide: true,
+    nonAesCoveredAssetsIps: '',
     unlabeledAssetsHideHint: true
   };
   let caseStudy = buildEmptyCaseStudy();
@@ -2520,8 +2524,11 @@ async function fetchMsswAssetOverview(options = {}) {
           virusIds
         );
         incidentGptStats.virusAttackAsset = assetInfo.virusAttackAsset || '';
+        incidentGptStats.virusAttackAssetEmpty = !incidentGptStats.virusAttackAsset;
         incidentGptStats.nonAesCoveredAssets = assetInfo.nonAesCoveredAssets || [];
+        incidentGptStats.nonAesCoveredAssetsIps = incidentGptStats.nonAesCoveredAssets.filter(Boolean).join('、');
         incidentGptStats.nonAesCoveredAssetsHideHint = incidentGptStats.nonAesCoveredAssets.length === 0;
+        incidentGptStats.nonAesCoveredAssetsAllInstalledHide = incidentGptStats.nonAesCoveredAssets.length > 0;
         incidentGptStats.unlabeledAssets = assetInfo.unlabeledAssets || [];
         incidentGptStats.unlabeledAssetsHideHint = incidentGptStats.unlabeledAssets.length === 0;
         logInfo(logger, `提取事件资产信息完成: 病毒攻击资产=${incidentGptStats.virusAttackAsset}, ` +

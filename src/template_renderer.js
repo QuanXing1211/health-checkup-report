@@ -267,7 +267,7 @@ function renderSangforDeviceBreakdown(data) {
     { label: 'EDR', value: Number(details.aes || 0) },
     { label: 'SIP', value: Number(details.sip || 0) },
     { label: 'STA', value: Number(details.sta || 0) },
-    { label: '其他', value: Number(details.other_sf || 0) }
+    { label: '其它', value: Number(details.other_sf || 0) }
   ];
 
   const parts = items.filter((it) => it.value > 0).map((it) => `${it.label} <strong>${it.value}</strong> 个`);
@@ -288,15 +288,27 @@ function renderSevereHighEventsTail(data) {
   return `，其中${parts.join('、')}`;
 }
 
+// 总评分等级 → 核心业务系统概述话术（不含业务名与结尾修复建议）
+const CORE_BUSINESS_SUMMARY_BY_GRADE = {
+  '差': '综上，贵公司安全建设存在明显短板，整体防护能力严重不足。现有防护机制难以抵御常见网络攻击，极易发生核心数据泄露、系统被入侵破坏、核心业务全面中断等重大安全事件，将直接造成大额经济损失、品牌信誉崩塌、行业公信力丧失等不可逆的致命后果。',
+  '中': '综上，贵公司安全建设存在多处短板，整体防护能力不足。若遭遇针对性网络攻击，存在数据泄露、局部系统故障、关键业务短时中断等安全隐患，一旦发生安全事件，会产生直接经济损耗、企业口碑下滑、公众信任度降低等负面影响。',
+  '良': '综上，贵公司安全建设基本满足运营要求，仅存在部分薄弱环节。少概率会出现数据泄露、业务短暂卡顿等问题，带来一定业务损失。',
+  '优': '综上，贵公司安全建设处于行业较好，当前无重大安全风险，发生重大安全事故的概率较低。',
+};
+
 function renderRiskOverviewSummary(data) {
   const overview = data.riskOverview || {};
   const ranking = Array.isArray(overview.coreBusinessSystemRanking)
     ? overview.coreBusinessSystemRanking.filter(Boolean)
     : [];
 
-  // 没有业务系统：只显示简化版概述，不带排序文案和后半句
+  const grade = String(getPath(data, 'scoring.grade') || '').trim();
+  const summaryText = CORE_BUSINESS_SUMMARY_BY_GRADE[grade]
+    || CORE_BUSINESS_SUMMARY_BY_GRADE['中'];
+
+  // 没有业务系统：只输出等级话术，不带修复方案结尾
   if (ranking.length === 0) {
-    return paragraph(`本次安全体检中，您的核心业务系统存在 <strong>${num(overview.securityRiskTotal)}</strong> 个安全风险。`);
+    return paragraph(summaryText);
   }
 
   // 根据业务系统数量构建排序文案
@@ -309,11 +321,7 @@ function renderRiskOverviewSummary(data) {
     rankingText = `「${ranking.slice(0, 3).map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}等」`;
   }
 
-  const topSystemText = overview.maxRiskSystem
-    ? `【<strong>${escapeHtml(overview.maxRiskSystem)}</strong>】`
-    : '【<strong>暂无</strong>】';
-
-  return paragraph(`本次安全体检中，您的核心业务系统${rankingText}存在 <strong>${num(overview.securityRiskTotal)}</strong> 个安全风险，其中${topSystemText}风险较大，系统下的资产存在 <strong>${num(overview.highAndAboveRiskCount)}</strong> 个高危及以上的安全风险。`);
+  return paragraph(`${summaryText}修复方案建议重点针对${rankingText}核心业务。`);
 }
 
 function renderKeyRiskRows(rows) {
@@ -408,22 +416,17 @@ function renderTopRiskAssetRows(rows) {
 
   return rows.slice(0, 5).map((row) => {
     const ip = String(row.ip || '').trim();
-    const managedStatus = String(row.managedStatus || '').trim();
     const businessSystem = String(row.businessSystem || '').trim();
     const riskCount = Number(row.riskCount || 0);
-    const managedTag = managedStatus
-      ? `<span class="sr-tag sr-tag--light sr-tag--${managedStatusLevel(managedStatus)}">${escapeHtml(managedStatus)}</span>`
-      : '';
     const detailLines = Array.isArray(row.detailLines) && row.detailLines.length
       ? row.detailLines.map((line) => escapeHtml(String(line)))
       : [
-        businessSystem ? `所属业务：${escapeHtml(businessSystem)}` : '所属业务：暂无',
-        managedStatus ? `托管状态：${escapeHtml(managedStatus)}` : '托管状态：暂无'
+        businessSystem ? `所属业务：${escapeHtml(businessSystem)}` : '所属业务：暂无'
       ];
 
     return [
       '<tr>',
-      `<td class="sr-top5-asset"><div class="sr-top5-asset-ip-row"><span class="sr-top5-asset-ip">${escapeHtml(ip)}</span>${managedTag}</div>${businessSystem ? `<div class="sr-top5-asset-biz">${escapeHtml(businessSystem)}</div>` : ''}</td>`,
+      `<td class="sr-top5-asset"><div class="sr-top5-asset-ip-row"><span class="sr-top5-asset-ip">${escapeHtml(ip)}</span></div>${businessSystem ? `<div class="sr-top5-asset-biz">${escapeHtml(businessSystem)}</div>` : ''}</td>`,
       `<td><strong>${riskCount}</strong></td>`,
       `<td>${detailLines.join('<br>')}</td>`,
       '</tr>'
@@ -585,12 +588,6 @@ function eventStatusLevel(text) {
   if (/挂起/.test(text)) return 'medium-low';
   if (/已忽略/.test(text)) return 'info';
   if (/已遏制/.test(text)) return 'medium';
-  return 'info';
-}
-
-function managedStatusLevel(text) {
-  if (/未托管|未纳管/.test(text)) return 'medium';
-  if (/已托管|已纳管/.test(text)) return 'success';
   return 'info';
 }
 

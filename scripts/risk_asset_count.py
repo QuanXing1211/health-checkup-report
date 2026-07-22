@@ -322,7 +322,6 @@ def build_asset_detail_map(filepath):
     col_map, header_row = build_col_map(ws)
     ip_col = col_map.get('IP地址')
     business_col = col_map.get('所属业务')
-    managed_col = col_map.get('托管状态')
     if ip_col is None:
         return {}
 
@@ -335,8 +334,7 @@ def build_asset_detail_map(filepath):
             continue
         asset_detail_map[asset] = {
             'ip': asset,
-            'businessSystem': normalize(row[business_col] if business_col is not None and len(row) > business_col else ''),
-            'managedStatus': normalize(row[managed_col] if managed_col is not None and len(row) > managed_col else '')
+            'businessSystem': normalize(row[business_col] if business_col is not None and len(row) > business_col else '')
         }
     return asset_detail_map
 
@@ -396,7 +394,6 @@ def rank_risk_assets(typed_risk_records, risk_records, asset_detail_map, limit=5
         detail = asset_detail_map.get(asset, {})
         ranking.append({
             'ip': asset,
-            'managedStatus': detail.get('managedStatus', ''),
             'businessSystem': detail.get('businessSystem', ''),
             'riskCount': counts['total'],
             '_critical': counts['critical'],
@@ -417,7 +414,6 @@ def rank_risk_assets(typed_risk_records, risk_records, asset_detail_map, limit=5
     return [
         {
             'ip': item['ip'],
-            'managedStatus': item['managedStatus'],
             'businessSystem': item['businessSystem'],
             'riskCount': item['riskCount']
         }

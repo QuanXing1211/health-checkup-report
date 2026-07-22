@@ -7,7 +7,7 @@ const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails, extractIncidentDirectStats, annotateIncidentGptConclusion } = require('./src/incident_excel_stats');
-const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, processRiskListTable, fetchContainedAlertCount } = require('./src/mssw_client');
+const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, fetchContainedAlertCount } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
 const { rankBusinessSystems } = require('./src/business_system_ranking');
@@ -581,7 +581,6 @@ async function exportConfiguredXdrTables(options) {
 
   for (const table of tables) {
     if (table === 'asset') {
-      // 原 MSSW 真实下载逻辑（已重新启用）
       logWith(options.logger, '开始处理表格: asset (MSSW 真实下载)');
       results.asset = await exportMsswAssetList({
         msswCookiePath: options.msswCookiePath,
@@ -591,17 +590,6 @@ async function exportConfiguredXdrTables(options) {
         assetIds: options.assetIds || [],
         logger: options.logger
       });
-
-      // 本地 mock 逻辑（已注释）
-      // logWith(options.logger, '开始处理表格: asset (读取本地资产列表.xlsx)');
-      // const localAssetPath = path.join(__dirname, '资产列表.xlsx');
-      // const processedResult = await processRiskListTable('asset', localAssetPath);
-      // results.asset = {
-      //   filePath: processedResult.filePath,
-      //   tmpFilePath: processedResult.filePath,
-      //   filename: '资产列表.xlsx'
-      // };
-      // logWith(options.logger, `资产表已处理: ${processedResult.filePath}`);
       continue;
     }
 

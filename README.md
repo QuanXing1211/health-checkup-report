@@ -85,7 +85,7 @@ node health_report.js `
 | `riskOverview.incidentGptStats.threatActorStats` | 威胁家族 Top2 | MSSW 事件表 Excel / MSSW 事件查询接口 | 遍历全部已确认事件的 `GPT定性结论`，按内置威胁家族关键字匹配并计数，按命中次数倒序取前 2 |
 | `riskOverview.incidentGptStats.threatTypeRanking` | 威胁类型 Top2 | 同上 | 在已命中的威胁家族集合上，按内置固定优先级顺序取前 2 |
 | `riskOverview.incidentGptStats.virusAttackAsset` | 首个病毒攻击资产 IP | 事件表 Excel + 资产表 Excel | 在已确认事件里，取第一个已确认病毒木马事件的 `影响资产` 中提取到的首个 IPv4 |
-| `riskOverview.incidentGptStats.nonAesCoveredAssets` | 未被 AES 覆盖资产 IP 列表 | 事件表 Excel + 资产表 Excel | 对已确认事件涉及资产按事件表顺序去重；在资产表中若 `数据源` 缺失或不包含 `EDR`，则视为未被覆盖，最多返回 2 个 |
+| `riskOverview.incidentGptStats.nonAesCoveredAssets` | 未被 AES 覆盖资产 IP 列表 | 事件表 Excel + 资产表 Excel | 对已确认事件涉及资产按事件表顺序去重；在资产表中若 `数据源` 缺失或不包含 `EDR`，则视为未被覆盖，最多返回 3 个 |
 | `riskOverview.incidentGptStats.unlabeledAssets` | 未标注责任人资产 IP 列表 | 事件表 Excel + 资产表 Excel | 对已确认事件涉及资产按事件表顺序去重；在资产表中若 `责任人` 为空或资产缺失，则计入，最多返回 2 个 |
 | `riskOverview.exploitStats.total` | 漏洞利用事件总数 | 导出的事件表 Excel | 读取 `安全事件一级分类` 列，值等于 `漏洞利用` 的事件行数 |
 | `riskOverview.exploitStats.highRiskAsset` | 漏洞利用高风险资产 | 导出的事件表 Excel | 取第一条 `安全事件一级分类 = 漏洞利用` 事件的 `影响资产` 原始值 |

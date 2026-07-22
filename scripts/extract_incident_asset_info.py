@@ -3,7 +3,7 @@
 """
 从事件表 Excel 和资产表 Excel 中提取三类资产信息：
 1. 病毒攻击资产    - 第一个病毒有效事件的影响资产(IP)
-2. 未被AES覆盖资产 - 在资产表中"数据源"列不含EDR的资产IP，最多2个
+2. 未被AES覆盖资产 - 在资产表中"数据源"列不含EDR的资产IP，最多3个
 3. 未标注资产      - 在资产表中"责任人"列为空的资产IP，最多2个
 
 用法:
@@ -12,7 +12,7 @@
 输出 JSON:
 {
   "virusAttackAsset": "10.5.40.62",
-  "nonAesCoveredAssets": ["10.5.40.63", "10.5.40.64"],
+  "nonAesCoveredAssets": ["10.5.40.63", "10.5.40.64", "10.5.40.65"],
   "unlabeledAssets": ["10.5.40.65", "10.5.40.66"]
 }
 """
@@ -161,14 +161,14 @@ def main():
 
     # ====== Phase 3: 计算结果 ======
 
-    # 未被AES覆盖资产：在资产表中数据源列不含EDR的IP，最多2个
+    # 未被AES覆盖资产：在资产表中数据源列不含EDR的IP，最多3个
     non_aes_assets = []
     for ip in confirmed_ips_ordered:
         ds = ip_to_data_source.get(ip, "")
         # 如果在资产表中找不到该IP，视为未被覆盖
         if not ds or "EDR" not in ds.upper():
             non_aes_assets.append(ip)
-            if len(non_aes_assets) >= 2:
+            if len(non_aes_assets) >= 3:
                 break
 
     # 未标注资产：在资产表中责任人列为空的IP，最多2个
