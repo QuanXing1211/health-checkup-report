@@ -58,7 +58,9 @@ style_map:
   ol: number_list
   img: image
   .sr-risk-card: risk_card_table
+  .sr-risk-card__head: risk_card_head
   .sr-kpi-card: kpi_paragraph
+  .sr-top5-asset-ip-row: top5_asset_ip_row
   .sr-tag--critical: tag_critical
   .sr-tag--high: tag_high
   .sr-tag--medium: tag_medium
@@ -67,7 +69,10 @@ style_map:
   .sr-tag--info: tag_info
   .sr-tag--success: tag_success
   .sr-tag--blue: tag_blue
+  .sr-tag--light: tag_light
   .sr-grade: grade_badge
+  .report-chart-note: muted_note
+  .sr-p--sub: sub_paragraph
 
 # docx 页面尺寸（统一 A4 竖版 210×297mm）
 docx:

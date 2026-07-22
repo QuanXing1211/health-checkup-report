@@ -25,6 +25,7 @@ import argparse
 import base64
 import io
 import os
+import re
 from pathlib import Path
 
 import yaml
@@ -58,7 +59,9 @@ _DEFAULT_CONFIG = {
         "p": "paragraph", "table": "table",
         "ul": "bullet_list", "ol": "number_list", "img": "image",
         ".sr-risk-card": "risk_card_table",
+        ".sr-risk-card__head": "risk_card_head",
         ".sr-kpi-card": "kpi_paragraph",
+        ".sr-top5-asset-ip-row": "top5_asset_ip_row",
         ".sr-tag--critical": "tag_critical",
         ".sr-tag--high": "tag_high",
         ".sr-tag--medium": "tag_medium",
@@ -67,7 +70,10 @@ _DEFAULT_CONFIG = {
         ".sr-tag--info": "tag_info",
         ".sr-tag--success": "tag_success",
         ".sr-tag--blue": "tag_blue",
+        ".sr-tag--light": "tag_light",
         ".sr-grade": "grade_badge",
+        ".report-chart-note": "muted_note",
+        ".sr-p--sub": "sub_paragraph",
     },
     "docx": {"page_width_mm": 210, "page_height_mm": 297, "margin_mm": 20},
     "fonts": {
@@ -113,6 +119,18 @@ _TAG_COLORS = {
     "tag_success":  ("12A679", "FFFFFF"),
     "tag_blue":     ("1C6EFF", "FFFFFF"),
 }
+
+# 评级徽章 sr-grade 颜色映射
+# HTML 中 sr-grade--xxx 用 10% 透明底 + 深色字，Word w:shd 无透明度，用浅 solid 底近似
+# (背景色, 字体颜色)
+_GRADE_COLORS = {
+    "sr-grade--优":  ("E5F5EE", "0F8E66"),   # 绿色徽章
+    "sr-grade--良":  ("E6F0FF", "1C6EFF"),   # 蓝色徽章
+    "sr-grade--中":  ("FEEAD8", "B5530C"),   # 橙色徽章
+    "sr-grade--差":  ("FBE5E6", "82010E"),   # 红色徽章
+    "sr-grade--na":  ("EDEEF1", "6F7785"),   # 灰色徽章
+}
+_GRADE_DEFAULT = ("EDEEF1", "6F7785")
 
 
 def _log(msg, level="INFO"):
@@ -1278,7 +1296,12 @@ class HtmlToWordExporter:
         elif name in ("span", "strong", "em", "b", "i", "a", "small", "sub", "sup", "label"):
             text = node.get_text(" ", strip=True)
             if text:
-                container.add_paragraph(text)
+                p = container.add_paragraph()
+                run = p.add_run(text)
+                if name in ("strong", "b"):
+                    run.bold = True
+                elif name in ("em", "i"):
+                    run.italic = True
         elif name in ("br", "hr"):
             container.add_paragraph("")
         else:
@@ -1349,6 +1372,116 @@ class HtmlToWordExporter:
     def _handle_tag_info(self, node, container): self._map_tag(node, container, "tag_info")
     def _handle_tag_success(self, node, container): self._map_tag(node, container, "tag_success")
     def _handle_tag_blue(self, node, container): self._map_tag(node, container, "tag_blue")
+    def _handle_tag_light(self, node, container): self._map_tag_light(node, container)
+
+    def _map_tag_light(self, node, container):
+        """浅底深字标签：浅灰底 + 深灰字（对应 HTML .sr-tag--light）。
+        作为单独段落渲染，前后留空格让标签块视觉上独立。"""
+        text = node.get_text(" ", strip=True)
+        if not text:
+            return
+        p = container.add_paragraph()
+        run = p.add_run(f" {text} ")
+        run.bold = False
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor.from_string("1A1F36")
+        self._set_run_shading(run, "EDF1F7")
+
+    def _handle_muted_note(self, node, container):
+        """图表注释/小字灰体段（对应 HTML .report-chart-note.sr-p.muted）：
+        小字 + 浅灰色字 + 不加粗。"""
+        text = node.get_text(" ", strip=True)
+        if not text:
+            return
+        p = container.add_paragraph()
+        run = p.add_run(text)
+        run.font.size = Pt(8.5)
+        run.font.color.rgb = RGBColor.from_string("8A8F9A")
+
+    def _handle_sub_paragraph(self, node, container):
+        """子段落（对应 HTML .report-body.sr-p.sr-p--sub）：
+        整段浅灰底 + 段前/段后留白，视觉与正文段落做区分。"""
+        p = container.add_paragraph()
+        p.paragraph_format.space_before = Pt(2)
+        p.paragraph_format.space_after = Pt(2)
+        self._render_inline_with_br(p, node)
+        if not p.runs:
+            p._element.getparent().remove(p._element)
+            return
+        for run in p.runs:
+            self._set_run_shading(run, "F5F7FA")
+
+    def _handle_risk_card_head(self, node, container):
+        """风险卡头部：把 sr-tag 和 sr-risk-card__title 拼到同一段落，
+        单行带底色块呈现（对应 HTML header.sr-risk-card__head）。"""
+        p = container.add_paragraph()
+        for child in node.children:
+            if isinstance(child, NavigableString):
+                text = str(child).strip()
+                if text:
+                    p.add_run(text + " ")
+            elif isinstance(child, Tag):
+                classes = child.get("class") or []
+                if child.name in ("h6", "h5", "h4", "h3", "h2", "h1") or "sr-risk-card__title" in classes:
+                    title_text = child.get_text(" ", strip=True)
+                    if title_text:
+                        run = p.add_run(title_text)
+                        run.bold = True
+                elif "sr-tag--light" in classes:
+                    # sr-tag--light 优先（同时带 --medium/--blue/--success 时也走 light 浅底深字样式）
+                    text = child.get_text(" ", strip=True)
+                    if text:
+                        run = p.add_run(f" {text} ")
+                        run.font.size = Pt(9)
+                        run.font.color.rgb = RGBColor.from_string("1A1F36")
+                        self._set_run_shading(run, "EDF1F7")
+                elif any(c in ("sr-tag--success", "sr-tag--info", "sr-tag--blue",
+                               "sr-tag--critical", "sr-tag--high", "sr-tag--medium",
+                               "sr-tag--medium-low", "sr-tag--low") for c in classes):
+                    # 用对应 tag handler 的颜色，作为 inline run 写入
+                    tag_key = next((f"tag_{c.replace('sr-tag--', '')}" for c in classes
+                                    if c.startswith("sr-tag--") and c != "sr-tag--light"), None)
+                    text = child.get_text(" ", strip=True)
+                    if text and tag_key:
+                        bg, fg = _TAG_COLORS.get(tag_key, ("6F7785", "FFFFFF"))
+                        run = p.add_run(f" {text} ")
+                        run.bold = True
+                        run.font.color.rgb = RGBColor.from_string(fg)
+                        self._set_run_shading(run, bg)
+                else:
+                    text = child.get_text(" ", strip=True)
+                    if text:
+                        p.add_run(text + " ")
+
+    def _handle_top5_asset_ip_row(self, node, container):
+        """Top5 资产 IP 行：把 IP 和"未托管/已托管"标签拼到同一段落，
+        标签渲染为灰色小字 + 括号包含（对应 HTML .sr-top5-asset-ip-row）。
+        例：<div class="sr-top5-asset-ip-row"><span class="sr-top5-asset-ip">10.1.2.3</span><span class="sr-tag sr-tag--light sr-tag--medium">未托管</span></div>
+        → Word: "10.1.2.3 (未托管)" 其中 "(未托管)" 是灰色 8.5pt 小字。"""
+        p = container.add_paragraph()
+        for child in node.children:
+            if isinstance(child, NavigableString):
+                text = str(child).strip()
+                if text:
+                    p.add_run(text + " ")
+            elif isinstance(child, Tag):
+                classes = child.get("class") or []
+                if "sr-top5-asset-ip" in classes:
+                    ip_text = child.get_text(" ", strip=True)
+                    if ip_text:
+                        ip_run = p.add_run(ip_text)
+                        ip_run.bold = True
+                elif any(c.startswith("sr-tag") for c in classes):
+                    tag_text = child.get_text(" ", strip=True)
+                    if tag_text:
+                        # 灰色小字 + 括号
+                        tag_run = p.add_run(f" ({tag_text})")
+                        tag_run.font.size = Pt(8.5)
+                        tag_run.font.color.rgb = RGBColor.from_string("8A8F9A")
+                else:
+                    text = child.get_text(" ", strip=True)
+                    if text:
+                        p.add_run(text + " ")
 
     def _handle_grade_badge(self, node, container):
         """评级徽章：居中加粗。"""
@@ -1386,6 +1519,8 @@ class HtmlToWordExporter:
         # 与表格单元格 _render_cell_text_with_br 保持一致。
         p = container.add_paragraph()
         self._render_inline_with_br(p, node)
+        # 解析 inline style 中的 text-indent:Nem，设 Word 首行缩进
+        self._apply_text_indent(node, p, container)
         if not p.runs:
             # 没有任何 run 说明未写入内容，移除该空段
             p._element.getparent().remove(p._element)
@@ -1393,37 +1528,200 @@ class HtmlToWordExporter:
             # 普通段落也可能继承到 List Number 样式导致自动编号，兜底清掉
             self._strip_paragraph_num_pr(p)
 
+    def _apply_text_indent(self, node, paragraph, container):
+        """从 node 的 style="text-indent:Nem" 解析首行缩进，1em 近似按当前字号 10.5pt 计算。"""
+        style = node.get("style") if isinstance(node, Tag) else None
+        if not style:
+            return
+        m = re.search(r"text-indent\s*:\s*([\d.]+)\s*em", style)
+        if not m:
+            return
+        em = float(m.group(1))
+        # 取当前正文字号作为 1em 的磅值
+        size_pt = 10.5
+        fonts_cfg = getattr(container, "fonts", {}) or {}
+        normal_cfg = fonts_cfg.get("normal") if isinstance(fonts_cfg, dict) else None
+        if isinstance(normal_cfg, dict) and normal_cfg.get("size_pt"):
+            try:
+                size_pt = float(normal_cfg["size_pt"])
+            except (TypeError, ValueError):
+                pass
+        paragraph.paragraph_format.first_line_indent = Pt(em * size_pt)
+
+    def _apply_run_fmt(self, run, fmt):
+        """根据 fmt 描述给 run 应用 bold/italic/color。
+        fmt 可为 None、字符串 "bold"/"italic" 或 dict {"bold","italic","color"}。"""
+        if fmt is None:
+            return
+        if isinstance(fmt, str):
+            if fmt == "bold":
+                run.bold = True
+            elif fmt == "italic":
+                run.italic = True
+            return
+        if isinstance(fmt, dict):
+            if fmt.get("bold"):
+                run.bold = True
+            if fmt.get("italic"):
+                run.italic = True
+            color = fmt.get("color")
+            if color:
+                try:
+                    run.font.color.rgb = RGBColor.from_string(color)
+                except Exception:
+                    pass
+
+    def _render_grade_badge_inline(self, paragraph, node):
+        """将 <span class="sr-grade sr-grade--良">良</span> 作为 inline run 渲染：
+        浅底色 + 深色字 + 9pt 加粗，左右留空格模拟徽章 padding。"""
+        text = node.get_text(" ", strip=True)
+        if not text:
+            return
+        classes = node.get("class", []) or []
+        if isinstance(classes, str):
+            classes = classes.split()
+        grade_key = next((c for c in classes if c.startswith("sr-grade--")), None)
+        bg, fg = _GRADE_COLORS.get(grade_key, _GRADE_DEFAULT)
+        # 徽章前后留一个空格模拟 HTML 的 padding:2px 10px
+        run = paragraph.add_run(f" {text} ")
+        run.bold = True
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor.from_string(fg)
+        self._set_run_shading(run, bg)
+
     def _render_inline_with_br(self, paragraph, node):
-        """把 node 子节点按 <br> / 块级标签拆分写入段落，<br> 映射为软换行。"""
+        """把 node 子节点按 <br> / 块级标签拆分写入段落，<br> 映射为软换行。
+        <strong>/<b> → 加粗；<em>/<i> → 斜体；语义保留到独立 run。"""
         block_tags = {"div", "p"}
+        bold_tags = {"strong", "b"}
+        italic_tags = {"em", "i"}
         parts = []
         current_text = []
         children = list(node.children)
         for i, child in enumerate(children):
             if isinstance(child, Tag) and child.name == "br":
-                parts.append(("text", "".join(current_text)))
-                parts.append(("br", None))
+                parts.append(("text", "".join(current_text), None))
+                parts.append(("br", None, None))
                 current_text = []
             elif isinstance(child, Tag) and child.name in block_tags:
-                parts.append(("text", "".join(current_text)))
-                parts.append(("text", child.get_text(" ", strip=True)))
+                parts.append(("text", "".join(current_text), None))
+                parts.append(("text", child.get_text(" ", strip=True), None))
                 if i < len(children) - 1:
-                    parts.append(("br", None))
+                    parts.append(("br", None, None))
                 current_text = []
             elif isinstance(child, NavigableString):
                 current_text.append(str(child))
+            elif isinstance(child, Tag) and child.name in bold_tags:
+                if current_text:
+                    parts.append(("text", "".join(current_text), None))
+                    current_text = []
+                parts.append(("text", child.get_text(" ", strip=True), "bold"))
+            elif isinstance(child, Tag) and child.name in italic_tags:
+                if current_text:
+                    parts.append(("text", "".join(current_text), None))
+                    current_text = []
+                parts.append(("text", child.get_text(" ", strip=True), "italic"))
             elif isinstance(child, Tag):
-                current_text.append(child.get_text())
+                # 评级徽章 sr-grade：作为带底色 inline run 渲染到同一段落
+                child_classes = child.get("class", []) or []
+                if isinstance(child_classes, str):
+                    child_classes = child_classes.split()
+                if any(c == "sr-grade" or c.startswith("sr-grade--") for c in child_classes):
+                    if current_text:
+                        parts.append(("text", "".join(current_text), None))
+                        current_text = []
+                    parts.append(("grade_badge", child, None))
+                else:
+                    # 其他 span/容器标签：递归提取，保留嵌套 strong/b/em/i 的 bold/italic 语义
+                    self._collect_inline_parts(child, current_text, parts, None)
         if current_text:
-            parts.append(("text", "".join(current_text)))
-        for ptype, content in parts:
+            parts.append(("text", "".join(current_text), None))
+        for ptype, content, fmt in parts:
             if ptype == "text":
-                text = content.strip()
+                text = (content or "").strip()
                 if text:
-                    paragraph.add_run(text)
+                    run = paragraph.add_run(text)
+                    self._apply_run_fmt(run, fmt)
             elif ptype == "br":
                 run = paragraph.add_run()
                 run.add_break()
+            elif ptype == "grade_badge":
+                self._render_grade_badge_inline(paragraph, content)
+
+    def _collect_inline_parts(self, node, current_text, parts, inherited_fmt):
+        """递归收集 node 子节点的 inline 文本，保留嵌套的 strong/b/em/i 与 color 语义。
+
+        - 遇到 NavigableString 追加到 current_text
+        - 遇到 strong/b：先 flush 当前累计文本，再开新 bold 文本段
+        - 遇到 em/i：同上但 fmt=italic
+        - 遇到 sr-text-danger span：以 {color: "CF171D"} 作为 inherited_fmt 递归子节点
+        - 遇到其他 Tag：递归子节点（fmt 不变）
+
+        inherited_fmt 可为 None 或 dict {"bold": bool, "italic": bool, "color": str}。
+        非 None 时，bold/italic 会作用于该子树下的普通文本与 strong/em 文本，
+        color 也会传播到这些 run。"""
+        bold_tags = {"strong", "b"}
+        italic_tags = {"em", "i"}
+        # 若 node 自身就是 sr-text-danger 容器，先把已累计文本用外层 fmt flush，
+        # 再以新 color 注入 inherited_fmt，避免外层文本被错误染红
+        if isinstance(node, Tag):
+            node_classes = node.get("class", []) or []
+            if isinstance(node_classes, str):
+                node_classes = node_classes.split()
+            if "sr-text-danger" in node_classes:
+                if current_text:
+                    parts.append(("text", "".join(current_text), inherited_fmt))
+                    current_text.clear()
+                new_fmt = {"color": "CF171D"}
+                if isinstance(inherited_fmt, dict):
+                    if inherited_fmt.get("bold"):
+                        new_fmt["bold"] = True
+                    if inherited_fmt.get("italic"):
+                        new_fmt["italic"] = True
+                inherited_fmt = new_fmt
+        for child in node.children:
+            if isinstance(child, NavigableString):
+                current_text.append(str(child))
+            elif isinstance(child, Tag) and child.name in bold_tags:
+                if current_text:
+                    parts.append(("text", "".join(current_text), inherited_fmt))
+                    current_text.clear()
+                fmt = {"bold": True}
+                if isinstance(inherited_fmt, dict):
+                    if inherited_fmt.get("italic"):
+                        fmt["italic"] = True
+                    if inherited_fmt.get("color"):
+                        fmt["color"] = inherited_fmt["color"]
+                parts.append(("text", child.get_text(" ", strip=True), fmt))
+            elif isinstance(child, Tag) and child.name in italic_tags:
+                if current_text:
+                    parts.append(("text", "".join(current_text), inherited_fmt))
+                    current_text.clear()
+                fmt = {"italic": True}
+                if isinstance(inherited_fmt, dict):
+                    if inherited_fmt.get("bold"):
+                        fmt["bold"] = True
+                    if inherited_fmt.get("color"):
+                        fmt["color"] = inherited_fmt["color"]
+                parts.append(("text", child.get_text(" ", strip=True), fmt))
+            elif isinstance(child, Tag):
+                child_classes = child.get("class", []) or []
+                if isinstance(child_classes, str):
+                    child_classes = child_classes.split()
+                if "sr-text-danger" in child_classes:
+                    # 红色字体容器：先把已累计文本用外层 fmt flush，再以新 color 递归子节点
+                    if current_text:
+                        parts.append(("text", "".join(current_text), inherited_fmt))
+                        current_text.clear()
+                    new_fmt = {"color": "CF171D"}
+                    if isinstance(inherited_fmt, dict):
+                        if inherited_fmt.get("bold"):
+                            new_fmt["bold"] = True
+                        if inherited_fmt.get("italic"):
+                            new_fmt["italic"] = True
+                    self._collect_inline_parts(child, current_text, parts, new_fmt)
+                else:
+                    self._collect_inline_parts(child, current_text, parts, inherited_fmt)
 
     def _map_list(self, node, container, ordered=False):
         for li in node.find_all("li", recursive=False):
@@ -1730,15 +2028,17 @@ class HtmlToWordExporter:
 
     def _render_cell_text_with_br(self, cell, cell_soup):
         """将 HTML 单元格文本写入 docx cell，<br> 和块级标签（<div>、<p>）
-        都映射为 Word 软换行。"""
+        都映射为 Word 软换行。<strong>/<b> → 加粗；<em>/<i> → 斜体。"""
         block_tags = {"div", "p"}
+        bold_tags = {"strong", "b"}
+        italic_tags = {"em", "i"}
         parts = []
         current_text = []
         children = list(cell_soup.children)
         for i, child in enumerate(children):
             if isinstance(child, Tag) and child.name == "br":
-                parts.append(("text", "".join(current_text)))
-                parts.append(("br", None))
+                parts.append(("text", "".join(current_text), None))
+                parts.append(("br", None, None))
                 current_text = []
             elif isinstance(child, Tag) and child.name in block_tags:
                 # 专门处理 sr-component-name-row：把组件名称和类型标签
@@ -1747,40 +2047,107 @@ class HtmlToWordExporter:
                 if isinstance(classes, str):
                     classes = classes.split()
                 if "sr-component-name-row" in classes:
-                    parts.append(("text", "".join(current_text)))
-                    parts.append(("component_name_row", child))
+                    parts.append(("text", "".join(current_text), None))
+                    parts.append(("component_name_row", child, None))
+                    current_text = []
+                    continue
+                if "sr-top5-asset-ip-row" in classes:
+                    # Top5 资产行：IP 加粗 + 托管状态灰色小字括号
+                    parts.append(("text", "".join(current_text), None))
+                    parts.append(("top5_asset_ip_row", child, None))
                     current_text = []
                     continue
                 # 块级标签：先把累计文本 flush，再提取块文本
-                parts.append(("text", "".join(current_text)))
-                parts.append(("text", child.get_text(" ", strip=True)))
+                parts.append(("text", "".join(current_text), None))
+                parts.append(("text", child.get_text(" ", strip=True), None))
                 # 仅当不是最后一个子元素时才加换行，避免末尾多一个空行
                 if i < len(children) - 1:
-                    parts.append(("br", None))
+                    parts.append(("br", None, None))
                 current_text = []
             elif isinstance(child, NavigableString):
                 current_text.append(str(child))
+            elif isinstance(child, Tag) and child.name in bold_tags:
+                if current_text:
+                    parts.append(("text", "".join(current_text), None))
+                    current_text = []
+                parts.append(("text", child.get_text(" ", strip=True), "bold"))
+            elif isinstance(child, Tag) and child.name in italic_tags:
+                if current_text:
+                    parts.append(("text", "".join(current_text), None))
+                    current_text = []
+                parts.append(("text", child.get_text(" ", strip=True), "italic"))
             elif isinstance(child, Tag):
-                # 其他标签（span、strong 等）取其文本
-                current_text.append(child.get_text())
+                # 识别 sr-tag--light 系列（浅底深字标签），单独 flush
+                child_classes = child.get("class", []) or []
+                if isinstance(child_classes, str):
+                    child_classes = child_classes.split()
+                if any(c == "sr-grade" or c.startswith("sr-grade--") for c in child_classes):
+                    # 评级徽章：作为带底色 inline run
+                    if current_text:
+                        parts.append(("text", "".join(current_text), None))
+                        current_text = []
+                    parts.append(("grade_badge", child, None))
+                elif "sr-tag--light" in child_classes:
+                    if current_text:
+                        parts.append(("text", "".join(current_text), None))
+                        current_text = []
+                    parts.append(("tag_light", child, None))
+                elif any(c in ("sr-tag--success", "sr-tag--info", "sr-tag--blue",
+                               "sr-tag--critical", "sr-tag--high", "sr-tag--medium",
+                               "sr-tag--medium-low", "sr-tag--low") for c in child_classes):
+                    # 深色 tag 系列：作为带底色 inline run
+                    if current_text:
+                        parts.append(("text", "".join(current_text), None))
+                        current_text = []
+                    parts.append(("tag_dark", child, None))
+                else:
+                    # 其他 span/容器标签：递归提取，保留嵌套 strong/b/em/i 的 bold/italic 语义
+                    self._collect_inline_parts(child, current_text, parts, None)
         if current_text:
-            parts.append(("text", "".join(current_text)))
+            parts.append(("text", "".join(current_text), None))
         # 写入 cell：使用段落+run 的标准方式，<br> 通过 run.add_break() 实现
         paragraph = cell.paragraphs[0]
         # 清空默认 run
         for r in list(paragraph.runs):
             r._element.getparent().remove(r._element)
-        for ptype, content in parts:
+        for ptype, content, fmt in parts:
             if ptype == "text":
-                text = content.strip()
+                text = (content or "").strip()
                 if text:
-                    paragraph.add_run(text)
+                    run = paragraph.add_run(text)
+                    self._apply_run_fmt(run, fmt)
             elif ptype == "br":
                 # 在新 run 中插入软换行（<w:br/>，必须在 <w:r> 内部）
                 run = paragraph.add_run()
                 run.add_break()
             elif ptype == "component_name_row":
                 self._render_component_name_row(paragraph, content)
+            elif ptype == "top5_asset_ip_row":
+                self._render_top5_asset_ip_row(paragraph, content)
+            elif ptype == "grade_badge":
+                self._render_grade_badge_inline(paragraph, content)
+            elif ptype == "tag_light":
+                # 浅底深字标签：EDF1F7 底 + 1A1F36 字 + 9pt
+                text = content.get_text(" ", strip=True)
+                if text:
+                    run = paragraph.add_run(f" {text} ")
+                    run.font.size = Pt(9)
+                    run.font.color.rgb = RGBColor.from_string("1A1F36")
+                    self._set_run_shading(run, "EDF1F7")
+            elif ptype == "tag_dark":
+                # 深底白字标签：根据 sr-tag--xxx 取对应色
+                classes = content.get("class", []) or []
+                if isinstance(classes, str):
+                    classes = classes.split()
+                tag_key = next((f"tag_{c.replace('sr-tag--', '')}" for c in classes
+                                if c.startswith("sr-tag--") and c != "sr-tag--light"), None)
+                text = content.get_text(" ", strip=True)
+                if text and tag_key:
+                    bg, fg = _TAG_COLORS.get(tag_key, ("6F7785", "FFFFFF"))
+                    run = paragraph.add_run(f" {text} ")
+                    run.bold = True
+                    run.font.color.rgb = RGBColor.from_string(fg)
+                    self._set_run_shading(run, bg)
 
     def _render_component_name_row(self, paragraph, div_node):
         """渲染组件名称行：组件名称（默认字号、加粗、黑色）+ 类型（括号形式、灰色小字）
@@ -1812,6 +2179,44 @@ class HtmlToWordExporter:
                 type_run = paragraph.add_run(f"({type_text})")
                 type_run.font.size = Pt(8)
                 type_run.font.color.rgb = RGBColor(0x8A, 0x8F, 0x9A)
+
+    def _render_top5_asset_ip_row(self, paragraph, div_node):
+        """渲染 Top5 资产行：IP（默认字号、加粗、黑色）+ 托管状态（括号形式、灰色小字）
+        作为两个独立 run 渲染到同一段落，与 _render_component_name_row 风格保持一致。
+
+        HTML 结构：
+        <div class="sr-top5-asset-ip-row">
+          <span class="sr-top5-asset-ip">10.128.160.30</span>
+          <span class="sr-tag sr-tag--light sr-tag--medium">未托管</span>
+        </div>
+        → Word: "10.128.160.30 (未托管)" 其中 "(未托管)" 是 8pt 灰色小字。"""
+        # IP
+        ip_tag = div_node.find("span", class_="sr-top5-asset-ip")
+        if ip_tag is not None:
+            ip_text = ip_tag.get_text(strip=True)
+            if ip_text:
+                ip_run = paragraph.add_run(ip_text)
+                ip_run.font.size = Pt(10.5)
+                ip_run.font.bold = True
+                ip_run.font.color.rgb = RGBColor(0x1F, 0x23, 0x2E)
+
+        # 托管状态标签（sr-tag--light 系列）
+        status_tag = None
+        for span in div_node.find_all("span", class_="sr-tag"):
+            classes = span.get("class", []) or []
+            if isinstance(classes, str):
+                classes = classes.split()
+            if any(c.startswith("sr-tag--") for c in classes):
+                status_tag = span
+                break
+        if status_tag is not None:
+            status_text = status_tag.get_text(strip=True)
+            if status_text:
+                # IP 与状态之间留一个空格分隔，状态用括号形式、灰色小字
+                paragraph.add_run(" ")
+                status_run = paragraph.add_run(f"({status_text})")
+                status_run.font.size = Pt(8)
+                status_run.font.color.rgb = RGBColor(0x8A, 0x8F, 0x9A)
 
     # ── 工具：shading / borders ─────────────────────
 
