@@ -141,24 +141,7 @@ function applyIncidentStatusStats(reportData, stats) {
   }
 
   // === ABCDE 派生计算（2 节风险总览总结文案）===
-  // C = 威胁预防风险总数（5 项求和，全部来自 2 节图右侧"威胁预防"面板）
-  const internetRiskPorts = Number((merged.summary && merged.summary.internet && merged.summary.internet.exposure && merged.summary.internet.exposure.risk_ports) || 0);
-  const internetVulnTotal = Number((merged.summary && merged.summary.internet && merged.summary.internet.vuln && merged.summary.internet.vuln.total) || 0);
-  const internetWeakPwdTotal = Number((merged.summary && merged.summary.internet && merged.summary.internet.weak_pwd && merged.summary.internet.weak_pwd.total) || 0);
-  const intranetVulnTotal = Number((merged.summary && merged.summary.intranet && merged.summary.intranet.vuln && merged.summary.intranet.vuln.total) || 0);
-  const intranetWeakPwdTotal = Number((merged.summary && merged.summary.intranet && merged.summary.intranet.weak_pwd && merged.summary.intranet.weak_pwd.total) || 0);
-  const threatPreventionRiskCount = internetRiskPorts + internetVulnTotal + internetWeakPwdTotal + intranetVulnTotal + intranetWeakPwdTotal;
-
-  // M = 组件策略检查风险项
-  const policyAbnormalCount = Number((merged.protection_effectiveness && merged.protection_effectiveness.policy_stats && merged.protection_effectiveness.policy_stats.abnormal_count) || 0);
-
-  // A = B + C + M
-  const totalRiskCount = Number(merged.riskOverview.totalEvents || 0) + threatPreventionRiskCount + policyAbnormalCount;
-
-  if (merged.riskOverview) {
-    merged.riskOverview.threatPreventionRiskCount = threatPreventionRiskCount;
-    merged.riskOverview.totalRiskCount = totalRiskCount;
-  }
+  recalcThreatPreventionRiskCount(merged);
 
   return merged;
 }
@@ -196,7 +179,8 @@ function buildBaseReportData(input) {
     projectBackground: {
       customerName: input.customer,
       startDate: input.start,
-      endDate: input.end
+      endDate: input.end,
+      generatedAt: input.generatedAt || new Date().toISOString()
     },
     assetLedger: {},
     riskOverview: {},
@@ -222,6 +206,34 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * 重新计算风险总览中的威胁预防相关派生字段。
+ * 需在 summary 和 protection_effectiveness 数据均已就绪后调用。
+ * 用于 data_client.js 内部（首次计算）及 health_report.js（预防数据就绪后覆盖）。
+ */
+function recalcThreatPreventionRiskCount(reportData) {
+  if (!reportData) {
+    return;
+  }
+  const s = reportData.summary || {};
+  const internetRiskPorts = Number(s.internet?.exposure?.risk_ports || 0);
+  const internetVulnTotal = Number(s.internet?.vuln?.total || 0);
+  const internetWeakPwdTotal = Number(s.internet?.weak_pwd?.total || 0);
+  const intranetVulnTotal = Number(s.intranet?.vuln?.total || 0);
+  const intranetWeakPwdTotal = Number(s.intranet?.weak_pwd?.total || 0);
+  const threatPreventionRiskCount = internetRiskPorts + internetVulnTotal + internetWeakPwdTotal + intranetVulnTotal + intranetWeakPwdTotal;
+
+  const policyAbnormalCount = Number(reportData.protection_effectiveness?.policy_stats?.abnormal_count || 0);
+
+  const totalRiskCount = Number(reportData.riskOverview?.totalEvents || 0) + threatPreventionRiskCount + policyAbnormalCount;
+
+  if (reportData.riskOverview) {
+    reportData.riskOverview.threatPreventionRiskCount = threatPreventionRiskCount;
+    reportData.riskOverview.totalRiskCount = totalRiskCount;
+  }
+}
+
 module.exports = {
-  collectReportData
+  collectReportData,
+  recalcThreatPreventionRiskCount
 };

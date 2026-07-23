@@ -88,7 +88,7 @@ function renderTemplate(template, reportData, gradeAssets) {
 
   // 文档信息表动态化：制作/复审日期取报告生成日期（docName 复用封面 projectBackground.customerName，HTML 模板内拼接）
   const _pb = getProjectBackground(reportData);
-  const _genDate = new Date(_pb.generatedAt);
+  const _genDate = new Date(_pb.generatedAt || Date.now());
   const _pad = (n) => String(n).padStart(2, '0');
   const _dateStr = `${_genDate.getFullYear()}-${_pad(_genDate.getMonth() + 1)}-${_pad(_genDate.getDate())}`;
   reportData.copyright = {
@@ -902,13 +902,15 @@ function renderInternetVulnTopAssetsBlock(data) {
 
 function renderIntranetVulnDescription(data) {
   const v = (data.intranet && data.intranet.vuln) || {};
-  const total = Number(v.total || 0);
+  const w = (data.intranet && data.intranet.weak_pwd) || {};
   const critical = Number(v.critical || 0);
   const high = Number(v.high || 0);
-  const medium = Number(v.medium || 0);
+  const medium = Number(v.medium || 0) + Number(w.total_count || 0);
   const low = Number(v.low || 0);
 
-  if (total === 0) {
+  const hasAny = critical + high + medium + low > 0;
+
+  if (!hasAny) {
     return paragraph('当前内网业务整体风险优秀，没有发现漏洞。');
   }
 
