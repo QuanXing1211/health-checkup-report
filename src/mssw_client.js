@@ -8,6 +8,7 @@ const http = require('http');
 const path = require('path');
 
 const { encodePath } = require('./path_helper');
+const { pagedExportMsswAssetList } = require('./mssw_asset_paged_export');
 const {
   removeIncidentRows,
   parseIncidentGptStats,
@@ -1706,16 +1707,22 @@ function getTmpExportDir() {
  * @param {string} inputPath 已下载并处理完成的 xlsx 文件路径
  * @returns {Promise<{filePath: string}>} 处理后的文件路径
  */
-async function processRiskListTable(tableType, inputPath) {
+async function processRiskListTable(tableType, inputPath, options = {}) {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'process_risk_list_table.py');
   const outputDir = getTmpExportDir();
   await fsp.mkdir(outputDir, { recursive: true });
 
+  // 资产表需要支持合并待审核数据
+  const extraArgs = [];
+  if (tableType === 'asset' && options.waitApproveFilePath) {
+    extraArgs.push(encodePath(options.waitApproveFilePath));
+  }
+
   return new Promise((resolve, reject) => {
-    execFile('python3', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (error, stdout, stderr) => {
+    execFile('python3', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir), ...extraArgs], { encoding: 'utf8', timeout: 1800000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (error, stdout, stderr) => {
       if (error) {
         // Fallback: try python instead of python3
-        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir)], { encoding: 'utf8', timeout: 60000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2, stderr2) => {
+        execFile('python', [scriptPath, tableType, encodePath(inputPath), encodePath(outputDir), ...extraArgs], { encoding: 'utf8', timeout: 1800000, env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }) }, (err2, stdout2, stderr2) => {
           if (err2) {
             const python3Detail = stderr ? stderr.trim() : error.message;
             const pythonDetail = stderr2 ? stderr2.trim() : err2.message;
@@ -1769,6 +1776,19 @@ async function fetchMsswAssetReadyToOutbound(cookieInfo, msswBaseUrl, companyId)
     throw new Error(`MSSW 7天内即将退库资产数量接口返回异常: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
   }
   return response;
+}
+
+// 拉取资产总数（search_type=current），用于在导出前判断是否需要走分页兜底
+async function fetchMsswAssetTotalCount(cookieInfo, msswBaseUrl, companyId) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${MSSW_ASSET_COUNT_ENDPOINT}`;
+  const body = JSON.stringify({ branch_id: 'all', search_type: 'current', start: 0, limit: 20 });
+  headers['content-length'] = String(Buffer.byteLength(body));
+  const response = await requestJson(url, { headers, body, timeout: 30000 });
+  if (!response || response.success !== true && response.code !== 0 && response.code !== '0') {
+    throw new Error(`MSSW 资产总数接口返回异常: ${JSON.stringify(response).slice(0, 500)}`);
+  }
+  return Number(response.total || 0);
 }
 
 function buildMsswIncidentTableRequestBody({ offset, limit, startTimeMs, endTimeMs, customerId }) {
@@ -2137,10 +2157,10 @@ async function exportMsswIncidentList(options) {
   };
 }
 
-function buildMsswAssetExportRequestBody(exportFields, ids = []) {
+function buildMsswAssetExportRequestBody(exportFields, ids = [], searchType = 'current') {
   return {
     branch_id: 'all',
-    search_type: 'current',
+    search_type: searchType,
     is_all: false,
     ids: Array.isArray(ids) ? ids : [],
     exclude_ids: [],
@@ -2166,16 +2186,17 @@ async function fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId) {
   return response;
 }
 
-async function triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFields, ids = []) {
+async function triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFields, ids = [], searchType = 'current') {
   const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
   const headers = buildMsswAssetExportHeaders(cookieInfo, msswHost, companyId);
   const url = `https://${msswHost}${MSSW_ASSET_EXPORT_ENDPOINT}`;
-  const body = JSON.stringify(buildMsswAssetExportRequestBody(exportFields, ids));
+  const body = JSON.stringify(buildMsswAssetExportRequestBody(exportFields, ids, searchType));
   headers['content-length'] = String(Buffer.byteLength(body));
+  // 默认导出接口超时 10 分钟；超时后由 exportMsswAssetList 兜底走分页接口
   const response = await requestJson(url, {
     headers,
     body,
-    timeout: 120000
+    timeout: 600000
   });
 
   const code = response && response.code;
@@ -2211,36 +2232,129 @@ async function downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, filenam
 
 async function exportMsswAssetList(options) {
   const logger = options.logger;
-  logInfo(logger, '导出 MSSW 资产表');
+  logInfo(logger, '导出 MSSW 资产表（资产台账 + 待审核资产）');
   const cookieInfo = await readMsswCookieInfo(options.msswCookiePath);
   const msswBaseUrl = normalizeBaseUrl(options.msswBaseUrl || DEFAULT_MSSW_BASE_URL);
   const companyId = options.customerId || options.companyId || '';
   const assetIds = options.assetIds || [];
+  // 资产数量阈值：超过此值直接走分页导出，避免默认导出超时浪费时间
+  const PAGED_EXPORT_THRESHOLD = 10000;
 
   if (assetIds.length) {
     logInfo(logger, `使用 ${assetIds.length} 个指定资产 ID 导出`);
   } else {
-    logInfo(logger, '未指定资产 ID，将尝试导出全部资产（可能超时）');
+    logInfo(logger, '未指定资产 ID，将尝试导出全部资产');
   }
 
   const exportFieldsResponse = await fetchMsswExportFields(cookieInfo, msswBaseUrl, companyId);
+  const downloadDir = options.downloadDir || path.dirname(cookieInfo.resolvedPath);
 
-  const exportResponse = await triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFieldsResponse.data, assetIds);
-  const filename = String(exportResponse && exportResponse.data ? exportResponse.data : exportResponse && exportResponse.filename ? exportResponse.filename : '');
-  if (!filename) {
-    throw new Error(`MSSW 资产导出接口返回缺少文件名: ${JSON.stringify(exportResponse).slice(0, 500)}`);
+  let currentFilePath = '';
+  let waitApproveFilePath = '';
+  let currentFilename = '';
+  let currentExport = null;
+  let downloadResponse = null;
+
+  // 双维度触发分页导出：
+  // 1) 资产台账数量 > PAGED_EXPORT_THRESHOLD（默认 10000）时直接走分页，避免默认导出超时浪费时间
+  // 2) 默认导出超时（10 分钟）后兜底走分页
+  // 临时屏蔽：把 DISABLE_PAGED_EXPORT 置为 true 可绕过分页导出路径，回归"默认导出超时即失败"的旧行为
+  const DISABLE_PAGED_EXPORT = false;
+  const usingPagedFallback = { value: false };
+  let preCheckedTotal = null;
+
+  if (!DISABLE_PAGED_EXPORT && !assetIds.length) {
+    try {
+      preCheckedTotal = await fetchMsswAssetTotalCount(cookieInfo, msswBaseUrl, companyId);
+      logInfo(logger, `资产台账总数（接口预查）: ${preCheckedTotal}`);
+    } catch (error) {
+      logInfo(logger, `资产总数预查失败（继续走默认导出 + 超时兜底）: ${error.message}`);
+      preCheckedTotal = null;
+    }
   }
 
-  const downloadDir = options.downloadDir || path.dirname(cookieInfo.resolvedPath);
-  const downloaded = await downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, filename, downloadDir);
-  logInfo(logger, `MSSW 资产表: ${downloaded.filePath}`);
+  if (!DISABLE_PAGED_EXPORT && preCheckedTotal !== null && preCheckedTotal > PAGED_EXPORT_THRESHOLD) {
+    logInfo(logger, `资产台账 ${preCheckedTotal} > ${PAGED_EXPORT_THRESHOLD}，直接走分页导出（避免默认导出超时浪费时间）`);
+    usingPagedFallback.value = true;
+    const pagedResult = await pagedExportMsswAssetList({
+      cookieInfo,
+      msswBaseUrl,
+      companyId,
+      outputDir: downloadDir,
+      pageSize: 1000,
+      searchType: 'both',
+      logger
+    });
+    currentFilePath = pagedResult.currentFilePath;
+    waitApproveFilePath = pagedResult.waitApproveFilePath || '';
+    currentFilename = currentFilePath ? path.basename(currentFilePath) : '';
+    downloadResponse = null;
+    currentExport = null;
+  } else {
+    // 第 1 步：尝试默认导出接口（超时 10 分钟）；超时后走分页兜底
+    try {
+      logInfo(logger, '导出资产台账（search_type=current，默认导出接口）');
+      currentExport = await triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFieldsResponse.data, assetIds, 'current');
+      currentFilename = String(currentExport && currentExport.data ? currentExport.data : currentExport && currentExport.filename ? currentExport.filename : '');
+      if (!currentFilename) {
+        throw new Error(`MSSW 资产台账导出接口返回缺少文件名: ${JSON.stringify(currentExport).slice(0, 500)}`);
+      }
+      const currentDownloaded = await downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, currentFilename, downloadDir);
+      currentFilePath = currentDownloaded.filePath;
+      downloadResponse = { statusCode: currentDownloaded.statusCode, headers: currentDownloaded.headers };
+      logInfo(logger, `资产台账: ${currentFilePath}`);
 
-  // 后处理：删除指定列、重命名，保存到 tmp/exports
+      // 第 2 步：导出待审核资产（search_type=wait_approve）
+      try {
+        logInfo(logger, '导出待审核资产（search_type=wait_approve）');
+        const waitApproveExport = await triggerMsswAssetExport(cookieInfo, msswBaseUrl, companyId, exportFieldsResponse.data, assetIds, 'wait_approve');
+        const waitApproveFilename = String(waitApproveExport && waitApproveExport.data ? waitApproveExport.data : waitApproveExport && waitApproveExport.filename ? waitApproveExport.filename : '');
+        if (waitApproveFilename) {
+          const waitApproveDownloaded = await downloadMsswAssetFile(cookieInfo, msswBaseUrl, companyId, waitApproveFilename, downloadDir);
+          waitApproveFilePath = waitApproveDownloaded.filePath;
+          logInfo(logger, `待审核资产: ${waitApproveFilePath}`);
+        } else {
+          logInfo(logger, '待审核资产导出接口返回缺少文件名，仅使用资产台账数据');
+        }
+      } catch (error) {
+        logInfo(logger, `待审核资产导出失败（不影响主流程）: ${error.message}`);
+      }
+    } catch (error) {
+      const isTimeout = isTimeoutError(error);
+      if (!isTimeout) {
+        // 非超时错误：直接抛出
+        throw error;
+      }
+      if (DISABLE_PAGED_EXPORT) {
+        // 屏蔽分页导出：超时即失败，不再兜底
+        logInfo(logger, `默认导出接口超时（${error.message}），分页导出已屏蔽，直接失败`);
+        throw error;
+      }
+      logInfo(logger, `默认导出接口超时（${error.message}），切换分页接口兜底导出`);
+      usingPagedFallback.value = true;
+      const pagedResult = await pagedExportMsswAssetList({
+        cookieInfo,
+        msswBaseUrl,
+        companyId,
+        outputDir: downloadDir,
+        pageSize: 1000,
+        searchType: 'both',
+        logger
+      });
+      currentFilePath = pagedResult.currentFilePath;
+      waitApproveFilePath = pagedResult.waitApproveFilePath || '';
+      currentFilename = currentFilePath ? path.basename(currentFilePath) : '';
+      downloadResponse = null;
+    }
+  }
+
+  // 第 3 步：后处理 — 合并两个 xlsx，新增"审核状态"列
   let processedPath = '';
   try {
-    const processedResult = await processRiskListTable('asset', downloaded.filePath);
+    const processedResult = await processRiskListTable('asset', currentFilePath, { waitApproveFilePath });
     processedPath = processedResult.filePath;
-    logInfo(logger, `资产表已写入 tmp/exports: ${processedPath}（已删除 zdy、责任人电话、责任人(设备上报)、实时认证用户名）`);
+    const tag = usingPagedFallback.value ? '（分页兜底）' : '';
+    logInfo(logger, `资产表已写入 tmp/exports: ${processedPath}（已合并待审核数据，新增审核状态列，删除多余列）${tag}`);
   } catch (error) {
     throw new Error(`资产表写入 tmp/exports 失败: ${error.message}`);
   }
@@ -2250,14 +2364,17 @@ async function exportMsswAssetList(options) {
     downloadDir,
     filePath: processedPath,
     tmpFilePath: processedPath,
-    filename,
+    filename: currentFilename,
     exportFields: exportFieldsResponse.data,
-    exportResponse,
-    downloadResponse: {
-      statusCode: downloaded.statusCode,
-      headers: downloaded.headers
-    }
+    exportResponse: currentExport,
+    downloadResponse
   };
+}
+
+function isTimeoutError(error) {
+  if (!error || typeof error.message !== 'string') return false;
+  const text = error.message.toLowerCase();
+  return text.includes('timeout') || text.includes('超时') || text.includes('etimedout') || text.includes('esockettimedout');
 }
 
 async function fetchMsswCustomerListPage(cookieInfo, msswBaseUrl, { companyId, keyword, offset, limit }) {

@@ -1,8 +1,9 @@
 'use strict';
 
-const { execFile } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs/promises');
 const path = require('path');
+const readline = require('readline');
 
 function getBranch1Root() {
   return path.join(path.resolve(__dirname, '..'), '分支1');
@@ -47,7 +48,7 @@ async function runBranch1ReportStage(options = {}) {
     args.push('--end', String(options.end));
   }
 
-  await execPython(args, '分支1报告计算失败');
+  await execPython(args, '分支1报告计算失败', { cwd: undefined }, options.logger);
   const parsed = JSON.parse(await fs.readFile(reportOutputPath, 'utf8'));
   const checklistPaths = await findChecklistArtifacts(options);
 
@@ -126,20 +127,48 @@ function replaceExtension(filePath, extension) {
   return path.join(parsed.dir, `${parsed.name}${extension}`);
 }
 
-function execPython(args, label, options = {}) {
+function execPython(args, label, options = {}, logger) {
   return new Promise((resolve, reject) => {
-    execFile('python', args, {
+    const env = Object.assign({}, process.env, {
+      PYTHONIOENCODING: 'utf-8',
+      PYTHONUNBUFFERED: '1',
+      PYTHONLEGACYWINDOWSSTDIO: '0'
+    });
+    const child = spawn('python', args, {
       cwd: options.cwd,
-      encoding: 'utf8',
-      windowsHide: true,
-      maxBuffer: 1024 * 1024 * 20,
-      env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' })
-    }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(`${label}: ${stderr || error.message}`));
+      env,
+      windowsHide: true
+    });
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
+    const logFn = typeof logger === 'function' ? logger : () => {};
+
+    const rl = readline.createInterface({ input: child.stdout, crlfDelay: Infinity });
+    rl.on('line', (line) => {
+      stdoutBuffer += line + '\n';
+      if (line) {
+        logFn(`[branch1] ${line}`);
+      }
+    });
+
+    const rlErr = readline.createInterface({ input: child.stderr, crlfDelay: Infinity });
+    rlErr.on('line', (line) => {
+      stderrBuffer += line + '\n';
+      if (line) {
+        logFn(`[branch1-stderr] ${line}`);
+      }
+    });
+
+    child.on('error', (err) => {
+      reject(new Error(`${label}: ${err.message}`));
+    });
+
+    child.on('exit', (code, signal) => {
+      if (code !== 0 && code !== null) {
+        reject(new Error(`${label}: code=${code} signal=${signal} stderr=${stderrBuffer.slice(-500)}`));
         return;
       }
-      resolve(stdout.trim());
+      resolve(stdoutBuffer.trim());
     });
   });
 }

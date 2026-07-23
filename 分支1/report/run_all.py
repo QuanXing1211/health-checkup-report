@@ -229,13 +229,17 @@ def main():
     config_path = write_temp_config(config)
 
     try:
+        print("[branch1] 开始评分计算 (run_scoring) ...", flush=True)
         scoring_result = run_scoring(config_path)
+        print("[branch1] 评分计算完成", flush=True)
+        print("[branch1] 开始防护有效性统计 (run_data_stats) ...", flush=True)
         protection_effectiveness = run_data_stats(
             args.asset_path,
             policy_artifact["jsonPath"],
             args.asset_header_row,
             args.asset_data_start_row,
         )
+        print("[branch1] 防护有效性统计完成", flush=True)
     finally:
         try:
             os.unlink(config_path)
