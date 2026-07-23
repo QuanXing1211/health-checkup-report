@@ -160,6 +160,22 @@ function applyAssetStatusStats(reportData, stats) {
       waitApproveAssetCount: Number(stats.waitApproveAssetCount || 0),
       typeDistribution: Array.isArray(stats.typeDistribution) ? stats.typeDistribution : [],
       protectionDistribution: Array.isArray(stats.protectionDistribution) ? stats.protectionDistribution : [],
+      protectionStats: stats.protectionStats && typeof stats.protectionStats === 'object'
+        ? {
+            protected: Number(stats.protectionStats.protected || 0),
+            unprotected: Number(stats.protectionStats.unprotected || 0),
+            unprotected_breakdown: stats.protectionStats.unprotected_breakdown || {
+              manual: 0,
+              cloud_mirror: 0,
+              manual_and_cloud_mirror: 0,
+              empty: 0
+            }
+          }
+        : {
+            protected: 0,
+            unprotected: 0,
+            unprotected_breakdown: { manual: 0, cloud_mirror: 0, manual_and_cloud_mirror: 0, empty: 0 }
+          },
       internetExposureTotal: Number(stats.internetExposureTotal || 0),
       internetExposureDistribution: Array.isArray(stats.internetExposureDistribution) ? stats.internetExposureDistribution : [],
       componentDistribution: Array.isArray(stats.componentDistribution) ? stats.componentDistribution : [],

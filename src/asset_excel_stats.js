@@ -40,6 +40,17 @@ async function summarizeAssetTable(excelPath, options = {}) {
       { name: '防护', value: Number(protectionStats.protected || 0) },
       { name: '未防护', value: Number(protectionStats.unprotected || 0) }
     ],
+    // 未防护 4 子类细分（生成过程统计用，饼图不消费）
+    protectionStats: {
+      protected: Number(protectionStats.protected || 0),
+      unprotected: Number(protectionStats.unprotected || 0),
+      unprotected_breakdown: protectionStats.unprotected_breakdown || {
+        manual: 0,
+        cloud_mirror: 0,
+        manual_and_cloud_mirror: 0,
+        empty: 0
+      }
+    },
     // 安全组件分布（基于 device.json 的 devType 聚合）
     componentDistribution: [],
     totalComponentCount: 0
