@@ -147,16 +147,13 @@ def stat_core_assets_without_aes(asset_data: list) -> dict:
             "hide_hint": bool  # total == 0 时为 True，用于前端控制提示语隐藏
         }
     """
-    importance_col = "重要级别"
+
     datasource_col = "数据源"
     ip_col = "IP地址"
 
     ips = []
     seen = set()
     for row in asset_data:
-        importance = str(row.get(importance_col, "")).strip()
-        if importance != "核心":
-            continue
 
         datasource_text = str(row.get(datasource_col, "")).strip()
         dev_types = _parse_dev_types_from_datasource(datasource_text)
@@ -173,7 +170,7 @@ def stat_core_assets_without_aes(asset_data: list) -> dict:
         seen.add(ip)
         ips.append(ip)
 
-    return {"ips": "、".join(ips[:2]), "total": len(ips), "hide_hint": len(ips) == 0}
+    return {"ips": "、".join(ips[:3]), "total": len(ips), "hide_hint": len(ips) == 0}
 
 
 # ── 统计 2：策略检查 ──
