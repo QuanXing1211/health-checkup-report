@@ -7,7 +7,7 @@ const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails, extractIncidentDirectStats, annotateIncidentGptConclusion } = require('./src/incident_excel_stats');
-const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, fetchContainedAlertCount } = require('./src/mssw_client');
+const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, processRiskListTable, fetchContainedAlertCount } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
 const { rankBusinessSystems } = require('./src/business_system_ranking');
@@ -98,6 +98,7 @@ async function main() {
     assetIds: [],
     timeoutMs: options['timeout-ms'] ? Number(options['timeout-ms']) : undefined,
     pollIntervalMs: options['poll-interval-ms'] ? Number(options['poll-interval-ms']) : undefined,
+    mock: options.mock === true || options.mock === 'true',
     logger
   });
   if (Object.keys(tableExports).length) {
@@ -559,6 +560,7 @@ Options:
   --end <YYYY-MM-DD>             Optional report end date (最大范围 30 天)
   --cookie-path <path>           SOAR cookie file path (soar.sangfor.com.cn)
   --xdr-tables <names>           Optional MSSW export tables, default asset,incident
+  --mock                         使用本地文件模拟数据，跳过MSSW接口下载
   --download-dir <path>          Optional export directory override
   --output-json <path>           Optional report data JSON path, default output/report-data.json
   --json                         Print full JSON result to stdout
@@ -581,15 +583,26 @@ async function exportConfiguredXdrTables(options) {
 
   for (const table of tables) {
     if (table === 'asset') {
-      logWith(options.logger, '开始处理表格: asset (MSSW 真实下载)');
-      results.asset = await exportMsswAssetList({
-        msswCookiePath: options.msswCookiePath,
-        msswBaseUrl: options.msswBaseUrl,
-        downloadDir: options.downloadDir,
-        customerId: options.customerId,
-        assetIds: options.assetIds || [],
-        logger: options.logger
-      });
+      if (options.mock) {
+        logWith(options.logger, '开始处理表格: asset (读取本地资产列表.xlsx)');
+        const localAssetPath = path.join(__dirname, '资产列表.xlsx');
+        const processedResult = await processRiskListTable('asset', localAssetPath);
+        results.asset = {
+          filePath: processedResult.filePath,
+          tmpFilePath: processedResult.filePath,
+          filename: '资产列表.xlsx'
+        };
+      } else {
+        logWith(options.logger, '开始处理表格: asset (MSSW 真实下载)');
+        results.asset = await exportMsswAssetList({
+          msswCookiePath: options.msswCookiePath,
+          msswBaseUrl: options.msswBaseUrl,
+          downloadDir: options.downloadDir,
+          customerId: options.customerId,
+          assetIds: options.assetIds || [],
+          logger: options.logger
+        });
+      }
       continue;
     }
 
