@@ -173,10 +173,14 @@ function applyAssetStatusStats(reportData, stats) {
       core_asset: Number(stats.core_asset || 0),
       core_managed_asset: Number(stats.core_managed_asset || 0),
       manage_asset: Number(stats.manage_asset || 0),
+      currentAssetCount: Number(stats.currentAssetCount || 0),
+      waitApproveAssetCount: Number(stats.waitApproveAssetCount || 0),
       typeDistribution: Array.isArray(stats.typeDistribution) ? stats.typeDistribution : [],
       protectionDistribution: Array.isArray(stats.protectionDistribution) ? stats.protectionDistribution : [],
       internetExposureTotal: Number(stats.internetExposureTotal || 0),
-      internetExposureDistribution: Array.isArray(stats.internetExposureDistribution) ? stats.internetExposureDistribution : []
+      internetExposureDistribution: Array.isArray(stats.internetExposureDistribution) ? stats.internetExposureDistribution : [],
+      componentDistribution: Array.isArray(stats.componentDistribution) ? stats.componentDistribution : [],
+      totalComponentCount: Number(stats.totalComponentCount || 0)
     }
   });
 
