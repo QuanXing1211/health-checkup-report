@@ -607,18 +607,29 @@ async function exportConfiguredXdrTables(options) {
     }
 
     if (table === 'incident') {
-      logWith(options.logger, '开始处理表格: incident (MSSW 真实下载)');
-      results.incident = await exportMsswIncidentList({
-        msswCookiePath: options.msswCookiePath,
-        msswBaseUrl: options.msswBaseUrl,
-        downloadDir: options.downloadDir,
-        start: options.start,
-        end: options.end,
-        customerId: options.customerId,
-        timeoutMs: options.timeoutMs,
-        pollIntervalMs: options.pollIntervalMs,
-        logger: options.logger
-      });
+      if (options.mock) {
+        logWith(options.logger, '开始处理表格: incident (读取本地事件列表.xlsx)');
+        const localIncidentPath = path.join(__dirname, '事件列表.xlsx');
+        const processedResult = await processRiskListTable('incident', localIncidentPath);
+        results.incident = {
+          filePath: processedResult.filePath,
+          tmpFilePath: processedResult.filePath,
+          filename: '事件列表.xlsx'
+        };
+      } else {
+        logWith(options.logger, '开始处理表格: incident (MSSW 真实下载)');
+        results.incident = await exportMsswIncidentList({
+          msswCookiePath: options.msswCookiePath,
+          msswBaseUrl: options.msswBaseUrl,
+          downloadDir: options.downloadDir,
+          start: options.start,
+          end: options.end,
+          customerId: options.customerId,
+          timeoutMs: options.timeoutMs,
+          pollIntervalMs: options.pollIntervalMs,
+          logger: options.logger
+        });
+      }
       continue;
     }
 
