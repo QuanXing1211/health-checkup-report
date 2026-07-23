@@ -199,7 +199,7 @@ function enrichReportData(reportData) {
   reportData.riskOverview.devices = positiveNumberOr(reportData.riskOverview.devices, 202);
   reportData.riskOverview.closeRate = positiveNumberOr(reportData.riskOverview.closeRate, 61);
   reportData.riskOverview.closedEvents = positiveNumberOr(reportData.riskOverview.closedEvents, 239);
-  reportData.riskOverview.containedEvents = positiveNumberOr(reportData.riskOverview.containedEvents, 88);
+  reportData.riskOverview.containedAlerts = positiveNumberOr(reportData.riskOverview.containedAlerts, 88);
   reportData.riskOverview.totalEvents = positiveNumberOr(reportData.riskOverview.totalEvents, 391);
 
   reportData.riskOverview.coreBusinessSystemRanking = ensurePrimitiveArray(
@@ -323,7 +323,7 @@ function enrichReportData(reportData) {
   reportData.riskDetails.severeEvents = positiveNumberOr(reportData.riskDetails.severeEvents, 18);
   reportData.riskDetails.highEvents = positiveNumberOr(reportData.riskDetails.highEvents, 73);
   reportData.riskDetails.closedEvents = positiveNumberOr(reportData.riskDetails.closedEvents, reportData.riskOverview.closedEvents);
-  reportData.riskDetails.containedEvents = positiveNumberOr(reportData.riskDetails.containedEvents, reportData.riskOverview.containedEvents);
+  reportData.riskDetails.containedAlerts = positiveNumberOr(reportData.riskDetails.containedAlerts, reportData.riskOverview.containedAlerts);
   reportData.riskDetails.processingEvents = positiveNumberOr(reportData.riskDetails.processingEvents, 64);
   reportData.riskDetails.closeRate = positiveNumberOr(reportData.riskDetails.closeRate, reportData.riskOverview.closeRate);
   reportData.riskDetails.uniqueAssetCount = positiveNumberOr(reportData.riskDetails.uniqueAssetCount, reportData.riskOverview.affectedAssetCount);

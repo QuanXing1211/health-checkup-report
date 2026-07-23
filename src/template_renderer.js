@@ -101,6 +101,7 @@ function renderTemplate(template, reportData, gradeAssets) {
   html = renderSections(html, reportData);
   html = renderRepeats(html, reportData);
   html = patchKnownText(html, reportData);
+  html = patchKeyRisk01Advice(html, reportData);
   html = patchDataFields(html, reportData);
   html = patchPolicyCheckKpiCards(html, reportData);
   html = patchGrade(html, reportData, gradeAssets);
@@ -223,6 +224,33 @@ function renderSections(html, data) {
 
     return `<${tag}${before}data-section="${sectionName}"${after}>${renderer(data)}</${tag}>`;
   });
+}
+
+// 关键风险 #01 网络防护动态话术：替换 <ul data-dynamic-advice="keyRisk01"> 内的静态 <li>
+// 依据 riskOverview.keyRisk01NetworkAdvice（{ optimal, afPhrase, sipPhrase }）动态生成
+// advice 缺失（如 mock 流程）时不做任何改动，保留模板原静态文案
+function patchKeyRisk01Advice(html, data) {
+  const advice = data && data.riskOverview && data.riskOverview.keyRisk01NetworkAdvice;
+  if (!advice) {
+    return html;
+  }
+
+  const items = [];
+  if (advice.optimal) {
+    items.push('<li>您的防护效果达到最优</li>');
+  }
+  if (advice.afPhrase) {
+    items.push(`<li>${escapeHtml(advice.afPhrase)}</li>`);
+  }
+  if (advice.sipPhrase) {
+    items.push(`<li>${escapeHtml(advice.sipPhrase)}</li>`);
+  }
+  const listHtml = items.join('\n                  ');
+
+  return html.replace(
+    /(<ul[^>]*data-dynamic-advice="keyRisk01"[^>]*>)([\s\S]*?)(<\/ul>)/,
+    (match, open, _old, close) => `${open}\n                  ${listHtml}\n                ${close}`
+  );
 }
 
 function renderRepeats(html, data) {

@@ -123,7 +123,6 @@ function applyIncidentStatusStats(reportData, stats) {
       severeEvents: Number(stats.severeEvents || 0),
       highEvents: Number(stats.highEvents || 0),
       closedEvents: Number(stats.closedEvents || 0),
-      containedEvents: Number(stats.containedEvents || 0),
       processingEvents: Number(stats.processingEvents || 0),
       closeRate: Number(stats.closeRate || 0),
       alertReductionRate: computedAlertReductionRate,
@@ -134,7 +133,7 @@ function applyIncidentStatusStats(reportData, stats) {
   if (merged && merged.riskOverview && merged.riskDetails) {
     merged.riskOverview.closeRate = merged.riskDetails.closeRate;
     merged.riskOverview.closedEvents = merged.riskDetails.closedEvents;
-    merged.riskOverview.containedEvents = merged.riskDetails.containedEvents;
+    merged.riskOverview.containedAlerts = merged.riskDetails.containedAlerts;
     merged.riskOverview.totalEvents = merged.riskDetails.totalEvents;
     merged.riskOverview.alertReductionRate = merged.riskDetails.alertReductionRate;
     merged.riskOverview.affectedAssetCount = merged.riskDetails.uniqueAssetCount;

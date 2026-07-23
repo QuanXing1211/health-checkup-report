@@ -58,6 +58,15 @@ async function main() {
   }
 
   requireArgs(options, ['customer', 'mssw-cookie-path']);
+  requireArgs(options, ['af', 'sip']);
+
+  const afRaw = String(options.af).toLowerCase();
+  const sipRaw = String(options.sip).toLowerCase();
+  if (!['true', 'false'].includes(afRaw) || !['true', 'false'].includes(sipRaw)) {
+    throw new Error('--af and --sip must be true or false');
+  }
+  const afSubscribed = afRaw === 'true';
+  const sipSubscribed = sipRaw === 'true';
 
   if (options['xdr-cookie-path']) {
     await readXdrCookieInfo(options['xdr-cookie-path']);
@@ -156,6 +165,20 @@ async function main() {
     }
   }
 
+  // 从 API 查询已遏制告警数量
+  let containedAlerts = 0;
+  if (msswCookie && customerId && effectiveTimeRange.start && effectiveTimeRange.end) {
+    try {
+      containedAlerts = await fetchContainedAlertCount(msswCookie, options['mssw-base-url'], customerId, {
+        start: effectiveTimeRange.start,
+        end: effectiveTimeRange.end
+      });
+      logger(`API 查询已遏制告警数量: ${containedAlerts} 起`);
+    } catch (error) {
+      logger(`API 查询已遏制告警数量失败（设为 0）: ${error.message}`);
+    }
+  }
+
   let reportData = await collectReportData({
     customer: options.customer,
     customerId,
@@ -184,25 +207,9 @@ async function main() {
   }
   reportData.riskDetails.highRiskIncidentExamples.vulnExploits = vulnExploitExamples;
 
-    // 通过 API 查询已遏制告警数量，覆盖两处已遏制事件统计
-  let containedFromApi = 0;
-  if (msswCookie && customerId && effectiveTimeRange.start && effectiveTimeRange.end) {
-    try {
-      containedFromApi = await fetchContainedAlertCount(msswCookie, options['mssw-base-url'], customerId, {
-        start: effectiveTimeRange.start,
-        end: effectiveTimeRange.end
-      });
-      logger(`API 查询已遏制告警数量: ${containedFromApi} 起`);
-    } catch (error) {
-      logger(`API 查询已遏制告警数量失败（保留原统计值）: ${error.message}`);
-    }
-  }
-  if (containedFromApi > 0) {
-    // 覆盖全量事件统计中的已遏制数
-    if (incidentStatusStats) {
-      incidentStatusStats.containedEvents = containedFromApi;
-    }
-  }
+    // 通过 API 写入已遏制告警数量
+  reportData.riskDetails.containedAlerts = containedAlerts;
+  reportData.riskOverview.containedAlerts = containedAlerts;
 
 // 合并全量事件响应时间统计到报告数据（始终写入默认值，有数据时覆盖）
   Object.assign(reportData.riskDetails, {
@@ -266,6 +273,18 @@ async function main() {
           devices: deviceCounts.devices
         });
         logger(`MSSW 设备总数: ${deviceCounts.devices}，深信服: ${deviceCounts.sangfor}（AF: ${deviceCounts.af}, AES: ${deviceCounts.aes}, SIP: ${deviceCounts.sip}, STA: ${deviceCounts.sta}, 其他: ${deviceCounts.other_sf}），第三方: ${deviceCounts.third}`);
+
+        // 关键风险 #01 网络防护动态话术：设备数量为0时即使订阅参数为开启也按"无设备"处理
+        const advice = buildNetworkAdvice({
+          afSubscribed,
+          sipSubscribed,
+          afDeviceCount: Number(deviceCounts.af || 0),
+          sipDeviceCount: Number(deviceCounts.sip || 0)
+        });
+        reportData.riskOverview = Object.assign(reportData.riskOverview || {}, {
+          keyRisk01NetworkAdvice: advice
+        });
+        logger(`关键风险#01 网络防护话术: optimal=${advice.optimal} afStatus=${advice.afStatus} sipStatus=${advice.sipStatus}`);
       } catch (error) {
         logger(`通过 MSSW 获取设备分类数量失败: ${error.message}，将跳过设备分类统计`);
       }
@@ -551,6 +570,42 @@ async function main() {
   }, emitJson, logger, `完成: ${result.html_path || result.filePath || ''}`);
 }
 
+/**
+ * 综合 AF 设备数量与订阅参数，判断防火墙云情报网关状态并生成对应话术
+ * @param {object} opts
+ * @param {boolean} opts.afSubscribed  --af 参数（true/false）
+ * @param {boolean} opts.sipSubscribed --sip 参数（true/false）
+ * @param {number}  opts.afDeviceCount  接口查到的 AF 设备数
+ * @param {number}  opts.sipDeviceCount 接口查到的 SIP 设备数
+ * @returns {{ optimal: boolean, afStatus: string, sipStatus: string, afPhrase: string, sipPhrase: string }}
+ */
+function buildNetworkAdvice({ afSubscribed, sipSubscribed, afDeviceCount, sipDeviceCount }) {
+  // 设备数为 0 时即使订阅参数为 true 也按无设备处理
+  const afStatus = afDeviceCount === 0 ? 'no_device' : (afSubscribed ? 'on' : 'off');
+  const sipStatus = sipDeviceCount === 0 ? 'no_device' : (sipSubscribed ? 'on' : 'off');
+
+  const PHRASES = {
+    af: {
+      on: '您的防火墙目前已开通云情报网关',
+      off: '开启防火墙云情报网关订阅，并更新到最新的情报库',
+      no_device: '请你购买深信服防火墙设备，并开启情报网关订阅更新到最新的情报库'
+    },
+    sip: {
+      on: '您的SIP目前已开启云端情报检测',
+      off: '开启SIP的云端情报检测',
+      no_device: '请你购买深信服SIP设备，并且开启云端情报检测'
+    }
+  };
+
+  return {
+    optimal: afStatus === 'on' && sipStatus === 'on',
+    afStatus,
+    sipStatus,
+    afPhrase: PHRASES.af[afStatus],
+    sipPhrase: PHRASES.sip[sipStatus]
+  };
+}
+
 function printHelp() {
   console.log(`Usage:
   node health_report.js --customer "客户名" [--start YYYY-MM-DD --end YYYY-MM-DD] [options]
@@ -573,6 +628,8 @@ Options:
   --poll-interval-ms <ms>        Optional MSSW event export polling interval
   --template <path>              HTML template path
   --output-dir <path>            Output directory
+  --af <true|false>              是否开通防火墙云情报网关订阅（必填，由 skill 层反问后传入）
+  --sip <true|false>             是否开通SIP云端情报检测（必填，由 skill 层反问后传入）
 `);
 }
 
@@ -699,7 +756,7 @@ async function summarizeExportedIncidentStatus(tableExports, logger) {
       ? Number(((stats.closedEvents / stats.totalEvents) * 100).toFixed(2))
       : 0;
   }
-  logWith(logger, `事件表统计完成: 事件数 ${stats.totalEvents} 起，严重 ${stats.severeEvents} 起，高危 ${stats.highEvents} 起，涉及到的资产数 ${stats.uniqueAssetCount} 个，已闭环 ${stats.closedEvents} 起，已遏制 ${stats.containedEvents} 起，处置中 ${stats.processingEvents} 起，闭环率 ${stats.closeRate}%`);
+  logWith(logger, `事件表统计完成: 事件数 ${stats.totalEvents} 起，严重 ${stats.severeEvents} 起，高危 ${stats.highEvents} 起，涉及到的资产数 ${stats.uniqueAssetCount} 个，已闭环 ${stats.closedEvents} 起，处置中 ${stats.processingEvents} 起，闭环率 ${stats.closeRate}%`);
   return stats;
 }
 

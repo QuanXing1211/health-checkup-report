@@ -18,7 +18,6 @@ async function summarizeIncidentStatus(excelPath) {
     severeEvents: Number(parsed.severeEvents || 0),
     highEvents: Number(parsed.highEvents || 0),
     closedEvents: Number(parsed.closedEvents || 0),
-    containedEvents: Number(parsed.containedEvents || 0),
     processingEvents: Number(parsed.processingEvents || 0),
     closeRate: Number(parsed.closeRate || 0),
     uniqueAssetCount: Number(parsed.uniqueAssetCount || 0)

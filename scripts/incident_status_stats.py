@@ -55,7 +55,6 @@ def main():
     severe = 0
     high = 0
     closed = 0
-    contained = 0
     processing = 0
     unique_ips = set()
 
@@ -88,7 +87,6 @@ def main():
         "severeEvents": severe,
         "highEvents": high,
         "closedEvents": closed,
-        "containedEvents": contained,
         "processingEvents": processing,
         "closeRate": close_rate,
         "uniqueAssetCount": len(unique_ips)

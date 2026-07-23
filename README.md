@@ -72,7 +72,7 @@ node health_report.js `
 | `riskOverview.alertTotal` | 有效告警数 | MSSW 告警统计接口 | 取 MSSW 事件表统计接口返回的总数 |
 | `riskOverview.totalEvents` | 有效安全事件数 | 导出的事件表 Excel | 直接复用 `riskDetails.totalEvents` |
 | `riskOverview.closedEvents` | 处置闭环数 | 导出的事件表 Excel | 直接复用 `riskDetails.closedEvents`，即 `处置状态 = 处置完成` 的事件行数 |
-| `riskOverview.containedEvents` | 总计遏制数 | 导出的事件表 Excel | 直接复用 `riskDetails.containedEvents`，即 `处置状态 = 已遏制` 或 `处置完成` 的事件行数 |
+| `riskOverview.containedAlerts` | 已遏制告警数 | MSSW 告警统计接口 | 查询处置动作为 `已遏制(组件同步)` 或 `已遏制(已封禁地址)` 的告警总数 |
 | `riskOverview.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 直接复用 `riskDetails.alertReductionRate`；若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果保留两位小数 |
 | `riskOverview.closeRate` | 事件闭环率 | 导出的事件表 Excel | 直接复用 `riskDetails.closeRate`，保证与风险详情完全一致 |
 | `riskOverview.riskAssetCount` | 风险资产数 | 风险清单目录中的事件表 Excel + 弱口令表 Excel + 漏洞表 Excel + 暴露面表 Excel + 资产表 Excel | 在五张风险清单归档完成后综合统计：事件表取 `影响资产` 且排除 `处置状态 = 处置完成`；弱口令表取 `风险资产` 且若存在 `处置状态` 列则排除 `处置完成`；漏洞表取 `风险资产`；暴露面表中 `Web服务风险分布` 通过 `访问路径 -> 端口表.Host` 映射资产，`非Web服务风险分布` 直接取 `IP地址/子域名`；最后按资产键去重计数 |
@@ -95,7 +95,7 @@ node health_report.js `
 | `riskDetails.severeEvents` | 严重事件数 | 导出的事件表 Excel | 读取表头为 `等级` 的列，统计值等于 `严重` 的事件行数 |
 | `riskDetails.highEvents` | 高危事件数 | 导出的事件表 Excel | 读取表头为 `等级` 的列，统计值等于 `高危` 的事件行数 |
 | `riskDetails.closedEvents` | 已闭环事件数 | 导出的事件表 Excel | 统计 `处置状态` 列值等于 `处置完成` 的事件行数；指标名仍保留“已闭环” |
-| `riskDetails.containedEvents` | 已遏制事件数 | 导出的事件表 Excel | 读取表头为 `处置状态` 的列，统计值等于 `已遏制` 或 `处置完成` 的事件行数 |
+| `riskDetails.containedAlerts` | 已遏制告警数 | MSSW 告警统计接口 | 与 `riskOverview.containedAlerts` 一致，查询处置动作为 `已遏制(组件同步)` 或 `已遏制(已封禁地址)` 的告警总数 |
 | `riskDetails.processingEvents` | 处置中事件数 | 导出的事件表 Excel | 读取表头为 `处置状态` 的列，统计值等于 `处置中` 的事件行数 |
 | `riskDetails.closeRate` | 闭环率 | 导出的事件表 Excel | 用 `closedEvents / totalEvents * 100` 计算，结果保留两位小数 |
 | `riskDetails.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果保留两位小数 |
