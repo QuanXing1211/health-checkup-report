@@ -7,7 +7,7 @@ const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData } = require('./src/data_client');
 const { summarizeAssetTable } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails, extractIncidentDirectStats, annotateIncidentGptConclusion } = require('./src/incident_excel_stats');
-const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, processRiskListTable } = require('./src/mssw_client');
+const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, fetchContainedAlertCount } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
 const { rankBusinessSystems } = require('./src/business_system_ranking');
@@ -149,7 +149,7 @@ async function main() {
   if (assetFilePath && incidentFilePath) {
     try {
       managedAssetIncidentStats = await summarizeManagedAssetIncidents(assetFilePath, incidentFilePath);
-      logger(`托管资产事件统计: 共 ${managedAssetIncidentStats.managedAssetEvents} 起事件, 涉及 ${managedAssetIncidentStats.managedAssetCount} 个托管资产, 已遏制 ${managedAssetIncidentStats.managedAssetContainedEvents} 起, 处置完成 ${managedAssetIncidentStats.managedAssetDisposedEvents} 起, 闭环率 ${managedAssetIncidentStats.managedEventCloseRate}%`);
+      logger(`全量事件响应时间统计: AvgResponseTime=${managedAssetIncidentStats.AvgResponseTime}分钟, 托管资产数=${managedAssetIncidentStats.managedAssetCount}`);
     } catch (error) {
       logger(`托管资产事件统计失败（不影响主流程）: ${error.message}`);
     }
@@ -182,31 +182,43 @@ async function main() {
   }
   reportData.riskDetails.highRiskIncidentExamples.vulnExploits = vulnExploitExamples;
 
-  // 合并托管资产事件统计到报告数据（始终写入默认值，有数据时覆盖）
+    // 通过 API 查询已遏制告警数量，覆盖两处已遏制事件统计
+  let containedFromApi = 0;
+  if (msswCookie && customerId && effectiveTimeRange.start && effectiveTimeRange.end) {
+    try {
+      containedFromApi = await fetchContainedAlertCount(msswCookie, options['mssw-base-url'], customerId, {
+        start: effectiveTimeRange.start,
+        end: effectiveTimeRange.end
+      });
+      logger(`API 查询已遏制告警数量: ${containedFromApi} 起`);
+    } catch (error) {
+      logger(`API 查询已遏制告警数量失败（保留原统计值）: ${error.message}`);
+    }
+  }
+  if (containedFromApi > 0) {
+    // 覆盖全量事件统计中的已遏制数
+    if (incidentStatusStats) {
+      incidentStatusStats.containedEvents = containedFromApi;
+    }
+  }
+
+// 合并全量事件响应时间统计到报告数据（始终写入默认值，有数据时覆盖）
   Object.assign(reportData.riskDetails, {
-    managedAssetEvents: 0,
-    managedAssetContainedEvents: 0,
-    managedAssetDisposedEvents: 0,
-    managedEventCloseRate: 0,
-    managedAssetCount: 0,
-    managedAvgResponseTime: 0,
+    AvgResponseTime: 0,
     topEventType: '',
     top3BusinessSystems: '',
-    businessSystemEventDistribution: []
+    businessSystemEventDistribution: [],
+    managedAssetCount: 0,
   });
   if (managedAssetIncidentStats) {
     Object.assign(reportData.riskDetails, {
-      managedAssetEvents: managedAssetIncidentStats.managedAssetEvents,
-      managedAssetContainedEvents: managedAssetIncidentStats.managedAssetContainedEvents,
-      managedAssetDisposedEvents: managedAssetIncidentStats.managedAssetDisposedEvents,
-      managedEventCloseRate: managedAssetIncidentStats.managedEventCloseRate,
+      AvgResponseTime: managedAssetIncidentStats.AvgResponseTime,
       managedAssetCount: managedAssetIncidentStats.managedAssetCount,
-      managedAvgResponseTime: managedAssetIncidentStats.managedAvgResponseTime,
       topEventType: managedAssetIncidentStats.topEventType,
       top3BusinessSystems: managedAssetIncidentStats.top3BusinessSystems,
       businessSystemEventDistribution: managedAssetIncidentStats.businessSystemEventDistribution
     });
-    logger(`托管资产事件数据已合并: events=${managedAssetIncidentStats.managedAssetEvents}, contained=${managedAssetIncidentStats.managedAssetContainedEvents}, disposed=${managedAssetIncidentStats.managedAssetDisposedEvents}, closeRate=${managedAssetIncidentStats.managedEventCloseRate}%, avgResponseTime=${managedAssetIncidentStats.managedAvgResponseTime}分钟`);
+    logger(`全量事件响应时间已合并: AvgResponseTime=${managedAssetIncidentStats.AvgResponseTime}分钟`);
     logger(`最多类型事件: ${managedAssetIncidentStats.topEventType}`);
     logger(`TOP3业务系统: ${managedAssetIncidentStats.top3BusinessSystems}`);
     logger(`业务系统安全事件分布: ${JSON.stringify(managedAssetIncidentStats.businessSystemEventDistribution)}`);
@@ -543,8 +555,8 @@ Options:
   --mssw-base-url <host>         MSSW base host (default pre.soar.sangfor.com)
   --soar-base-url <host>         SOAR base host for EASM interfaces (default soar59.sangfor.com.cn)
   --xdr-cookie-path <path>       Optional, XDR cookie file path
-  --start <YYYY-MM-DD>           Optional report start date
-  --end <YYYY-MM-DD>             Optional report end date
+  --start <YYYY-MM-DD>           Optional report start date (最大范围 30 天)
+  --end <YYYY-MM-DD>             Optional report end date (最大范围 30 天)
   --cookie-path <path>           SOAR cookie file path (soar.sangfor.com.cn)
   --xdr-tables <names>           Optional MSSW export tables, default asset,incident
   --download-dir <path>          Optional export directory override
@@ -578,17 +590,6 @@ async function exportConfiguredXdrTables(options) {
         assetIds: options.assetIds || [],
         logger: options.logger
       });
-
-      // 改为固定读项目根目录的资产表
-      // logWith(options.logger, '开始处理表格: asset (读取本地资产列表.xlsx)');
-      // const localAssetPath = path.join(__dirname, '资产列表.xlsx');
-      // const processedResult = await processRiskListTable('asset', localAssetPath);
-      // results.asset = {
-      //   filePath: processedResult.filePath,
-      //   tmpFilePath: processedResult.filePath,
-      //   filename: '资产列表.xlsx'
-      // };
-      // logWith(options.logger, `资产表已处理: ${processedResult.filePath}`);
       continue;
     }
 
@@ -807,6 +808,26 @@ function replaceExtension(filePath, extension) {
   return path.join(parsed.dir, `${parsed.name}${extension}`);
 }
 
+const MAX_QUERY_DAY_SPAN = 30;
+
+function computeDaySpan(startStr, endStr) {
+  const startMatch = String(startStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const endMatch = String(endStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!startMatch || !endMatch) return null;
+  const startDate = new Date(+startMatch[1], +startMatch[2] - 1, +startMatch[3]);
+  const endDate = new Date(+endMatch[1], +endMatch[2] - 1, +endMatch[3]);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((endDate.getTime() - startDate.getTime()) / msPerDay) + 1;
+}
+
+function subtractDays(dateStr, days) {
+  const match = String(dateStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const date = new Date(+match[1], +match[2] - 1, +match[3]);
+  date.setDate(date.getDate() - days);
+  return formatDate(date);
+}
+
 async function resolveEffectiveTimeRange({ options, customerId, msswCookie, reportGeneratedAt, logger }) {
   const hasStart = options.start !== undefined && options.start !== null && String(options.start).trim() !== '';
   const hasEnd = options.end !== undefined && options.end !== null && String(options.end).trim() !== '';
@@ -856,6 +877,11 @@ async function resolveEffectiveTimeRange({ options, customerId, msswCookie, repo
       }
     }
 
+    const daySpan = computeDaySpan(effectiveStart, effectiveEnd);
+    if (daySpan !== null && daySpan > MAX_QUERY_DAY_SPAN) {
+      throw new Error(`查询时间范围不能超过 ${MAX_QUERY_DAY_SPAN} 天（当前 ${daySpan} 天），请缩小范围后重新输入`);
+    }
+
     validateDateRange(effectiveStart, effectiveEnd);
     const clamped = effectiveStart !== String(options.start).trim() || effectiveEnd !== String(options.end).trim();
     logger(`最终时间范围: ${effectiveStart} ~ ${effectiveEnd}`);
@@ -869,6 +895,16 @@ async function resolveEffectiveTimeRange({ options, customerId, msswCookie, repo
   // 用户未传时间，使用接口返回的服务时间范围
   if (!serviceTimeRange) {
     throw new Error('未传 --start/--end 时，需要提供 --mssw-cookie-path 和有效的 company_id 以自动推导默认时间范围');
+  }
+
+  // 最多只取最近 30 天：start 不能早于 end-29 天
+  const daySpan = computeDaySpan(serviceTimeRange.start, serviceTimeRange.end);
+  if (daySpan !== null && daySpan > MAX_QUERY_DAY_SPAN) {
+    const cappedStart = subtractDays(serviceTimeRange.end, MAX_QUERY_DAY_SPAN - 1);
+    if (cappedStart) {
+      logger(`服务时间范围 ${serviceTimeRange.start} ~ ${serviceTimeRange.end} 超过 ${MAX_QUERY_DAY_SPAN} 天，自动截取最近 ${MAX_QUERY_DAY_SPAN} 天: ${cappedStart} ~ ${serviceTimeRange.end}`);
+      serviceTimeRange.start = cappedStart;
+    }
   }
 
   validateDateRange(serviceTimeRange.start, serviceTimeRange.end);

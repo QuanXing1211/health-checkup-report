@@ -56,8 +56,12 @@ function buildZeroReportData(source) {
     { name: '', count: 0 },
     { name: '', count: 0 }
   ];
-  zero.riskOverview.incidentGptStats.nonAesCoveredAssets = ['', ''];
+  zero.riskOverview.incidentGptStats.virusAttackAsset = '';
+  zero.riskOverview.incidentGptStats.virusAttackAssetEmpty = true;
+  zero.riskOverview.incidentGptStats.nonAesCoveredAssets = ['', '', ''];
   zero.riskOverview.incidentGptStats.nonAesCoveredAssetsHideHint = true;
+  zero.riskOverview.incidentGptStats.nonAesCoveredAssetsAllInstalledHide = true;
+  zero.riskOverview.incidentGptStats.nonAesCoveredAssetsIps = '';
   zero.riskOverview.incidentGptStats.unlabeledAssets = ['', ''];
   zero.riskOverview.incidentGptStats.unlabeledAssetsHideHint = true;
   zero.riskOverview.incidentGptStats.confirmedIncidentIds = [];

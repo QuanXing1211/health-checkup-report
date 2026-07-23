@@ -145,7 +145,7 @@ def main():
     incident_path = sys.argv[2]
 
     # ====== 读取资产表 ======
-    managed_asset_ips = set()
+    managed_asset_count = 0
     ip_to_business = {}  # IP -> 所属业务
 
     try:
@@ -176,7 +176,7 @@ def main():
                 if biz:
                     ip_to_business[ip] = biz
 
-            # 收集托管资产 IP
+            # 统计托管资产数量
             is_managed = False
             if managed_col is not None and managed_col < len(row):
                 val = normalize(row[managed_col])
@@ -184,17 +184,13 @@ def main():
                     is_managed = True
 
             if is_managed:
-                managed_asset_ips.add(ip)
+                managed_asset_count += 1
 
         asset_wb.close()
     except Exception as e:
         print(json.dumps({
-            "managedAssetEvents": 0,
-            "managedAssetContainedEvents": 0,
-            "managedAssetDisposedEvents": 0,
-            "managedEventCloseRate": 0,
             "managedAssetCount": 0,
-            "managedAvgResponseTime": 0,
+            "AvgResponseTime": 0,
             "topEventType": "",
             "top3BusinessSystems": "",
             "businessSystemEventDistribution": [],
@@ -203,10 +199,7 @@ def main():
         return
 
     # ====== 读取事件表 ======
-    total_managed = 0
-    contained_managed = 0
-    disposed_managed = 0
-    disposed_response_times = []
+    response_times = []
     event_type_counter = Counter()
     business_risk_records = []
 
@@ -250,20 +243,10 @@ def main():
                     "severity": SEVERITY_MAP.get(severity_raw, ""),
                 })
 
-            # 托管资产事件统计（只统计影响资产为托管 IP 的事件）
-            if not incident_ip or incident_ip not in managed_asset_ips:
-                continue
-
-            total_managed += 1
-
+            # 全量事件响应时间（所有处置完成的事件，不再限制托管资产）
             if status_col is not None and status_col < len(row):
                 status = normalize(row[status_col])
-                if status == "已遏制":
-                    contained_managed += 1
-                elif status == "处置完成":
-                    contained_managed += 1
-                    disposed_managed += 1
-                    # 收集处置完成事件的响应时间（完成时间 - 事件创建时间）
+                if status == "处置完成":
                     completed_at = row[completed_at_col] if completed_at_col is not None and completed_at_col < len(row) else None
                     created_at = row[created_at_col] if created_at_col is not None and created_at_col < len(row) else None
                     completed_dt = parse_datetime_value(completed_at)
@@ -271,17 +254,13 @@ def main():
                     if completed_dt is not None and created_dt is not None:
                         diff_minutes = (completed_dt - created_dt).total_seconds() / 60
                         if diff_minutes >= 0:
-                            disposed_response_times.append(diff_minutes)
+                            response_times.append(diff_minutes)
 
         incident_wb.close()
     except Exception as e:
         print(json.dumps({
-            "managedAssetEvents": 0,
-            "managedAssetContainedEvents": 0,
-            "managedAssetDisposedEvents": 0,
-            "managedEventCloseRate": 0,
-            "managedAssetCount": len(managed_asset_ips),
-            "managedAvgResponseTime": 0,
+            "managedAssetCount": managed_asset_count,
+            "AvgResponseTime": 0,
             "topEventType": "",
             "top3BusinessSystems": "",
             "businessSystemEventDistribution": [],
@@ -289,17 +268,12 @@ def main():
         }, ensure_ascii=False))
         return
 
-    close_rate = round((disposed_managed / total_managed) * 100, 2) if total_managed else 0
-    avg_response_time = round(sum(disposed_response_times) / len(disposed_response_times), 1) if disposed_response_times else 0
+    avg_response_time = round(sum(response_times) / len(response_times), 1) if response_times else 0
     business_ranking = rank_business_systems(business_risk_records, 5)
 
     result = {
-        "managedAssetEvents": total_managed,
-        "managedAssetContainedEvents": contained_managed,
-        "managedAssetDisposedEvents": disposed_managed,
-        "managedEventCloseRate": close_rate,
-        "managedAssetCount": len(managed_asset_ips),
-        "managedAvgResponseTime": avg_response_time,
+        "managedAssetCount": managed_asset_count,
+        "AvgResponseTime": avg_response_time,
         "topEventType": top1_name(event_type_counter),
         "top3BusinessSystems": "、".join(item["name"] for item in business_ranking[:3]),
         "businessSystemEventDistribution": [

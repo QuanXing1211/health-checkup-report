@@ -41,6 +41,7 @@ const MSSW_ASSET_DOWNLOAD_ENDPOINT = '/apps/asset/view/asset/download_file';
 const MSSW_ASSET_COUNT_ENDPOINT = '/apps/asset/view/asset/asset_view/count?_method=GET';
 const MSSW_INCIDENT_TABLE_ENDPOINT = '/gateway/mss-mdr/web/api/mssw/mss-mdr/v1/incident_table';
 const MSSW_LOG_SEARCH_COUNT_ENDPOINT = '/gateway/log-search-center-service/datalake/v1/ckCount';
+const SECURITY_CHECK_REPORT_STATS_ENDPOINT = '/gateway/log-search-center-service/datalake/v1/personalized_report/security_check_report_stats';
 const ATTCK_COUNT_ENDPOINT = '/ngsoc/INCIDENT/api/v1/incidents/attckCount';
 const INCIDENT_TABLE_QUERY_ENDPOINT = '/ngsoc/INCIDENT/api/v1/table/query/incidentTableQueryHandler';
 const CASE_STUDY_SEVERITY_ORDER = ['严重', '高危', '中危', '低危'];
@@ -1447,6 +1448,138 @@ async function fetchMsswAlertTableCount(cookieInfo, msswBaseUrl, companyId, opti
   };
 }
 
+function buildContainedAlertCountRequestBody({ begin, end }) {
+  return {
+    extensionParams: null,
+    spl: {
+      mappedSpl: 'filter 处置动作  in { "已遏制\\(组件同步\\)", "已遏制\\(已封禁地址\\)" }',
+      originalSpl: 'filter 处置动作  in { "已遏制\\(组件同步\\)", "已遏制\\(已封禁地址\\)" }',
+      extensionParams: {
+        frontRender: [{
+          displayField: '处置动作',
+          field: 'dealAction',
+          value: ['已遏制(组件同步)', '已遏制(已封禁地址)'],
+          headerType: 'alertDealAction',
+          searchType: 'selector',
+          valueText: '已遏制(组件同步), 已遏制(已封禁地址)',
+          isValueNegate: false,
+          type: 'string',
+          filterSelect: 'renderValue'
+        }],
+        mappedInputSpl: '',
+        originalInputSpl: ''
+      }
+    },
+    serviceInfo: ALERT_TABLE_SERVICE_INFO,
+    globalCondition: {
+      branchIds: [],
+      time: {
+        timeField: 'lastTime',
+        begin: { type: 'absolute', value: begin },
+        end: { type: 'absolute', value: end }
+      }
+    },
+    table: {
+      enable: true,
+      viewName: 'AlertView',
+      aggregationStrategies: null,
+      tableFields: buildAlertTableFields(),
+      pageNum: 1,
+      pageSize: 50,
+      serviceInfo: ALERT_TABLE_SERVICE_INFO,
+      subTable: null,
+      rightClicked: false,
+      selectAllPage: true,
+      routers: [{
+        icon: null,
+        path: '/incident/event/detail',
+        type: 'drillDown',
+        params: null,
+        actionParams: {
+          quarantineHostDisableFlag: '$quarantineHostDisableFlag',
+          disposedDisableFlag: '$disposedDisableFlag',
+          ignoreDisableFlag: '$ignoreDisableFlag',
+          trustFileDisableFlag: '$trustFileDisableFlag',
+          disposeFileDisableFlag: '$disposeFileDisableFlag',
+          soarDisableFlag: '$soarDisableFlag',
+          orderDisableFlag: '$orderDisableFlag',
+          disposingDisableFlag: '$disposingDisableFlag',
+          banIpDisableFlag: '$banIpDisableFlag',
+          gptResultStrategyDisableFlag: '$gptResultStrategyDisableFlag',
+          pendingDisableFlag: '$pendingDisableFlag',
+          toBeTransferDisableFlag: '$toBeTransferDisableFlag',
+          id: '$uuId',
+          customAlertGenerateIncidentDisableFlag: '$customAlertGenerateIncidentDisableFlag',
+          misReportDisableFlag: '$misReportDisableFlag'
+        },
+        applicableCols: ['name']
+      }],
+      rightActions: buildAlertTableRightActions(),
+      extensionParams: {}
+    },
+    tag: null,
+    viewName: 'AlertView',
+    model: 'simple',
+    autoRefresh: false,
+    viewInstanceId: ALERT_VIEW_INSTANCE_ID,
+    enableHistory: true
+  };
+}
+
+function buildAlertTableRightActions() {
+  // 返回与 buildAlertCountRequestBody 中 rightActions 一致的数组
+  var cols = ['responseHead', 'smtpTo', 'devSourceNames', 'sendFrom', 'occurTime', 'ignoreDisableFlag', 'platformIsDelete', 'recommendation', 'threatSubType', 'ftpCwd', 'similarId', 'srcPort', 'platformHostBranchId', 'accessDirection', 'huntingDomains', 'xUserGroup', 'humanCheck', 'redisLogin', 'tenant', 'fullTextSearch', 'quarantineHostDisableFlag', 'hostIp', 'respStatus', 'devices', 'ndrSecdetectBreachMid', 'mitreid', 'dealStatus', 'threatTypeProxy', 'aiRuleId', 'aiRuleIds', 'vulnName', 'soarDisableFlag', 'ftpCommand', 'newFullTextSearch', 'redisPassword', 'incidentRelated', 'gptAction', 'redisCommandCall', 'dealTime', 'threatType', 'orderDisableFlag', 'mssStatus', 'domain', 'disposingDisableFlag', 'reqCookie', 'whiteStatus', 'engineName', 'customAlertGenerateIncidentDisableFlag', 'gptRespAction', 'natTransform', 'dataAuthorityOwner', 'ioaRuleRelated', 'responseBody', 'webmailAttachmentFilename', 'statusChangeDisableFlag', 'featureInfo', 'dstIpStr', 'incidentRootIds', 'trustFileDisableFlag', 'regionIds', 'investigationResult', 'smtpFrom', 'ftpUser', 'ruleIds', 'dstPort', 'webmailSubject', 'whiteListIds', 'pName', 'requestBody', 'srcAssetAnalyzeResultsStatus', 'pendingDisableFlag', 'addWhiteDisableFlag', 'misReportDisableFlag', 'suspectedMisReport', 'hostClassify1Id', 'disposedDisableFlag', 'combineType', 'updateTime', 'userAgent', 'fileMd5', 'dstIpInfos', 'url', 'firstTime', 'platformHostGroupIds', 'devUId', 'riskTag', 'gptJudgementEngine', 'stage', 'dealAction', 'hostCountryName', 'exploitCveId', 'gptResultStrategyDisableFlag', 'huntingMD5s', 'hostAddress', 'dstIp', 'xForwardedFor', 'dnsQueries', 'alertRuleId', 'lastTime', 'similarRuleId', 'gptRuleUid', 'mysqlCommand', 'xUserName', 'requestHead', 'sasUsername', 'checker', 'disposeFileDisableFlag', 'webmailFrom', 'hostBranchId', 'attckTechnique', 'disposalRecord', 'srcIpInfos', 'fileState', 'devUIdProxy', 'banIpDisableFlag', 'srcAssetAnalyzeResults', 'sqlServerRequest', 'smtpSubject', 'fusionAlert', 'srcIp', 'attackResult', 'read', 'gptStartAt', 'virusName', 'correctGptResult', 'snmpVersion', 'threatClass', 'huntingIps', 'proofType', 'cveId', 'webmailUser', 'isCascade', 'trafficForwardLocation', 'hostAssetAnalyzeResult', 'gptSubResult', 'insertTime', 'hostProvinceName', 'gptAnalyzeTrace', 'webmailTo', 'name', 'dataAuthorityBranchId', 'gptResult', '_id', 'gptEngineList', 'logType', 'hostIpStr', 'platformIdAndGroupId', 'gptEndAt', 'humanNote', 'description', 'platformRole', 'srcIpStr', 'fileStatus', 'humanInvestigation', 'hostGroupIds', 'gptAnalyzeTime', 'hostAssetId', 'severity', 'owner', 'hostClassifyId', 'confidence', 'attckSubTechnique', 'platformId', 'label', 'uploadTime', 'uuId', 'logTraceInfo', 'disposeTime', 'regionId', 'threatSubTypeProxy', 'operationLabels', 'dnsAnswers', 'toBeTransferDisableFlag', 'threatDefine', 'dataAuthorityCooperators', 'username'];
+  return [
+    { name: 'addFilter', type: 'filter', params: null, actionParams: null, applicableCols: cols },
+    { name: 'removeFilter', type: 'filter', params: null, actionParams: null, applicableCols: cols },
+    { name: 'copyCellText', type: 'copy', params: null, actionParams: null, applicableCols: null },
+    { name: 'copyRecordData', type: 'copy', params: null, actionParams: null, applicableCols: null },
+    { name: 'decodeTool', type: 'tool', params: null, actionParams: null, applicableCols: null },
+    { name: 'hostIpAssetDetail', type: 'assetJump', params: null, actionParams: { assetId: '$hostAssetId', ip: '$hostIp', uuId: '$uuId' }, applicableCols: ['hostIp'] },
+    { name: 'srcIpAssetDetail', type: 'assetJump', params: null, actionParams: { srcIpInfos: '$srcIpInfos', ip: '$.', uuId: '$uuId' }, applicableCols: ['srcIp'] },
+    { name: 'dstIpAssetDetail', type: 'assetJump', params: null, actionParams: { ip: '$.', uuId: '$uuId', dstIpInfos: '$dstIpInfos' }, applicableCols: ['dstIp'] },
+    { name: 'incidentBanIp', type: 'item', params: { disable: '$banIpDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentQuarantineHost', type: 'item', params: { disable: '$quarantineHostDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'alertGptResultStrategy', type: 'addAlertGptResultStrategy', params: { disable: '$gptResultStrategyDisableFlag' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentAddWhite', type: 'addWhite', params: { disable: '$addWhiteDisableFlag' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'alertStatusChange', type: 'statusChange', params: { disable: '$statusChangeDisableFlag' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'customAlertGenerateIncident', type: 'customAlertGenerateIncident', params: { disable: '$customAlertGenerateIncidentDisableFlag' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentDisposeFile', type: 'item', params: { disable: '$disposeFileDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentTrustFile', type: 'item', params: { disable: '$trustFileDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'jumpAllowList', type: 'jump', params: { hidden: true, disable: '$isCascade', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: ['whiteStatus'] },
+    { name: 'incidentIgnore', type: 'modifyDealStatus', params: { disable: '$ignoreDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentMisReport', type: 'modifyDealStatus', params: { disable: '$misReportDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentPending', type: 'modifyDealStatus', params: { disable: '$pendingDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentDisposing', type: 'modifyDealStatus', params: { disable: '$disposingDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentDisposed', type: 'modifyDealStatus', params: { disable: '$disposedDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentSuppressed', type: 'modifyDealStatus', params: { disable: '$disposedDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentToBeTransferred', type: 'transferred', params: { hidden: true, disable: '$toBeTransferDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'flowDisposalRecord', type: 'item', params: { disable: '$orderDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'soarDisposalRecord', type: 'item', params: { disable: '$soarDisableFlag', applicableLimit: '' }, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentUnRead', type: 'modifyReadStatus', params: null, actionParams: { uuId: '$uuId' }, applicableCols: null },
+    { name: 'incidentRead', type: 'modifyReadStatus', params: null, actionParams: { uuId: '$uuId' }, applicableCols: null }
+  ];
+}
+
+async function fetchContainedAlertCount(cookieInfo, msswBaseUrl, companyId, options) {
+  const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
+  const msswHost = normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL);
+  const url = 'https://' + msswHost + ALERT_QUERY_ENDPOINT;
+  const timeRange = resolveIncidentTimeRange(options);
+  const response = await requestJson(url, {
+    headers,
+    body: JSON.stringify(buildContainedAlertCountRequestBody(timeRange))
+  });
+
+  assertXdrApiSuccess(response, '已遏制告警数量接口');
+
+  const total = Number(response && response.data ? response.data.total : 0);
+  if (!Number.isFinite(total)) {
+    throw new Error('已遏制告警数量接口返回缺少 total: ' + JSON.stringify(response).slice(0, 500));
+  }
+  return total;
+}
+
 function mapProtectionTypeLabels(typeData) {
   const type = typeData && typeof typeData === 'object' ? typeData : {};
   const items = [
@@ -1470,7 +1603,7 @@ function mapExposureTypeLabels(typeData) {
   const items = [
     ['server', '服务器'],
     ['terminal', '终端'],
-    ['other', '其他']
+    ['other', '其它']
   ];
 
   return items
@@ -1486,7 +1619,7 @@ function mapAssetTypeLabels(typeData) {
   const items = [
     ['server', '服务器'],
     ['terminal', '终端'],
-    ['other', '其他']
+    ['other', '其它']
   ];
 
   return items
@@ -2474,7 +2607,11 @@ async function fetchMsswAssetOverview(options = {}) {
       confirmedIncidentIds: []
     },
     threatActorStats: [],
+    virusAttackAsset: '',
+    virusAttackAssetEmpty: true,
     nonAesCoveredAssetsHideHint: true,
+    nonAesCoveredAssetsAllInstalledHide: true,
+    nonAesCoveredAssetsIps: '',
     unlabeledAssetsHideHint: true
   };
   let caseStudy = buildEmptyCaseStudy();
@@ -2504,8 +2641,11 @@ async function fetchMsswAssetOverview(options = {}) {
           virusIds
         );
         incidentGptStats.virusAttackAsset = assetInfo.virusAttackAsset || '';
+        incidentGptStats.virusAttackAssetEmpty = !incidentGptStats.virusAttackAsset;
         incidentGptStats.nonAesCoveredAssets = assetInfo.nonAesCoveredAssets || [];
+        incidentGptStats.nonAesCoveredAssetsIps = incidentGptStats.nonAesCoveredAssets.filter(Boolean).join('、');
         incidentGptStats.nonAesCoveredAssetsHideHint = incidentGptStats.nonAesCoveredAssets.length === 0;
+        incidentGptStats.nonAesCoveredAssetsAllInstalledHide = incidentGptStats.nonAesCoveredAssets.length > 0;
         incidentGptStats.unlabeledAssets = assetInfo.unlabeledAssets || [];
         incidentGptStats.unlabeledAssetsHideHint = incidentGptStats.unlabeledAssets.length === 0;
         logInfo(logger, `提取事件资产信息完成: 病毒攻击资产=${incidentGptStats.virusAttackAsset}, ` +
@@ -2841,6 +2981,146 @@ async function fetchMsswSecurityLogCount(cookieInfo, msswBaseUrl, companyId, opt
   return networkLogTotal + endpointLogTotal;
 }
 
+/**
+ * 计算近 30 天的有效时间范围（接口仅支持近 30 天数据）。
+ * 取用户报告范围与「今天往前推 30 天」的交集。r
+ * @param {string} start - YYYY-MM-DD
+ * @param {string} end   - YYYY-MM-DD
+ * @returns {{from_date:number, to_date:number, effectiveStart:string, effectiveEnd:string}}
+ */
+function resolveSecurityStatsTimeRange(start, end) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 近 30 天：今天往前推 29 天（含今天，共 30 天）
+  const recentStart = new Date(today);
+  recentStart.setDate(recentStart.getDate() - 29);
+  const recentStartMs = recentStart.getTime();
+  const recentEndMs = today.getTime() + 24 * 60 * 60 * 1000 - 1; // 含今日全天
+
+  const userStartMs = parseLocalDate(start, false) * 1000;
+  const userEndMs = parseLocalDate(end, true) * 1000;
+
+  // 取交集：报告范围 ∩ 近31天
+  const effectiveStartMs = Math.max(userStartMs, recentStartMs);
+  const effectiveEndMs = Math.min(userEndMs, recentEndMs);
+
+  if (effectiveStartMs > effectiveEndMs) {
+    return null; // 无交集
+  }
+
+  return {
+    from_date: Math.floor(effectiveStartMs / 1000),
+    to_date: Math.floor(effectiveEndMs / 1000),
+    effectiveStartMs,
+    effectiveEndMs
+  };
+}
+
+/**
+ * 调用安全体检报告统计接口，获取攻击态势数据。
+ * POST /gateway/log-search-center-service/datalake/v1/personalized_report/security_check_report_stats
+ * @param {object} cookieInfo  - readMsswCookieInfo 返回的 cookie 信息
+ * @param {string} msswBaseUrl - MSSW 基础域名（动态）
+ * @param {string} customerId  - 客户 ID
+ * @param {string} customerName - 客户名（写入 tenant_info.tenant_name）
+ * @param {string} start - YYYY-MM-DD 报告起始时间
+ * @param {string} end   - YYYY-MM-DD 报告结束时间
+ * @returns {Promise<object|null>} 接口响应 data.list[0]，无交集/接口失败时返回 null
+ */
+async function fetchSecurityCheckReportStats(cookieInfo, msswBaseUrl, customerId, customerName, start, end) {
+  const timeRange = resolveSecurityStatsTimeRange(start, end);
+  if (!timeRange) {
+    return null; // 报告范围不在近 30 天内
+  }
+
+  const url = 'https://' + normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL) + SECURITY_CHECK_REPORT_STATS_ENDPOINT;
+  const headers = buildMsswLogSearchCountHeaders(cookieInfo, msswBaseUrl);
+  const body = JSON.stringify({
+    condition: {
+      from_date: timeRange.from_date,
+      to_date: timeRange.to_date
+    },
+    top_n: 1,
+    tenant_info: [
+      {
+        tenant_id: String(customerId || ''),
+        tenant_name: String(customerName || '')
+      }
+    ]
+  });
+
+  const response = await requestJson(url, { headers, body });
+  const code = response && response.code;
+  if (code !== 0 && code !== '0') {
+    throw new Error(`攻击态势接口查询失败: ${response.msg || JSON.stringify(response).slice(0, 500)}`);
+  }
+
+  const list = response && response.data && Array.isArray(response.data.list) ? response.data.list : [];
+  return list.length ? list[0] : null;
+}
+
+/**
+ * 格式化攻击态势的占比百分数。
+ * 规则：
+ *   - totalAttack <= 0 时返回 '0'（话术渲染为「0%」）
+ *   - 能除尽（整数 / 一位小数 / 两位小数）则按实际位数返回，去掉末尾多余的 0
+ *   - 除不尽则四舍五入保留最多两位小数
+ * @param {number} nightAttack
+ * @param {number} totalAttack
+ * @returns {string} 百分数的数字部分（不含 %）
+ */
+function formatAttackRatio(nightAttack, totalAttack) {
+  if (!totalAttack || totalAttack <= 0) {
+    return '0';
+  }
+  const ratio = (Number(nightAttack || 0) / totalAttack) * 100;
+  // 先按两位小数四舍五入，再去掉末尾多余的 0 和小数点
+  return String(Math.round(ratio * 100) / 100);
+}
+
+/**
+ * 计算攻击态势总览展示数据。
+ * - daily_avg = total_attack_count / count_list.length（总次数/天数，四舍五入；dayCount=0 时兜底为 0）
+ * - night_ratio = night_attack_count / total_attack_count（百分数：能除尽则按实际位数显示，除不尽四舍五入保留最多两位小数；
+ *   去掉末尾多余的 0，整数结果不带小数点；totalAttack=0 时返回 '0'）
+ * - trend_dates = report_date 仅取 MM-DD
+ * - trend_values = attack_count
+ * @param {object} stats - 接口返回的 list[0]
+ * @returns {object} attackOverview 字段
+ */
+function calculateAttackOverview(stats) {
+  if (!stats || typeof stats !== 'object') {
+    return null;
+  }
+
+  const totalAttack = Number(stats.total_attack_count || 0);
+  const nightAttack = Number(stats.night_attack_count || 0);
+  const workdayAttack = Math.max(totalAttack - nightAttack, 0);
+  const countList = Array.isArray(stats.count_list) ? stats.count_list : [];
+  const dayCount = countList.length;
+  const dailyAvg = dayCount > 0 ? Math.round(totalAttack / dayCount) : 0;
+  const nightRatio = formatAttackRatio(nightAttack, totalAttack);
+
+  const trendDates = countList.map((item) => {
+    const reportDate = String(item && item.report_date || '');
+    // YYYY-MM-DD → MM-DD
+    return reportDate.length >= 10 ? reportDate.slice(5, 10) : reportDate;
+  });
+  const trendValues = countList.map((item) => Number(item && item.attack_count || 0));
+
+  return {
+    total_attack_count: totalAttack,
+    night_attack_count: nightAttack,
+    workday_attack_count: workdayAttack,
+    daily_avg: dailyAvg,
+    night_ratio: nightRatio,
+    trend_dates: trendDates,
+    trend_values: trendValues,
+    error: stats.error || ''
+  };
+}
+
 module.exports = {
   DEFAULT_MSSW_BASE_URL,
   DEFAULT_SOAR_BASE_URL,
@@ -2874,11 +3154,16 @@ module.exports = {
   normalizeAssetReadyToOutboundResponse,
   fetchMsswAssetOverview,
   fetchMsswAlertTableCount,
+  fetchContainedAlertCount,
   fetchMsswSecurityLogCount,
   MSSW_LOG_SEARCH_COUNT_ENDPOINT,
   buildMsswLogSearchCountRequestBody,
   buildMsswLogSearchCountHeaders,
   fetchMsswLogCountByTable,
+  SECURITY_CHECK_REPORT_STATS_ENDPOINT,
+  fetchSecurityCheckReportStats,
+  resolveSecurityStatsTimeRange,
+  calculateAttackOverview,
   formatTimestampToDateTime,
   THREAT_ACTOR_NAMES,
   matchThreatActor,

@@ -228,11 +228,14 @@ function enrichReportData(reportData) {
     ]
   );
   incidentGptStats.virusAttackAsset = incidentGptStats.virusAttackAsset || '10.128.160.200';
+  incidentGptStats.virusAttackAssetEmpty = !incidentGptStats.virusAttackAsset;
   incidentGptStats.nonAesCoveredAssets = ensurePrimitiveArray(
     incidentGptStats.nonAesCoveredAssets,
-    ['10.128.160.200', '10.128.165.10']
+    ['10.128.160.200', '10.128.165.10', '10.128.165.20']
   );
   incidentGptStats.nonAesCoveredAssetsHideHint = incidentGptStats.nonAesCoveredAssetsHideHint ?? false;
+  incidentGptStats.nonAesCoveredAssetsAllInstalledHide = incidentGptStats.nonAesCoveredAssetsAllInstalledHide ?? true;
+  incidentGptStats.nonAesCoveredAssetsIps = incidentGptStats.nonAesCoveredAssetsIps || incidentGptStats.nonAesCoveredAssets.filter(Boolean).join('、');
   incidentGptStats.unlabeledAssets = ensurePrimitiveArray(
     incidentGptStats.unlabeledAssets,
     ['10.128.165.151', '10.128.165.53']
@@ -284,28 +287,28 @@ function enrichReportData(reportData) {
   reportData.riskOverview.topRiskAssets = mergeArrayObjects(
     reportData.riskOverview.topRiskAssets,
     [
-      buildTopRiskAsset('10.128.165.151', '已托管', 'OA系统', 1179, [
+      buildTopRiskAsset('10.128.165.151', 'OA系统', 1179, [
         '漏洞风险 1179 项，其中高危及以上 642 项',
         '最近 30 天发生 2 起 C2 外联事件',
         '该资产尚未标注责任人',
         '该资产已纳入重点加固范围'
       ]),
-      buildTopRiskAsset('10.128.165.53', '已托管', 'ERP系统', 814, [
+      buildTopRiskAsset('10.128.165.53', 'ERP系统', 814, [
         '漏洞风险 814 项，其中高危及以上 401 项',
         '最近 30 天发生 1 起病毒木马事件',
         '该资产尚未安装EDR',
         '建议优先执行补丁与终端防护加固'
       ]),
-      buildTopRiskAsset('10.128.160.200', '已托管', '邮件系统', 236, [
+      buildTopRiskAsset('10.128.160.200', '邮件系统', 236, [
         '漏洞风险 236 项，其中高危及以上 88 项',
         '检测到病毒投递行为与可疑外联',
         '该资产长期暴露在邮件投递链路上'
       ]),
-      buildTopRiskAsset('192.168.30.190', '未托管', 'Web门户', 129, [
+      buildTopRiskAsset('192.168.30.190', 'Web门户', 129, [
         '互联网暴露面风险集中在 Web 服务与弱口令',
         '存在未纳管资产，建议先补纳管再修复'
       ]),
-      buildTopRiskAsset('10.128.160.83', '已托管', 'VPN系统', 72, [
+      buildTopRiskAsset('10.128.160.83', 'VPN系统', 72, [
         '高危漏洞与账号暴露风险并存',
         '建议优先完成身份认证与边界加固'
       ])
@@ -324,12 +327,8 @@ function enrichReportData(reportData) {
   reportData.riskDetails.processingEvents = positiveNumberOr(reportData.riskDetails.processingEvents, 64);
   reportData.riskDetails.closeRate = positiveNumberOr(reportData.riskDetails.closeRate, reportData.riskOverview.closeRate);
   reportData.riskDetails.uniqueAssetCount = positiveNumberOr(reportData.riskDetails.uniqueAssetCount, reportData.riskOverview.affectedAssetCount);
-  reportData.riskDetails.managedAssetEvents = positiveNumberOr(reportData.riskDetails.managedAssetEvents, 280);
-  reportData.riskDetails.managedAssetContainedEvents = positiveNumberOr(reportData.riskDetails.managedAssetContainedEvents, 88);
-  reportData.riskDetails.managedAssetDisposedEvents = positiveNumberOr(reportData.riskDetails.managedAssetDisposedEvents, 176);
-  reportData.riskDetails.managedEventCloseRate = positiveNumberOr(reportData.riskDetails.managedEventCloseRate, 63);
+  reportData.riskDetails.AvgResponseTime = positiveNumberOr(reportData.riskDetails.AvgResponseTime, 42);
   reportData.riskDetails.managedAssetCount = positiveNumberOr(reportData.riskDetails.managedAssetCount, 200);
-  reportData.riskDetails.managedAvgResponseTime = positiveNumberOr(reportData.riskDetails.managedAvgResponseTime, 47);
   reportData.riskDetails.topEventType = reportData.riskDetails.topEventType || '恶意文件检出';
   reportData.riskDetails.top3BusinessSystems = reportData.riskDetails.top3BusinessSystems || 'OA系统、ERP系统、邮件系统';
   reportData.riskDetails.businessSystemEventDistribution = ensureArrayObjects(
@@ -826,10 +825,9 @@ function collectJsonPaths(value, prefix, output) {
   }
 }
 
-function buildTopRiskAsset(ip, managedStatus, businessSystem, riskCount, detailLines) {
+function buildTopRiskAsset(ip, businessSystem, riskCount, detailLines) {
   return {
     ip,
-    managedStatus,
     businessSystem,
     riskCount,
     detailLines: ensurePrimitiveArray(detailLines, []),

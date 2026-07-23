@@ -224,12 +224,8 @@ async function extractVulnExploitExamples(incidentExcelPath, incidentIds) {
 async function summarizeManagedAssetIncidents(assetExcelPath, incidentExcelPath) {
   if (!assetExcelPath || !incidentExcelPath) {
     return {
-      managedAssetEvents: 0,
-      managedAssetContainedEvents: 0,
-      managedAssetDisposedEvents: 0,
-      managedEventCloseRate: 0,
       managedAssetCount: 0,
-      managedAvgResponseTime: 0,
+      AvgResponseTime: 0,
       topEventType: '',
       top3BusinessSystems: '',
       businessSystemEventDistribution: []
@@ -241,12 +237,8 @@ async function summarizeManagedAssetIncidents(assetExcelPath, incidentExcelPath)
   const parsed = JSON.parse(stdout);
 
   return {
-    managedAssetEvents: Number(parsed.managedAssetEvents || 0),
-    managedAssetContainedEvents: Number(parsed.managedAssetContainedEvents || 0),
-    managedAssetDisposedEvents: Number(parsed.managedAssetDisposedEvents || 0),
-    managedEventCloseRate: Number(parsed.managedEventCloseRate || 0),
     managedAssetCount: Number(parsed.managedAssetCount || 0),
-    managedAvgResponseTime: Number(parsed.managedAvgResponseTime || 0),
+    AvgResponseTime: Number(parsed.AvgResponseTime || 0),
     topEventType: String(parsed.topEventType || ''),
     top3BusinessSystems: String(parsed.top3BusinessSystems || ''),
     businessSystemEventDistribution: Array.isArray(parsed.businessSystemEventDistribution) ? parsed.businessSystemEventDistribution : []

@@ -27,7 +27,13 @@ async function summarizeAssetTable(excelPath, options = {}) {
     typeDistribution: toNameValueList(parsed.typeDistribution, [
       ['服务器', 'server'],
       ['终端', 'terminal'],
-      ['其他', 'other']
+      ['其它', 'other']
+    ]),
+    internetExposureTotal: Number(parsed.internetExposureTotal || 0),
+    internetExposureDistribution: toNameValueList(parsed.internetExposureDistribution, [
+      ['服务器', 'server'],
+      ['终端', 'terminal'],
+      ['其它', 'other']
     ]),
     // 资产防护：防护/未防护两类（基于"数据源"列判定）
     protectionDistribution: [

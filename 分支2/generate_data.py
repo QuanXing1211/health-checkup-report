@@ -48,6 +48,48 @@ def unique_count(rows, field):
     return len(set(s(r.get(field)) for r in rows if r.get(field)))
 
 
+
+def split_biz(val):
+    """将逗号或顿号分隔的业务系统值拆分为去空列表，支持单值、空值、None"""
+    if not val:
+        return []
+    # 先将中文顿号替换为英文逗号，统一处理
+    normalized = str(val).replace('、', ',')
+    return [b.strip() for b in normalized.split(',') if b.strip()]
+
+
+def biz_unique_count(rows, field):
+    """按逗号拆分后取去重后的业务数"""
+    all_biz = set()
+    for r in rows:
+        for b in split_biz(s(r.get(field))):
+            all_biz.add(b)
+    return len(all_biz)
+
+
+def top_priority_rows_for_biz(rows, n=5):
+    """专用于业务系统字段的拆分统计，按逗号拆分后聚合修复优先级，取 top n"""
+    stats = defaultdict(lambda: [0, 0, 0])
+    for r in rows:
+        raw = s(r.get("所属业务"))
+        p = s(r.get("修复优先级"))
+        for b in split_biz(raw):
+            if p == "急需修复":
+                stats[b][0] += 1
+            elif p == "尽快修复":
+                stats[b][1] += 1
+            elif p == "建议修复":
+                stats[b][2] += 1
+    sorted_keys = sorted(
+        stats.keys(),
+        key=lambda k: (-stats[k][0], -stats[k][1], -stats[k][2])
+    )[:n]
+    return [
+        {"asset": k, "urgent": stats[k][0], "soon": stats[k][1], "suggest": stats[k][2]}
+        for k in sorted_keys
+    ]
+
+
 def filter_count(rows, field, value):
     """统计某字段 == value 的行数"""
     return sum(1 for r in rows if s(r.get(field)) == value)
@@ -60,12 +102,13 @@ def filter_count_multi(rows, field, values):
 
 def top_by_risk_level(rows, key_field):
     """按风险等级（严重>高危>中危>低危）取最严重的 key，
-       等级相同时取数量最多的。返回 key 名或空字符串"""
+       等级相同时取数量最多的。返回 key 名或空字符串。
+       支持以逗号分隔的多值字段，拆分后统计。"""
     data = defaultdict(list)
     for r in rows:
-        key = s(r.get(key_field))
+        keys = split_biz(s(r.get(key_field)))
         level = s(r.get("风险等级"))
-        if key:
+        for key in keys:
             data[key].append(level)
     if not data:
         return ""
@@ -125,7 +168,7 @@ def load_all_data():
     wb_exp = load_wb("暴露面清单.xlsx")
     wb_vuln = load_wb("漏洞清单.xlsx")
     wb_weak = load_wb("弱口令清单.xlsx")
-    wb_event = load_wb("安全事件表.xlsx")
+    wb_event = load_wb("安全事件清单.xlsx")
     wb_asset = load_wb("资产清单.xlsx")
 
     def get_sheet(wb, name):
@@ -552,12 +595,12 @@ def calc_intranet_vuln(ds):
         "high":             filter_count(ds["vuln_intra"], "风险等级", "高危"),
         "medium":           filter_count(ds["vuln_intra"], "风险等级", "中危"),
         "low":              filter_count(ds["vuln_intra"], "风险等级", "低危"),
-        "related_biz":      unique_count(ds["vuln_intra"], "所属业务"),
+        "related_biz":      biz_unique_count(ds["vuln_intra"], "所属业务"),
         "related_assets":   unique_count(ds["vuln_intra"], "风险资产"),
         "priority_urgent":  filter_count(ds["vuln_intra"], "修复优先级", "急需修复"),
         "priority_soon":    filter_count(ds["vuln_intra"], "修复优先级", "尽快修复"),
         "priority_suggest": filter_count(ds["vuln_intra"], "修复优先级", "建议修复"),
-        "biz_top_rows":     top_priority_rows(ds["vuln_intra"], "所属业务"),
+        "biz_top_rows":     top_priority_rows_for_biz(ds["vuln_intra"]),
         "asset_top_rows":   top_priority_rows(ds["vuln_intra"], "风险资产"),
     }
 
@@ -567,8 +610,7 @@ def calc_intranet_weak_pwd(ds):
     # biz_rows: 按所属业务 top5
     biz_cnt = defaultdict(int)
     for r in ds["weak_intra"]:
-        b = s(r.get("所属业务"))
-        if b:
+        for b in split_biz(r.get("所属业务")):
             biz_cnt[b] += 1
     top5_biz = sorted(biz_cnt.items(), key=lambda x: -x[1])[:5]
 
@@ -586,7 +628,7 @@ def calc_intranet_weak_pwd(ds):
     return {
         "total_count":     len(ds["weak_intra"]),
         "affected_assets": unique_count(ds["weak_intra"], "风险资产"),
-        "risk_count":      unique_count(ds["weak_intra"], "所属业务"),
+        "risk_count":      biz_unique_count(ds["weak_intra"], "所属业务"),
         "biz_rows":        [{"asset": b, "count": c} for b, c in top5_biz],
         "asset_rows": [
             {
