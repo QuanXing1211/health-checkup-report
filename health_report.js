@@ -4,7 +4,7 @@
 const path = require('path');
 const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
-const { collectReportData } = require('./src/data_client');
+const { collectReportData, recalcThreatPreventionRiskCount } = require('./src/data_client');
 const { summarizeAssetTable, summarizeDeviceComponents } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails, extractIncidentDirectStats, annotateIncidentGptConclusion } = require('./src/incident_excel_stats');
 const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, processRiskListTable, fetchContainedAlertCount } = require('./src/mssw_client');
@@ -161,6 +161,7 @@ async function main() {
     customerId,
     start: effectiveTimeRange.start,
     end: effectiveTimeRange.end,
+    generatedAt: reportGeneratedAt.toISOString(),
     xdrCookiePath: options['xdr-cookie-path'],
     msswCookiePath: options['mssw-cookie-path'],
     msswBaseUrl: options['mssw-base-url'],
@@ -342,6 +343,10 @@ async function main() {
     });
     reportData = mergeBranch1ReportPatch(reportData, branch1Result.reportPatch);
     logger('分支1 JSON 已合并到 report-data');
+
+    // 此时 summary（来自 calculatePreventionData）已有值，重新计算威胁预防派生字段
+    recalcThreatPreventionRiskCount(reportData);
+    logger(`威胁预防风险总数已重新计算: ${reportData.riskOverview.threatPreventionRiskCount}`);
 
     // 最后落盘前将统一分类追加到 GPT研判结论，再删除敏感实体列。
     try {
