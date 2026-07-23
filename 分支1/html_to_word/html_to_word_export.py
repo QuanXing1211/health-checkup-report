@@ -918,8 +918,43 @@ class HtmlToWordExporter:
         fonts_cfg = self.config.get("fonts", {}) or {}
         container = _Container(doc, fonts=fonts_cfg)
         # 按顺序映射直接子节点（h2 / p / h3 / table）
+        # h2/h3 用普通段落写入并手动设格式，避免被 TOC 自动收录
         for child in node.children:
-            self._map_node(child, container)
+            if child.name in ('h2', 'h3'):
+                text = child.get_text(" ", strip=True)
+                if text:
+                    cfg_key = 'heading_2' if child.name == 'h2' else 'heading_3'
+                    cfg = fonts_cfg.get(cfg_key, {})
+                    p = container.add_paragraph(text)
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    pf = p.paragraph_format
+                    pf.space_before = Pt(cfg.get('space_before_pt', 0))
+                    pf.space_after = Pt(cfg.get('space_after_pt', 0))
+                    for run in p.runs:
+                        run.bold = cfg.get('bold', True)
+                        run.font.size = Pt(cfg.get('size_pt', 16))
+                        color_hex = cfg.get('color_hex', '')
+                        if color_hex and len(color_hex) == 6:
+                            run.font.color.rgb = RGBColor(
+                                int(color_hex[0:2], 16),
+                                int(color_hex[2:4], 16),
+                                int(color_hex[4:6], 16)
+                            )
+            else:
+                self._map_node(child, container)
+                # 版权申明正文：微软雅黑 小四（12pt）
+                if child.name == 'p':
+                    last_p = container.doc.paragraphs[-1] if not container.is_cell else None
+                    if last_p:
+                        for run in last_p.runs:
+                            run.font.name = '微软雅黑'
+                            run.font.size = Pt(12)
+                            rpr = run._element.get_or_add_rPr()
+                            rFonts = rpr.find(qn('w:rFonts'))
+                            if rFonts is None:
+                                rFonts = OxmlElement('w:rFonts')
+                                rpr.insert(0, rFonts)
+                            rFonts.set(qn('w:eastAsia'), '微软雅黑')
         # 末尾插分页符，让 TOC 从新页开始
         page_break_p = doc.add_paragraph()
         pb_run = page_break_p.add_run()
