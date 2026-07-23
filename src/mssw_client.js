@@ -2749,7 +2749,7 @@ async function fetchMsswDeviceList(cookieInfo, msswBaseUrl, companyId, pageSize,
       type: 0,
       pageSize: pageSize || 1000,
       pageNum,
-      devStatus: devStatus || [1, 2, 4]
+      devStatus: devStatus || [1, 2, 3, 4]
     })
   });
   // MSSW 设备列表接口成功时 code 可能是 "Success" 或 0
@@ -2763,7 +2763,7 @@ async function fetchMsswDeviceList(cookieInfo, msswBaseUrl, companyId, pageSize,
 async function fetchMsswThirdPartyDeviceStats(cookieInfo, msswBaseUrl, companyId) {
   const headers = buildMsswExportHeaders(cookieInfo, msswBaseUrl, companyId);
   const url = `https://${normalizeBaseUrl(msswBaseUrl || DEFAULT_MSSW_BASE_URL)}${THIRD_PARTY_DEVICE_STATS_ENDPOINT}`;
-  const response = await requestJson(url, {
+    const response = await requestJson(url, {
     headers,
     body: JSON.stringify({
       name: '',
