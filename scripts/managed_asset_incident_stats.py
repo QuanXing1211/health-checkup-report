@@ -14,6 +14,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 IP_PATTERN = re.compile(r'(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)')
+BIZ_SPLIT_RE = re.compile(r'[,，、]')
 SEVERITY_MAP = {
     "严重": "critical",
     "超危": "critical",
@@ -26,6 +27,13 @@ SEVERITY_MAP = {
 
 def normalize(value):
     return "" if value is None else str(value).strip()
+
+
+def split_biz(raw):
+    """将"核心交易系统, 风控系统"等复合业务字段拆分为独立业务名列表"""
+    if not raw:
+        return []
+    return [b.strip() for b in BIZ_SPLIT_RE.split(raw) if b.strip()]
 
 
 def normalize_header(value):
@@ -67,23 +75,28 @@ def rank_business_systems(records, n):
     4. 低危
     5. total
     6. system（升序兜底，保证稳定）
+
+    当一个资产属于多个业务（如"核心交易系统, 风控系统"）时，
+    拆分后每个独立业务各计一次。
     """
     system_counts = {}
     for record in records:
         system_name = record.get("system")
         if not system_name:
             system_name = "未知"
-        bucket = system_counts.setdefault(system_name, {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0,
-            "total": 0,
-        })
-        severity = record.get("severity")
-        if severity in ("critical", "high", "medium", "low"):
-            bucket[severity] += 1
-        bucket["total"] += 1
+        # 拆分复合业务字段，每个独立业务各计一次
+        for biz in split_biz(system_name):
+            bucket = system_counts.setdefault(biz, {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "total": 0,
+            })
+            severity = record.get("severity")
+            if severity in ("critical", "high", "medium", "low"):
+                bucket[severity] += 1
+            bucket["total"] += 1
 
     ranking = []
     for system_name, counts in system_counts.items():

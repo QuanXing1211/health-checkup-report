@@ -23,7 +23,6 @@ const DATA_FIELD_MAP = {
 
 const SECTION_RENDERERS = {
   'assetLedger.summary': renderAssetLedgerSummary,
-  'riskOverview.summary': renderRiskOverviewSummary,
   'riskOverview.topRiskAssetsSummary': renderTopRiskAssetsSummary,
   'keyRisks.01.desc': renderThreatActorRiskDescription,
   'riskDetails.caseStudy': renderCaseStudySection,
@@ -324,34 +323,6 @@ const CORE_BUSINESS_SUMMARY_BY_GRADE = {
   '优': '综上，贵公司安全建设处于行业较好，当前无重大安全风险，发生重大安全事故的概率较低。',
 };
 
-function renderRiskOverviewSummary(data) {
-  const overview = data.riskOverview || {};
-  const ranking = Array.isArray(overview.coreBusinessSystemRanking)
-    ? overview.coreBusinessSystemRanking.filter(Boolean)
-    : [];
-
-  const grade = String(getPath(data, 'scoring.grade') || '').trim();
-  const summaryText = CORE_BUSINESS_SUMMARY_BY_GRADE[grade]
-    || CORE_BUSINESS_SUMMARY_BY_GRADE['中'];
-
-  // 没有业务系统：只输出等级话术，不带修复方案结尾
-  if (ranking.length === 0) {
-    return paragraph(summaryText);
-  }
-
-  // 根据业务系统数量构建排序文案
-  let rankingText;
-  if (ranking.length === 1) {
-    rankingText = `「<strong>${escapeHtml(ranking[0])}</strong>」`;
-  } else if (ranking.length === 2) {
-    rankingText = `「${ranking.map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}」`;
-  } else {
-    rankingText = `「${ranking.slice(0, 3).map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')}等」`;
-  }
-
-  return paragraph(`${summaryText}修复方案建议重点针对${rankingText}核心业务。`);
-}
-
 function renderKeyRiskRows(rows) {
   if (!rows.length) {
     return '<tr><td colspan="5">暂无关键风险数据</td></tr>';
@@ -376,17 +347,23 @@ function renderTopRiskAssetsSummary(data) {
   if (!rows.length) {
     return '';
   }
+
+  const grade = String(getPath(data, 'scoring.grade') || '').trim();
+  const summaryText = CORE_BUSINESS_SUMMARY_BY_GRADE[grade]
+    || CORE_BUSINESS_SUMMARY_BY_GRADE['中'];
+
+  // 取上面风险资产 TOP5 的 IP 前 3 个（按资产排序顺序，去重）
   const topTargets = rows
-    .map((row) => String(row.businessSystem || row.ip || '').trim())
+    .map((row) => String(row.ip || '').trim())
     .filter(Boolean)
     .filter((value, index, list) => list.indexOf(value) === index)
-    .slice(0, 2);
+    .slice(0, 3);
 
   const targetText = topTargets.length
     ? topTargets.map((name) => `<strong>${escapeHtml(name)}</strong>`).join('、')
     : '<strong>重点风险资产</strong>';
 
-  return `综上，贵公司当前的安全建设水位有一定差距，随时可能面临数据泄露、系统破坏导致业务中断以及由此带来的经济损失、信誉损害、公信力下降等更为致命的风险。修复方案重点针对 ${targetText}。`;
+  return `${summaryText}修复方案重点针对 ${targetText}。`;
 }
 
 function renderThreatActorRiskDescription(data) {

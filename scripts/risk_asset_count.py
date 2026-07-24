@@ -31,6 +31,7 @@ decode_argv()
 
 
 IP_PATTERN = re.compile(r'(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)')
+BIZ_SPLIT_RE = re.compile(r'[,，、]')
 SEVERITY_MAP = {
     '严重': 'critical',
     '超危': 'critical',
@@ -43,6 +44,13 @@ SEVERITY_MAP = {
 
 def normalize(value):
     return '' if value is None else str(value).strip()
+
+
+def split_biz(raw):
+    """将"核心交易系统, 风控系统"等复合业务字段拆分为独立业务名列表"""
+    if not raw:
+        return []
+    return [b.strip() for b in BIZ_SPLIT_RE.split(raw) if b.strip()]
 
 
 def build_col_map(ws):
@@ -424,21 +432,22 @@ def rank_risk_assets(typed_risk_records, risk_records, asset_detail_map, limit=5
 def resolve_top1_business_system(risk_records, asset_business_map):
     business_counts = {}
     for record in risk_records:
-        business = asset_business_map.get(record['asset'])
-        if not business:
+        business_raw = asset_business_map.get(record['asset'])
+        if not business_raw:
             continue
-        if business not in business_counts:
-            business_counts[business] = {
-                'critical': 0,
-                'high': 0,
-                'medium': 0,
-                'low': 0,
-                'total': 0
-            }
-        severity = record.get('severity')
-        if severity in business_counts[business]:
-            business_counts[business][severity] += 1
-        business_counts[business]['total'] += 1
+        for business in split_biz(business_raw):
+            if business not in business_counts:
+                business_counts[business] = {
+                    'critical': 0,
+                    'high': 0,
+                    'medium': 0,
+                    'low': 0,
+                    'total': 0
+                }
+            severity = record.get('severity')
+            if severity in business_counts[business]:
+                business_counts[business][severity] += 1
+            business_counts[business]['total'] += 1
 
     if not business_counts:
         return ''
@@ -504,7 +513,12 @@ def main():
     asset_business_map = build_asset_business_map(asset_path)
     asset_all_business_map = build_asset_all_business_map(asset_path)
     asset_detail_map = build_asset_detail_map(asset_path)
-    business_systems = sorted({asset_business_map[asset] for asset in all_assets if asset in asset_business_map})
+    business_systems = sorted({
+        biz
+        for asset in all_assets
+        if asset in asset_business_map
+        for biz in split_biz(asset_business_map[asset])
+    })
     top1_business_system = resolve_top1_business_system(typed_risk_records, asset_all_business_map)
     risk_asset_top5 = rank_risk_assets(top_typed_risk_records, top_risk_records, asset_detail_map, 5)
 

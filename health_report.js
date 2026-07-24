@@ -10,7 +10,6 @@ const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples
 const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, processRiskListTable, fetchContainedAlertCount } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
 const { calculatePreventionData } = require('./src/prevention_data');
-const { rankBusinessSystems } = require('./src/business_system_ranking');
 const { calculateRiskAssetCount } = require('./src/risk_asset_count');
 const { runBranch1ReportStage, mergeBranch1ReportPatch, exportBranch1Word, getDefaultDeviceJsonPath } = require('./src/branch1_adapter');
 const { renderReportToFile } = require('./src/template_renderer');
@@ -387,24 +386,6 @@ async function main() {
     preventionTables.exposure.filePath = archivedFiles.exposurePath;
     preventionTables.weakpwd.filePath = archivedFiles.weakpwdPath;
     preventionTables.vuln.filePath = archivedFiles.vulnPath;
-
-    const businessSystemRanking = await rankBusinessSystems({
-      eventsPath: archivedFiles.incidentPath,
-      weakpwdPath: archivedFiles.weakpwdPath,
-      vulnPath: archivedFiles.vulnPath,
-      exposurePath: archivedFiles.exposurePath,
-      assetPath: archivedFiles.assetPath,
-      logger
-    });
-    reportData.riskOverview = Object.assign({}, reportData.riskOverview || {}, {
-      coreBusinessSystemRanking: Array.isArray(businessSystemRanking.coreBusinessSystemRanking)
-        ? businessSystemRanking.coreBusinessSystemRanking
-        : [],
-      maxRiskSystem: businessSystemRanking.maxRiskSystem || null,
-      securityRiskTotal: Number(businessSystemRanking.securityRiskTotal || 0),
-      highAndAboveRiskCount: Number(businessSystemRanking.highAndAboveRiskCount || 0)
-    });
-    logger('业务系统排序数据已在 5 个风险清单落盘后合并到 riskOverview');
 
     const incidentGptStatsForTopAssets = reportData.riskOverview && reportData.riskOverview.incidentGptStats
       ? reportData.riskOverview.incidentGptStats
