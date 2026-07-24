@@ -162,6 +162,7 @@ def parse_args():
     parser.add_argument("--start", default=None)
     parser.add_argument("--end", default=None)
     parser.add_argument("--policy-status", default="")
+    parser.add_argument("--mock", action="store_true", help="使用本地 JSON 文件模拟策略检查数据，跳过接口调用")
     parser.add_argument("--base-path", default=".")
     parser.add_argument("--asset-sheet", default="Sheet1")
     parser.add_argument("--event-sheet", default="事件表")
@@ -199,6 +200,7 @@ def maybe_export_policy(args):
         cookie_path=args.cookie_path,
         output_path=policy_excel_path,
         json_output_path=policy_json_path,
+        mock=args.mock,
     )
     result = exporter.run()
     return {

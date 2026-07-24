@@ -926,13 +926,17 @@ class HtmlToWordExporter:
                     cfg_key = 'heading_2' if child.name == 'h2' else 'heading_3'
                     cfg = fonts_cfg.get(cfg_key, {})
                     p = container.add_paragraph(text)
-                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
                     pf = p.paragraph_format
                     pf.space_before = Pt(cfg.get('space_before_pt', 0))
                     pf.space_after = Pt(cfg.get('space_after_pt', 0))
                     for run in p.runs:
                         run.bold = cfg.get('bold', True)
-                        run.font.size = Pt(cfg.get('size_pt', 16))
+                        # 局部覆盖：版权申明/文档信息标题固定为四号（14pt）
+                        if (child.name == 'h2' and '版权申明' in text) or                            (child.name == 'h3' and '文档信息' in text):
+                            run.font.size = Pt(14)
+                        else:
+                            run.font.size = Pt(cfg.get('size_pt', 16))
                         color_hex = cfg.get('color_hex', '')
                         if color_hex and len(color_hex) == 6:
                             run.font.color.rgb = RGBColor(

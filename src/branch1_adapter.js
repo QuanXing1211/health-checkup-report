@@ -47,6 +47,9 @@ async function runBranch1ReportStage(options = {}) {
   if (options.end) {
     args.push('--end', String(options.end));
   }
+  if (options.mock) {
+    args.push('--mock');
+  }
 
   await execPython(args, '分支1报告计算失败', { cwd: undefined }, options.logger);
   const parsed = JSON.parse(await fs.readFile(reportOutputPath, 'utf8'));

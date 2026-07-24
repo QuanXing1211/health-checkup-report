@@ -144,6 +144,7 @@ class PolicyCheckExporter:
         cookie_path=None,
         output_path=None,
         json_output_path=None,
+        mock=False,
     ):
         self.company_id = company_id
         self.start_time = _parse_datetime(start_time)
@@ -153,6 +154,7 @@ class PolicyCheckExporter:
             self.end_time = self.end_time.replace(hour=23, minute=59, second=59)
         self.status = status
         self.cookie_path = cookie_path
+        self.mock = bool(mock)
         self.cookie = cookie if cookie is not None else self._load_cookie(cookie_path)
         self.output_path = output_path or DEFAULT_OUTPUT_PATH
         self.json_output_path = json_output_path
@@ -187,6 +189,28 @@ class PolicyCheckExporter:
 
         return stripped
 
+    def _load_mock_records(self):
+        """
+        mock 模式下读取本地 JSON 文件作为 records，跳过接口调用。
+
+        固定读取项目根目录下的 策略检查.json。文件需为接口原始记录的数组 JSON，
+        字段与 fetch_data 返回保持一致（dev_name / name / policy_status /
+        risk_status / description / latest_time / risk_desc / dev_type 等）。
+        """
+        candidate = self.json_output_path
+        if not os.path.exists(candidate):
+            raise FileNotFoundError(
+                f"mock 模式下未找到策略检查数据 JSON 文件: {candidate}"
+            )
+        with open(candidate, "r", encoding="utf-8") as f:
+            records = json.load(f)
+        if not isinstance(records, list):
+            raise ValueError(f"mock 数据文件必须为 JSON 数组: {candidate}")
+        for item in records:
+            item["dev_type"] = DEV_TYPE_DICT.get(item.get("dev_type")) or item.get("dev_type") or ""
+        print(f"[INFO] mock 模式: 已从本地加载 {len(records)} 条记录: {candidate}")
+        return records
+
     def fetch_data(self):
         """
         从策略检查结果查询接口分页获取指定 time_range 范围内的数据。
@@ -196,7 +220,13 @@ class PolicyCheckExporter:
           time_range 为 ISO 日期字符串数组 [start, end]（YYYY-MM-DD）
           返回: code == 0 时，data 为结果条目数组
         本端按 offset+limit 常规分页循环拉取，直至无数据。
+
+        mock 模式下：不从接口取数据，直接读取项目根目录下的 策略检查.json
+        作为 records，跳过接口调用。
         """
+        if self.mock:
+            return self._load_mock_records()
+
         all_records = []
         offset = 0
 
@@ -384,6 +414,7 @@ class PolicyCheckExporter:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="策略检查数据采集与导出")
+    parser.add_argument("--mock", action="store_true", help="使用本地 JSON 文件模拟数据，跳过接口调用")
     parser.add_argument("--company_id", required=True, help="客户ID")
     parser.add_argument("--start", required=True, help="时间范围起始，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS")
     parser.add_argument("--end", required=True, help="时间范围结束，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:MM:SS")
@@ -404,6 +435,7 @@ def main():
         cookie_path=args.cookie_path,
         output_path=args.output,
         json_output_path=args.json_output,
+        mock=args.mock,
     )
     result = exporter.run()
     if result:

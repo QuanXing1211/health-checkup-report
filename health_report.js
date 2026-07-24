@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs/promises');
 const { parseArgs, requireArgs } = require('./src/args');
 const { collectReportData, recalcThreatPreventionRiskCount } = require('./src/data_client');
-const { summarizeAssetTable } = require('./src/asset_excel_stats');
+const { summarizeAssetTable, summarizeDeviceComponents } = require('./src/asset_excel_stats');
 const { summarizeIncidentStatus, extractExploitStats, extractVulnExploitExamples, summarizeManagedAssetIncidents, extractIncidentTypeStats, summarizeTopRiskAssetDetails, extractIncidentDirectStats, annotateIncidentGptConclusion } = require('./src/incident_excel_stats');
 const { exportMsswIncidentList, exportMsswAssetList, exportMsswDeviceList, findMsswCustomerIdByName, fetchDefaultProjectTimeRange, readXdrCookieInfo, readMsswCookieInfo, collectMsswDeviceCategoryCounts, parseLocalDate, removeIncidentSensitiveColumns, processRiskListTable, fetchContainedAlertCount } = require('./src/mssw_client');
 const { collectPreventionTableExports, getTmpExportDir } = require('./src/prevention_exports');
@@ -273,6 +273,25 @@ async function main() {
         });
         logger(`MSSW 设备总数: ${deviceCounts.devices}，深信服: ${deviceCounts.sangfor}（AF: ${deviceCounts.af}, AES: ${deviceCounts.aes}, SIP: ${deviceCounts.sip}, STA: ${deviceCounts.sta}, 其他: ${deviceCounts.other_sf}），第三方: ${deviceCounts.third}`);
 
+        // 第三方设备数量来自独立接口（不在 device.json 里），需要重新计算组件分布
+        // 把 deviceCounts.third 传给 device_component_stats.py，更新 assetLedger 的组件分布
+        if (Number(deviceCounts.third) > 0) {
+          try {
+            const deviceJsonPath = path.join(__dirname, 'tmp', 'device.json');
+            let deviceJsonExists = false;
+            try { await fs.stat(deviceJsonPath); deviceJsonExists = true; } catch (_) {}
+            if (deviceJsonExists) {
+              const componentStats = await summarizeDeviceComponents(deviceJsonPath, Number(deviceCounts.third));
+              if (reportData.assetLedger) {
+                reportData.assetLedger.componentDistribution = componentStats.componentDistribution;
+                reportData.assetLedger.totalComponentCount = componentStats.total;
+              }
+              logger(`安全组件分布已更新（含第三方 ${deviceCounts.third} 个）: total=${componentStats.total}`);
+            }
+          } catch (error) {
+            logger(`更新安全组件分布失败（含第三方）: ${error.message}`);
+          }
+        }
         // 关键风险 #01 网络防护动态话术：设备数量为0时即使订阅参数为开启也按"无设备"处理
         const advice = buildNetworkAdvice({
           afSubscribed,
@@ -337,7 +356,8 @@ async function main() {
       exposurePath: preventionTables.exposure.filePath,
       devicePath: getDefaultDeviceJsonPath(),
       msswCookiePath: options['mssw-cookie-path'],
-      outputDir: path.join(root, 'tmp')
+      outputDir: path.join(root, 'tmp'),
+      mock: options.mock === true || options.mock === 'true'
     });
     reportData = mergeBranch1ReportPatch(reportData, branch1Result.reportPatch);
     logger('分支1 JSON 已合并到 report-data');
