@@ -338,7 +338,8 @@ async function main() {
       exposurePath: preventionTables.exposure.filePath,
       devicePath: getDefaultDeviceJsonPath(),
       msswCookiePath: options['mssw-cookie-path'],
-      outputDir: path.join(root, 'tmp')
+      outputDir: path.join(root, 'tmp'),
+      mock: options.mock === true || options.mock === 'true'
     });
     reportData = mergeBranch1ReportPatch(reportData, branch1Result.reportPatch);
     logger('分支1 JSON 已合并到 report-data');
