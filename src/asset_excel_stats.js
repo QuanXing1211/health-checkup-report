@@ -40,6 +40,17 @@ async function summarizeAssetTable(excelPath, options = {}) {
       { name: '防护', value: Number(protectionStats.protected || 0) },
       { name: '未防护', value: Number(protectionStats.unprotected || 0) }
     ],
+    // 未防护 4 子类细分（生成过程统计用，饼图不消费）
+    protectionStats: {
+      protected: Number(protectionStats.protected || 0),
+      unprotected: Number(protectionStats.unprotected || 0),
+      unprotected_breakdown: protectionStats.unprotected_breakdown || {
+        manual: 0,
+        cloud_mirror: 0,
+        manual_and_cloud_mirror: 0,
+        empty: 0
+      }
+    },
     // 安全组件分布（基于 device.json 的 devType 聚合）
     componentDistribution: [],
     totalComponentCount: 0
@@ -49,7 +60,7 @@ async function summarizeAssetTable(excelPath, options = {}) {
   const deviceJsonPath = options.deviceJsonPath || getDefaultDeviceJsonPath();
   if (deviceJsonPath && fs.existsSync(deviceJsonPath)) {
     try {
-      const componentStats = await summarizeDeviceComponents(deviceJsonPath);
+      const componentStats = await summarizeDeviceComponents(deviceJsonPath, options.thirdPartyCount);
       result.componentDistribution = componentStats.componentDistribution;
       result.totalComponentCount = componentStats.total;
     } catch (error) {
@@ -65,9 +76,13 @@ function getDefaultDeviceJsonPath() {
   return path.join(__dirname, '..', 'tmp', 'device.json');
 }
 
-async function summarizeDeviceComponents(deviceJsonPath) {
+async function summarizeDeviceComponents(deviceJsonPath, thirdPartyCount) {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'device_component_stats.py');
-  const stdout = await execPython(scriptPath, encodePath(deviceJsonPath));
+  const args = [scriptPath, encodePath(deviceJsonPath)];
+  if (Number.isFinite(thirdPartyCount) && thirdPartyCount > 0) {
+    args.push('--third-party-count', String(Math.floor(thirdPartyCount)));
+  }
+  const stdout = await execPython(scriptPath, args.slice(1));
   const parsed = JSON.parse(stdout);
   return {
     total: Number(parsed.total || 0),
@@ -89,8 +104,9 @@ function toNameValueList(source, items) {
 }
 
 function execPython(scriptPath, arg) {
+  const args = Array.isArray(arg) ? arg : [arg];
   return new Promise((resolve, reject) => {
-    execFile('python', [scriptPath, arg], {
+    execFile('python', [scriptPath, ...args], {
       encoding: 'utf8',
       windowsHide: true,
       maxBuffer: 10 * 1024 * 1024,
@@ -107,5 +123,6 @@ function execPython(scriptPath, arg) {
 }
 
 module.exports = {
-  summarizeAssetTable
+  summarizeAssetTable,
+  summarizeDeviceComponents
 };
