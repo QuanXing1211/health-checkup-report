@@ -13,6 +13,9 @@ async function collectPreventionTableExports(options = {}) {
   const tempDir = path.resolve(options.tempDir || path.join(path.resolve(__dirname, '..'), 'tmp', 'prevention-export-work'));
 
   await fs.mkdir(outputDir, { recursive: true });
+  // The exporters retain downloaded archives and source workbooks here. They are
+  // only needed during the current report generation, so discard an earlier run.
+  await fs.rm(tempDir, { recursive: true, force: true });
   await fs.mkdir(tempDir, { recursive: true });
 
   return {

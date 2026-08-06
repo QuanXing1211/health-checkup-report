@@ -103,6 +103,7 @@ async function main() {
   const root = __dirname;
   const templatePath = options.template || path.join(root, 'security-report-preview.html');
   const outputDir = options['output-dir'] || path.join(root, 'output');
+  const runExportDir = await createRunExportWorkspace(root, reportGeneratedAt, logger);
   let branch1Result = null;
   let preventionTables = null;
 
@@ -121,6 +122,7 @@ async function main() {
     timeoutMs: options['timeout-ms'] ? Number(options['timeout-ms']) : undefined,
     pollIntervalMs: options['poll-interval-ms'] ? Number(options['poll-interval-ms']) : undefined,
     mock: options.mock === true || options.mock === 'true',
+    outputDir: runExportDir,
     logger
   }));
   if (Object.keys(tableExports).length) {
@@ -350,7 +352,7 @@ async function main() {
           msswCookiePath: options['mssw-cookie-path'],
           msswBaseUrl: options['mssw-base-url'],
           soarBaseUrl: options['soar-base-url'],
-          outputDir: getTmpExportDir(),
+          outputDir: runExportDir,
           logger
         });
     logger(`威胁预防表格已就绪: weakpwd=${preventionTables.weakpwd.filePath}, vuln=${preventionTables.vuln.filePath}, exposure=${preventionTables.exposure.filePath}`);
@@ -391,7 +393,7 @@ async function main() {
     try {
       const annotatedResult = await annotateIncidentGptConclusion(
         incidentFilePath,
-        path.join(getTmpExportDir(), 'incident-classification')
+        path.join(runExportDir, 'incident-classification')
       );
       incidentFilePath = annotatedResult.filePath; // eslint-disable-line no-param-reassign
       logger(`事件表 GPT研判结论已追加分类: C2=${annotatedResult.classified.C2外联 || 0}, 病毒木马=${annotatedResult.classified.病毒木马 || 0}`);
@@ -401,7 +403,7 @@ async function main() {
 
     // 再删除事件表中的"外网IP地址"、"域名"、"文件"三列
     try {
-      const strippedResult = await removeIncidentSensitiveColumns(incidentFilePath, getTmpExportDir());
+      const strippedResult = await removeIncidentSensitiveColumns(incidentFilePath, runExportDir);
       logger(`事件表已删除敏感列: ${strippedResult.filePath}`);
       incidentFilePath = strippedResult.filePath;  // 使用剥离后的文件作为最终落盘文件  // eslint-disable-line no-param-reassign
     } catch (error) {
@@ -427,7 +429,6 @@ async function main() {
     preventionTables.exposure.filePath = archivedFiles.exposurePath;
     preventionTables.weakpwd.filePath = archivedFiles.weakpwdPath;
     preventionTables.vuln.filePath = archivedFiles.vulnPath;
-
     const incidentGptStatsForTopAssets = reportData.riskOverview && reportData.riskOverview.incidentGptStats
       ? reportData.riskOverview.incidentGptStats
       : {};
@@ -623,6 +624,9 @@ async function main() {
     logger(`ZIP 已生成: ${zipPath}`);
   }
 
+  await fs.rm(runExportDir, { recursive: true, force: true });
+  logger(`本次导出工作目录已清理: ${runExportDir}`);
+
   console.log(`[总耗时] 报告导出完成: ${Date.now() - __main_t0} ms`);
 
   outputResult({
@@ -717,7 +721,9 @@ async function exportConfiguredXdrTables(options) {
       if (options.mock) {
         logWith(options.logger, '开始处理表格: asset (读取本地资产列表.xlsx)');
         const localAssetPath = path.join(__dirname, '资产列表.xlsx');
-        const processedResult = await processRiskListTable('asset', localAssetPath);
+        const processedResult = await processRiskListTable('asset', localAssetPath, {
+          outputDir: options.outputDir
+        });
         results.asset = {
           filePath: processedResult.filePath,
           tmpFilePath: processedResult.filePath,
@@ -731,6 +737,7 @@ async function exportConfiguredXdrTables(options) {
           downloadDir: options.downloadDir,
           customerId: options.customerId,
           assetIds: options.assetIds || [],
+          outputDir: options.outputDir,
           logger: options.logger
         });
       }
@@ -741,7 +748,9 @@ async function exportConfiguredXdrTables(options) {
       if (options.mock) {
         logWith(options.logger, '开始处理表格: incident (读取本地事件列表.xlsx)');
         const localIncidentPath = path.join(__dirname, '事件列表.xlsx');
-        const processedResult = await processRiskListTable('incident', localIncidentPath);
+        const processedResult = await processRiskListTable('incident', localIncidentPath, {
+          outputDir: options.outputDir
+        });
         results.incident = {
           filePath: processedResult.filePath,
           tmpFilePath: processedResult.filePath,
@@ -758,6 +767,7 @@ async function exportConfiguredXdrTables(options) {
           customerId: options.customerId,
           timeoutMs: options.timeoutMs,
           pollIntervalMs: options.pollIntervalMs,
+          outputDir: options.outputDir,
           logger: options.logger
         });
       }
@@ -862,6 +872,25 @@ async function writeJsonFile(filePath, data) {
   const resolvedPath = path.resolve(filePath);
   await fs.mkdir(path.dirname(resolvedPath), { recursive: true });
   await fs.writeFile(resolvedPath, JSON.stringify(data, null, 2), 'utf8');
+}
+
+async function createRunExportWorkspace(root, generatedAt, logger) {
+  const exportRoot = path.join(root, 'tmp', 'exports');
+  await fs.mkdir(exportRoot, { recursive: true });
+
+  const entries = await fs.readdir(exportRoot, { withFileTypes: true });
+  const staleWorkspaces = entries
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith('run-'))
+    .map((entry) => path.join(exportRoot, entry.name));
+  await Promise.all(staleWorkspaces.map((workspace) => fs.rm(workspace, { recursive: true, force: true })));
+  if (staleWorkspaces.length) {
+    logger(`Cleaned interrupted export workspaces: ${staleWorkspaces.length}`);
+  }
+
+  const timestamp = generatedAt.toISOString().replace(/[:.]/g, '-');
+  const workspace = path.join(exportRoot, `run-${timestamp}-${process.pid}`);
+  await fs.mkdir(workspace, { recursive: true });
+  return workspace;
 }
 
 // 各风险清单表归档前的统一后处理：

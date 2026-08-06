@@ -1933,7 +1933,7 @@ function getTmpExportDir() {
  */
 async function processRiskListTable(tableType, inputPath, options = {}) {
   const scriptPath = path.join(__dirname, '..', 'scripts', 'process_risk_list_table.py');
-  const outputDir = getTmpExportDir();
+  const outputDir = path.resolve(options.outputDir || getTmpExportDir());
   await fsp.mkdir(outputDir, { recursive: true });
 
   // 资产表需要支持合并待审核数据
@@ -2356,7 +2356,9 @@ async function exportMsswIncidentList(options) {
   // 后处理：保存到 tmp/exports
   let processedPath = '';
   try {
-    const processedResult = await processRiskListTable('incident', downloaded.filePath);
+    const processedResult = await processRiskListTable('incident', downloaded.filePath, {
+      outputDir: options.outputDir
+    });
     processedPath = processedResult.filePath;
     logInfo(logger, `事件表已写入 tmp/exports: ${processedPath}`);
   } catch (error) {
@@ -2577,7 +2579,10 @@ async function exportMsswAssetList(options) {
   // 第 3 步：后处理 — 合并两个 xlsx，新增"审核状态"列
   let processedPath = '';
   try {
-    const processedResult = await processRiskListTable('asset', currentFilePath, { waitApproveFilePath });
+    const processedResult = await processRiskListTable('asset', currentFilePath, {
+      outputDir: options.outputDir,
+      waitApproveFilePath
+    });
     processedPath = processedResult.filePath;
     const tag = usingPagedFallback.value ? '（分页兜底）' : '';
     logInfo(logger, `资产表已写入 tmp/exports: ${processedPath}（已合并待审核数据，新增审核状态列，删除多余列）${tag}`);
