@@ -38,6 +38,9 @@ async function runBranch1ReportStage(options = {}) {
   if (options.msswCookiePath) {
     args.push('--cookie-path', path.resolve(options.msswCookiePath));
   }
+  if (options.msswBaseUrl) {
+    args.push('--mssw-base-url', String(options.msswBaseUrl));
+  }
   if (options.companyId) {
     args.push('--company-id', String(options.companyId));
   }

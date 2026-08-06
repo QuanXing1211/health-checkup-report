@@ -378,6 +378,7 @@ async function main() {
       exposurePath: preventionTables.exposure.filePath,
       devicePath: getDefaultDeviceJsonPath(),
       msswCookiePath: options['mssw-cookie-path'],
+      msswBaseUrl: options['mssw-base-url'],
       outputDir: path.join(root, 'tmp'),
       mock: options.mock === true || options.mock === 'true'
     }));

@@ -163,6 +163,7 @@ def parse_args():
     parser.add_argument("--end", default=None)
     parser.add_argument("--policy-status", default="")
     parser.add_argument("--mock", action="store_true", help="使用本地 JSON 文件模拟策略检查数据，跳过接口调用")
+    parser.add_argument("--mssw-base-url", default=None, help="MSSW 站点域名，未传时使用 policy_check_export.py 内的默认值")
     parser.add_argument("--base-path", default=".")
     parser.add_argument("--asset-sheet", default="Sheet1")
     parser.add_argument("--event-sheet", default="事件表")
@@ -201,6 +202,7 @@ def maybe_export_policy(args):
         output_path=policy_excel_path,
         json_output_path=policy_json_path,
         mock=args.mock,
+        base_url=args.mssw_base_url,
     )
     result = exporter.run()
     return {

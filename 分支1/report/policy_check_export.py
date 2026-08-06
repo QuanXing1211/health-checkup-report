@@ -23,7 +23,8 @@ import openpyxl
 # 常量
 # ──────────────────────────────────────────────
 
-API_URL = "https://sitmssw.soar.sangfor.com/gateway/idps/order/v1/tools/task/xdr_policy_check/result"
+DEFAULT_BASE_URL = "https://sitmssw.soar.sangfor.com.cn"
+API_PATH = "/gateway/idps/order/v1/tools/task/xdr_policy_check/result"
 PAGE_SIZE = 100
 DEFAULT_OUTPUT_PATH = "策略检查清单.xlsx"
 TMP_DIR = "tmp"
@@ -145,6 +146,7 @@ class PolicyCheckExporter:
         output_path=None,
         json_output_path=None,
         mock=False,
+        base_url=None,
     ):
         self.company_id = company_id
         self.start_time = _parse_datetime(start_time)
@@ -158,6 +160,17 @@ class PolicyCheckExporter:
         self.cookie = cookie if cookie is not None else self._load_cookie(cookie_path)
         self.output_path = output_path or DEFAULT_OUTPUT_PATH
         self.json_output_path = json_output_path
+        self.base_url = self._normalize_base_url(base_url or DEFAULT_BASE_URL)
+        self.api_url = self.base_url + API_PATH
+
+    @staticmethod
+    def _normalize_base_url(url):
+        url = (url or "").strip().rstrip("/")
+        if not url:
+            return DEFAULT_BASE_URL
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+        return url
 
     # ── 第一步：获取数据 ──
 
@@ -253,7 +266,7 @@ class PolicyCheckExporter:
             if self.cookie:
                 headers["Cookie"] = self.cookie
             req = urllib.request.Request(
-                API_URL,
+                self.api_url,
                 data=body,
                 headers=headers,
                 method="POST",
@@ -390,6 +403,7 @@ class PolicyCheckExporter:
         print(f"  输出文件:  {self.output_path}")
         if self.json_output_path:
             print(f"  JSON输出:  {self.json_output_path}")
+        print(f"  接口地址:  {self.api_url}")
         print(f"  Cookie:    {'已加载' if self.cookie else '未加载'}")
         print()
 
@@ -422,6 +436,7 @@ def parse_args():
     parser.add_argument("--cookie-path", required=True, help="Cookie 文件路径（必填），支持纯文本或含 cookieString 的 JSON")
     parser.add_argument("--output", default=None, help="输出 Excel 路径，默认为当前目录下 策略检查.xlsx")
     parser.add_argument("--json-output", default=None, help="输出 JSON 路径，默认为 tmp/policy_check.json")
+    parser.add_argument("--mssw-base-url", default=None, help="MSSW 站点域名（如 sitmssw.soar.sangfor.com.cn），未传时使用默认值")
     return parser.parse_args()
 
 
@@ -436,6 +451,7 @@ def main():
         output_path=args.output,
         json_output_path=args.json_output,
         mock=args.mock,
+        base_url=args.mssw_base_url,
     )
     result = exporter.run()
     if result:
