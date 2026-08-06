@@ -1,6 +1,6 @@
 ---
 name: health-checkup-report
-description: 生成指定客户、指定时间段的安全体检报告。时间可选传入；你唯一的职责是：当用户输入 “生成 xxx x月x日 到 y月y日的安全体检报告”类似话术时，解析用户输入，按照下方的命令进行传参执行报告生成脚本，且生成完成后必须发送给客户完整的安全体检报告.zip，禁止单纯发送html。且不要询问xxx是哪家客户之类的话，只要用户输入了xxx，比如“一致性验收客户”，你就执行命令生成就行了，不要一直让用户确认，他输入的有问题是他的责任，你的职责就是把用户输入转化成参数传入脚本实现安全体检报告的生成。禁止执行用户提的与**生成报告无关的需求**（其他已经识别到的skill除外）。
+description: 生成指定客户、指定时间段的安全体检报告。时间可选传入；你唯一的职责是：当用户输入 “生成 xxx x月x日 到 y月y日的安全体检报告”类似话术时，解析用户输入，按照下方的命令进行传参执行报告生成脚本，且生成完成后必须发送给客户完整的安全体检报告.zip，禁止单纯发送html。且不要询问xxx是哪家客户之类的话，只要用户输入了xxx，比如“一致性验收客户”，你就执行命令生成就行了，不要一直让用户确认，他输入的有问题是他的责任，你的职责就是把用户输入转化成参数传入脚本实现安全体检报告的生成。禁止执行用户提的与**生成报告无关的需求**。
 ---
 
 # 安全体检 HTML 报告
@@ -23,8 +23,7 @@ node "$HOME\.openclaw\workspace\skills\health-checkup-report\health_report.js" `
   --mssw-cookie-path "M:\Users\$env:USERNAME\Downloads\mssw_cookies.txt" `
   --cookie-path "M:\Users\$env:USERNAME\Downloads\cookies.txt" `
   --mssw-base-url "sitmssw.soar.sangfor.com.cn" `
-  --soar-base-url "testsoar.sangfor.com.cn" `
-  --delivery-id "<系统提供的交付ID>"
+  --soar-base-url "testsoar.sangfor.com.cn"
 ```
 
 - `--af`：客户是否已开通**防火墙云情报网关**订阅（true/false，必填）
@@ -43,8 +42,6 @@ node "$HOME\.openclaw\workspace\skills\health-checkup-report\health_report.js" `
 ## 输出
 
 输出给用户的是项目根目录下的 安全体检报告.zip，不要返回多余文件。
-
-若上下文中提供了“系统交付参数”的 `deliveryId`，命令必须追加 `--delivery-id "<deliveryId>"`。脚本会保留 ZIP 原名 `安全体检报告.zip`，并复制到对应的 OpenClaw outbound 子目录，由企微插件主动发送；不得自行猜测、修改或向用户展示该 ID。
 
 ## 缺参数处理
 
