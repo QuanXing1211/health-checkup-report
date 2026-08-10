@@ -46,7 +46,7 @@ _RISK_CARD_HEAD_TAG_SPACE_BEFORE = 8.0   # pt
 _DEFAULT_CONFIG = {
     "preview_mode": "html",
     "trigger_paginate": False,
-    "render_wait": {"after_load_ms": 2000, "ready_markers": []},
+    "render_wait": {"goto_timeout_ms": 60000, "after_load_ms": 2000, "ready_marker_timeout_ms": 30000, "ready_markers": []},
     "dom_root": "#sr-page-source",
     "skip_selectors": [".sr-nav-wrap", ".sr-toc-page", ".sr-copyright-page", ".sr-dev-reference", ".sr-hidden-charts"],
     "snapshot_selectors": [
@@ -347,22 +347,25 @@ class HtmlToWordExporter:
         )
         page = context.new_page()
         url = self.input_path.as_uri()
-        page.goto(url, wait_until="load")
+        wait_cfg = self.config.get("render_wait", {})
+        goto_timeout_ms = wait_cfg.get("goto_timeout_ms", 60000)
+        page.goto(url, wait_until="load", timeout=goto_timeout_ms)
         # 注入 preview-mode
         preview_mode = self.config.get("preview_mode", "a4-landscape")
         page.evaluate(
             f"localStorage.setItem('sr-preview-mode', '{preview_mode}')"
         )
-        page.reload(wait_until="load")
+        page.reload(wait_until="load", timeout=goto_timeout_ms)
         # 触发分页（可选）
         if self.config.get("trigger_paginate", False):
             page.evaluate("window.paginate && window.paginate()")
         # 等待渲染完成
-        wait_cfg = self.config.get("render_wait", {})
-        page.wait_for_timeout(wait_cfg.get("after_load_ms", 2000))
+        after_load_ms = wait_cfg.get("after_load_ms", 2000)
+        marker_timeout_ms = wait_cfg.get("ready_marker_timeout_ms", 30000)
+        page.wait_for_timeout(after_load_ms)
         for marker in wait_cfg.get("ready_markers", []):
             try:
-                page.wait_for_selector(marker, timeout=10000)
+                page.wait_for_selector(marker, timeout=marker_timeout_ms)
             except Exception as e:
                 _log(f"ready_marker 未出现（忽略）: {marker} ({e})", "WARNING")
         self._page = page
@@ -1029,20 +1032,38 @@ class HtmlToWordExporter:
                 return False
             raise
 
-        progid = "Word.Application" if backend == "win32com" else "Kwps.Application"
+        # 依序尝试候选 ProgID：win32com 后端先试 MS Word，失败再降到 WPS；
+        # 只装 WPS 的机器没有 Word.Application，直接抛 CO_E_CLASSSTRING（无效类字符串）。
+        if backend == "win32com":
+            progid_candidates = ("Word.Application", "Kwps.Application")
+        else:
+            progid_candidates = ("Kwps.Application",)
         word = None
         doc = None
+        last_err = None
+        for progid in progid_candidates:
+            try:
+                pythoncom.CoInitialize()
+                word = _w32c.DispatchEx(progid)
+                try:
+                    word.Visible = False
+                except Exception:
+                    pass
+                try:
+                    word.DisplayAlerts = 0  # wdAlertsNone
+                except Exception:
+                    pass
+                break
+            except Exception as e:
+                last_err = e
+                word = None
+                try:
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
         try:
-            pythoncom.CoInitialize()
-            word = _w32c.DispatchEx(progid)
-            try:
-                word.Visible = False
-            except Exception:
-                pass
-            try:
-                word.DisplayAlerts = 0  # wdAlertsNone
-            except Exception:
-                pass
+            if word is None:
+                raise last_err if last_err is not None else RuntimeError("无可用 COM 后端")
 
             # Word 2007 等老版本对相对路径 / 正斜杠的 Documents.Open 不稳定，
             # 会触发 Office 文件打开子组件调用系统注册的 Shell Hook（WPS 安装残留
