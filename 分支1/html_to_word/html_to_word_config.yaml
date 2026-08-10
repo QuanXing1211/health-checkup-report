@@ -16,7 +16,9 @@ trigger_paginate: false
 #   - 3 个 sketch iframe 的真实 id（HTML 中实际类名不是 sr-sketch，而是 ov4-iframe / mdr-ops-v2-iframe / attack-chain-iframe）
 # 任一 marker 命中即视为就绪；脚本对每个 marker 单独 wait_for_selector，命中即返回，未命中才告警
 render_wait:
-  after_load_ms: 8000
+  goto_timeout_ms: 60000            # page.goto / reload 的 load 事件超时（默认 60s，原 30s）
+  after_load_ms: 8000               # 渲染完成后的固定稳定等待
+  ready_marker_timeout_ms: 30000    # 每个 ready_marker 的最长等待（命中即返回）
   ready_markers:
     - ".chw canvas"
     - "#ov4-iframe"
