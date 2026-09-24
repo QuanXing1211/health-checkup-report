@@ -16,15 +16,23 @@ import openpyxl
 from openpyxl import load_workbook
 
 # ==================== 配置（按需修改） ====================
-COOKIES_FILE    = r"C:\Users\User\Downloads\cookies.txt"
-SOAR_BASE_URL   = "https://soar.sangfor.com.cn"
+# 迁移到集成化新版时，本配置块整体替换为 api_config_loader 调用：
+#   MSSW_BASE_URL     → _get_origin("mssw")
+#   MSSW_COOKIES_FILE → os.path.join(os.getcwd(), 'mssw_cookies.txt')
+#   接口路径          → config/api_config.json 的 endpoints
+MSSW_BASE_URL     = "https://pre.soar.sangfor.com"                  # 平台域名（MSSW，按接口文档）
+MSSW_COOKIES_FILE = r"C:\Users\User\Downloads\mssw_cookies.txt"   # cookies 文件
 TEMP_DIR        = r"C:\Users\User\Downloads\temp_report"
 OUTPUT_FILE     = r"C:\Users\User\Downloads\temp_report\暴露面清单.xlsx"
 POLL_INTERVAL  = 5     # 轮询间隔（秒）
-REPORT_LIMIT   = 100   # 接口3每次查询的报告数量
-# SCRIPT_TIMEOUT = 3600  # 全局超时：1小时
 MAX_RETRIES    = 3     # 最大重试次数
 RETRY_DELAY    = 3     # 重试等待时间（秒）
+
+# ---- 接口路径（MSSW 暴露面导出，前缀按接口文档） ----
+EP_CUSTOMER_STATISTIC = "/gateway/customer-mgr-service/order/v1/user/customer_statistic?_method=GET"
+EP_EXPOSE_EXPORT      = "/gateway/easm-exposure/order/v1/vulnmgr/exposed_surface/report"
+EP_EXPOSE_POLL        = "/gateway/easm-exposure/order/v1/vulnmgr/exposed_surface/report_async_task"
+EP_DOWNLOAD           = "/gateway/workflow/order/v1/attachments"
 # ==========================================================
 
 
@@ -95,7 +103,7 @@ DEFAULT_HEADERS: Dict[str, str] = {
     "Content-Type": "application/json",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "X-Requested-With": "XMLHttpRequest",
-    "Referer": f"{SOAR_BASE_URL}/index.html",
+    "Referer": f"{MSSW_BASE_URL}/index.html",
     "timezone": _get_system_timezone(),
 }
 
@@ -157,22 +165,20 @@ def _parse_json(resp: requests.Response, api_name: str) -> dict:
         )
 
 
-# ---------- 接口调用 ----------
+# ---------- 接口调用（MSSW） ----------
 
-def api0_search_customer(headers: Dict, keyword: str) -> list:
-    """接口0：根据关键词模糊搜索客户，返回列表"""
-    url = f"{SOAR_BASE_URL}/gateway/customer-mgr-service/order/v1/user?_method=GET"
+def search_customer_mssw(cookie_str: str, keyword: str) -> list:
+    """文档接口1：MSSW 客户信息接口，keyword 模糊匹配名称或ID，返回列表"""
+    url = f"{MSSW_BASE_URL}{EP_CUSTOMER_STATISTIC}"
     payload = {
-        "order": "asc", "offset": 0, "limit": 20, "keyword": keyword,
-        "share_ids": [], "delivery_channel_id": [], "service_code": [],
-        "industry": [], "industry_segmentation": [], "customer_type": [],
-        "customer_stratification": [], "protection_type": [], "service_group": [],
-        "delivery_method": [], "platform_type": [], "service_status": 0, "my_customer": 0,
+        "order": "desc", "keyword": keyword, "customer_category": 1,
+        "company_id": "", "offset": 0, "limit": 20,
     }
-    resp = request_with_retry("POST", url, headers=headers, json=payload)
-    data = _parse_json(resp, "接口0")
+    resp = request_with_retry("POST", url, headers=_build_headers(cookie_str),
+                              json=payload, timeout=120)
+    data = _parse_json(resp, "接口1（MSSW客户搜索）")
     if data.get('code') != 0:
-        raise RuntimeError(f"接口0失败: {data.get('msg')}")
+        raise RuntimeError(f"接口1失败: {data.get('msg')}")
     return data['data']['list']
 
 
@@ -180,112 +186,94 @@ def _pick_exact_match(customers: list, keyword: str):
     """从多个模糊搜索结果中优先选精确匹配。返回匹配项或 None"""
     if len(customers) == 1:
         return customers[0]
-    exact = [c for c in customers
-             if (c.get('company_name', '') or '').strip() == keyword.strip()
-             or (c.get('pms_customer_name', '') or '').strip() == keyword.strip()
-             or str(c.get('company_id', '')).strip() == keyword.strip()]
-    return exact[0] if exact else None
+    for key_name, key_id in (('company_name', 'company_id'),
+                             ('name', 'id'),
+                             ('pms_customer_name', 'company_id')):
+        exact = [c for c in customers
+                 if (c.get(key_name, '') or '').strip() == keyword.strip()
+                 or str(c.get(key_id, '') or '').strip() == keyword.strip()]
+        if exact:
+            return exact[0]
+    return None
 
 
-def api1_get_template(headers: Dict) -> tuple:
-    """接口1：获取报告模板列表，返回 (template_id, template_name)"""
-    url = f"{SOAR_BASE_URL}/order/v1/report/template_list"
-    resp = request_with_retry("POST", url, headers=headers, json={"template_format": ""})
-    data = _parse_json(resp, "接口1")
-    if data.get('code') != 0:
-        raise RuntimeError(f"接口1失败: {data.get('msg')}")
-
-    for tpl in data['data']['template_list']:
-        if (tpl.get('template_source') == 'easm'
-                and tpl.get('easm_report_type') == 1
-                and tpl.get('template_format') == 'excel'):
-            log(f"模板: {tpl['template_name']} (id={tpl['template_id']})")
-            return tpl['template_id'], tpl['template_name']
-
-    raise RuntimeError("接口1：未找到「EASM单次服务成果清单」Excel模板")
-
-
-def api2_generate_report(headers: Dict, company_id: str,
-                         template_id: str, template_name: str) -> str:
-    """接口2：触发报告生成，返回 task_id"""
-    url = f"{SOAR_BASE_URL}/order/v1/report/generate_easm_report"
+def trigger_expose_export(cookie_str: str, company_id: str) -> str:
+    """文档接口2-1：MSSW 触发暴露面导出，返回 task_id"""
+    url = f"{MSSW_BASE_URL}{EP_EXPOSE_EXPORT}"
     payload = {
-        "customer_id": company_id,
-        "target_company_id": ["all"],
+        "params": {
+            "company_id": company_id,
+            "target_company_id": [],
+            "related_task": [],
+        },
         "need_split": False,
-        "template_id": template_id,
-        "template_name": template_name,
-        "params": {}, "page_data": {}, "reports": [],
+        "data_type": 50,
     }
-    resp = request_with_retry("POST", url, headers=headers, json=payload)
-    data = _parse_json(resp, "接口2")
+    resp = request_with_retry("POST", url, headers=_build_headers(cookie_str),
+                              json=payload, timeout=120)
+    data = _parse_json(resp, "接口2-1（MSSW暴露面导出）")
     if data.get('code') != 0:
-        raise RuntimeError(f"接口2失败: {data.get('msg')}")
-    task_id = data['data']['_id']
-    log(f"task_id={task_id}")
+        raise RuntimeError(f"接口2-1失败: {data.get('msg')}")
+    task_id = data['data']['task_id']
+    log(f"[MSSW] 暴露面导出 task_id={task_id}")
     return task_id
 
 
-def api3_poll_status(headers: Dict, task_id: str) -> None:
-    """接口3：轮询报告生成状态，直到 task_status=1（成功）"""
-    url = f"{SOAR_BASE_URL}/order/v1/report/report_status"
-    payload = {
-        "order": "desc", "offset": 0, "limit": REPORT_LIMIT,
-        "keyword": "", "start_time": "", "end_time": "",
-        "template_name": ["EASM单次服务成果清单"],
-    }
+def poll_expose_status(cookie_str: str, task_id: str) -> str:
+    """文档接口2-2：MSSW 轮询导出状态，返回下载相对路径 url"""
+    url = f"{MSSW_BASE_URL}{EP_EXPOSE_POLL}"
+    payload = {"task_id_list": [task_id]}
 
     attempt = 0
     while True:
         attempt += 1
-        resp = request_with_retry("POST", url, headers=headers, json=payload)
-        data = _parse_json(resp, "接口3")
+        resp = request_with_retry("POST", url, headers=_build_headers(cookie_str),
+                                  json=payload, timeout=120)
+        data = _parse_json(resp, "接口2-2（MSSW轮询）")
         if data.get('code') != 0:
-            raise RuntimeError(f"接口3失败: {data.get('msg')}")
+            raise RuntimeError(f"接口2-2失败: {data.get('msg')}")
 
-        matched = next(
-            (item for item in data['data']['list'] if item.get('task_id') == task_id),
-            None
-        )
-        if matched:
-            status = matched.get('task_status')
-            if status == 1:
-                log(f"第{attempt}次轮询：报告生成成功")
-                return
-            elif status == 2:
-                raise RuntimeError("报告生成失败（task_status=2）")
+        rotation_status = data.get('data', {}).get('rotation_status')
+        attachment_list = data.get('data', {}).get('attachment_list', [])
+        log(f"  [MSSW] 第{attempt}次轮询: rotation_status={rotation_status}")
+
+        if rotation_status == 2:
+            if attachment_list and attachment_list[0].get('status') == 'success':
+                download_path = attachment_list[0].get('url', '')
+                log(f"  导出完成，下载路径: {download_path}")
+                return download_path
             else:
-                log(f"第{attempt}次轮询：生成中，{POLL_INTERVAL}s后重试...")
-        else:
-            log(f"第{attempt}次轮询：任务尚未出现，{POLL_INTERVAL}s后重试...")
+                raise RuntimeError(f"接口2-2：任务结束但附件为空或状态异常: {attachment_list}")
 
         time.sleep(POLL_INTERVAL)
 
 
-def api4_download_report(headers: Dict, task_id: str, save_dir: str) -> str:
-    """接口4：下载报告压缩包，返回本地 zip 路径"""
-    url = f"{SOAR_BASE_URL}/order/v1/report/report_download?task_id={task_id}"
-    # 下载用流式GET，stream参数通过kwargs传入
-    resp = request_with_retry("GET", url, headers=headers, stream=True)
+def download_expose_file(cookie_str: str, download_path: str, save_dir: str) -> str:
+    """下载 MSSW 导出的完整 xlsx（直接是 excel，非 zip）"""
+    url = f"{MSSW_BASE_URL}{download_path}"
+    resp = request_with_retry("GET", url, headers=_build_headers(cookie_str), stream=True)
     if resp is None:
-        raise RuntimeError("接口4：下载报告失败")
+        raise RuntimeError("MSSW 暴露面文件下载失败")
 
-    content_disp = resp.headers.get('Content-Disposition', '')
-    if 'filename=' in content_disp:
-        filename = content_disp.split('filename=')[-1].strip().strip('"\'')
-    else:
-        filename = f"easm_report_{task_id}.zip"
-
-    zip_path = os.path.join(save_dir, filename)
+    filename = f"暴露面数据_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+    filepath = os.path.join(save_dir, filename)
     total = 0
-    with open(zip_path, 'wb') as f:
+    with open(filepath, 'wb') as f:
         for chunk in resp.iter_content(chunk_size=8192):
             if chunk:
                 f.write(chunk)
                 total += len(chunk)
 
-    log(f"已保存: {os.path.basename(zip_path)} ({total / 1024:.1f} KB)")
-    return zip_path
+    # 校验 xlsx 魔数 PK\x03\x04（xlsx 本质是 zip）
+    with open(filepath, 'rb') as f:
+        magic = f.read(4)
+    if magic != b'PK\x03\x04':
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read(500)
+        raise RuntimeError(f"MSSW 下载文件不是有效xlsx（{total}字节），服务器响应: {content}")
+
+    log(f"[MSSW] 暴露面文件已保存: {os.path.basename(filepath)} ({total / 1024:.1f} KB)")
+    return filepath
 
 
 # ---------- 文件处理 ----------
@@ -394,6 +382,11 @@ def _delete_columns_by_header(ws, names_to_delete: list) -> int:
         cell.column for cell in ws[1]
         if cell.value in names_to_delete
     ]
+    found = [cell.value for cell in ws[1] if cell.value in names_to_delete]
+    if to_delete:
+        log(f"  [del-col] {ws.title}: 已删除列 {found}")
+    else:
+        log(f"  [del-col] {ws.title}: 未找到待删列 {names_to_delete}（表头: {[c.value for c in ws[1]]}），跳过")
     for col_idx in sorted(to_delete, reverse=True):
         ws.delete_cols(col_idx)
     return len(to_delete)
@@ -685,15 +678,16 @@ def _apply_time_filter(ws, start: Optional[datetime], end: Optional[datetime],
 
 # ---------- 报告构建 ----------
 
-def build_output_excel(file_b: str, file_c: str, output_path: str,
+def build_output_excel(single_xlsx: str, output_path: str,
                        start_dt: Optional[datetime] = None,
                        end_dt: Optional[datetime] = None,
                        debug_mode: bool = False) -> None:
     """
-    生成暴露面清单：
-      C（资产台账）所有sheet + 总表去掉「风险数量」「网站监测授权」列
-      B（外部风险）「重要组件」→「Web服务风险分布」
-                   「高危端口&服务」→「非Web服务风险分布」
+    生成暴露面清单（MSSW 单文件模式）：
+      MSSW 导出的单个 xlsx 同时包含风险 sheet 与资产 sheet：
+        「重要组件」→「Web服务风险分布」
+        「高危端口&服务」→「非Web服务风险分布」
+      其余 sheet（资产总表、端口表、根域名…）原样处理，总表去掉「风险数量」「网站监测授权」列
 
     start_dt / end_dt 不为 None 时，对各 sheet 按最近更新时间进行数据过滤：
       - 根域名/SSL证书/公众号&小程序资产/APP资产：直接读本表【最近更新时间】
@@ -703,8 +697,8 @@ def build_output_excel(file_b: str, file_c: str, output_path: str,
       - 登录入口/网络&安全设备/WEB资产/Web服务风险分布：通过【访问路径】→端口表【访问路径】取时间
       - 非WEB资产/非Web服务风险分布：通过【IP地址/子域名】+【端口】→端口表【Host】+【端口】取时间
     """
-    wb_c = load_workbook(file_c, data_only=True)
-    wb_b = load_workbook(file_b, data_only=True)
+    wb_c = load_workbook(single_xlsx, data_only=True)
+    wb_b = wb_c  # MSSW 单文件同时充当 B（风险sheet）与 C（资产sheet）；两个标识符均指向同一工作簿
     wb_new = openpyxl.Workbook()
     wb_new.remove(wb_new.active)
 
@@ -758,14 +752,17 @@ def build_output_excel(file_b: str, file_c: str, output_path: str,
     PORT_URL_FILTER  = {'登录入口', '网络&安全设备', 'WEB资产'}
     PORT_PAIR_FILTER = {'非WEB资产'}
 
+    # 单文件模式下，这两个风险 sheet 在下方 B 段单独处理（改名后输出），此处跳过避免重复
+    B_SKIP_PREFIXES = {'重要组件', '高危端口&服务'}
+
     for name in wb_c.sheetnames:
-        print("start")
-        print(name)
         prefix = name.split('（')[0].split('(')[0].strip()
-        print(prefix)
 
         if prefix == '文档说明':
             log(f"[C] {name} — 已跳过（文档说明）")
+            continue
+        if prefix in B_SKIP_PREFIXES:
+            log(f"[C] {name} — 已跳过（由 B 段处理）")
             continue
 
         dst_ws = _copy_sheet(wb_c[name], wb_new, name)
@@ -860,19 +857,19 @@ def main():
     # _timer.start()
 
     parser = argparse.ArgumentParser(
-        description='EASM暴露面清单生成工具',
+        description='MSSW暴露面清单生成工具',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             '示例:\n'
-            '  python generate_report.py 深圳市口袋网络\n'
-            '  python generate_report.py 35690473\n'
-            '  python generate_report.py --zip report.zip --start-time 2025-01-01 --end-time 2025-03-31'
+            '  python exposuer_report.py 67262236\n'
+            '  python exposuer_report.py 深圳市口袋网络\n'
+            '  python exposuer_report.py --zip 暴露面数据.xlsx --start-time 2025-01-01 --end-time 2025-03-31'
         )
     )
     parser.add_argument('keyword', nargs='?', default=None,
-                        help='客户ID或客户名称（支持模糊匹配）；传入 --zip 时可省略')
+                        help='客户ID或客户名称（支持模糊匹配）：直接触发MSSW导出；传入 --zip 时可省略')
     parser.add_argument('--zip', dest='zip_path', default=None,
-                        help='直接指定本地zip压缩包路径，跳过接口调用（步骤1-6），从解压开始')
+                        help='直接指定本地MSSW导出的excel文件路径，跳过接口调用，仅做数据过滤+重组')
     parser.add_argument('--start-time', default=None,
                         help='数据过滤起始时间，如 2025-01-01 或 "2025-01-01 00:00:00"')
     parser.add_argument('--end-time', default=None,
@@ -898,31 +895,30 @@ def main():
         except ValueError as e:
             sys.exit(f"错误：{e}")
 
-    # 传入 --zip 时直接跳到第7步
+    # 传入 --file 时直接跳到构建（跳过 MSSW 接口调用）
     if args.zip_path:
         if not os.path.exists(args.zip_path):
-            sys.exit(f"错误：指定的zip文件不存在 → {args.zip_path}")
-        zip_path = args.zip_path
-        log(f"[直接模式] 使用本地zip: {zip_path}")
+            sys.exit(f"错误：指定的excel文件不存在 → {args.zip_path}")
+        excel_path = args.zip_path
+        log(f"[直接模式] 使用本地excel: {excel_path}")
     else:
         if not args.keyword:
-            sys.exit("错误：未传入 --zip 时必须提供客户ID或客户名称关键词")
+            sys.exit("错误：未传入 --zip（本地excel）时必须提供客户ID或客户名称关键词")
 
         # 1. 加载 cookies
-        if not os.path.exists(COOKIES_FILE):
-            sys.exit(f"错误：cookies文件不存在 → {COOKIES_FILE}")
-        cookie_str = read_cookies_as_string(COOKIES_FILE)
+        if not os.path.exists(MSSW_COOKIES_FILE):
+            sys.exit(f"错误：cookies文件不存在 → {MSSW_COOKIES_FILE}")
+        cookie_str = read_cookies_as_string(MSSW_COOKIES_FILE)
         if not cookie_str:
-            sys.exit(f"错误：cookies解析结果为空，请检查文件格式 → {COOKIES_FILE}")
-        headers = _build_headers(cookie_str)
-        log("[1/7] 已加载cookies")
+            sys.exit(f"错误：cookies解析结果为空，请检查文件格式 → {MSSW_COOKIES_FILE}")
+        log("[1/6] 已加载cookies")
 
         os.makedirs(TEMP_DIR, exist_ok=True)
 
-        # 2. 接口0：搜索客户
-        easm_keyword = args.keyword + "[影子]"
-        log(f"[2/7] 搜索客户「{easm_keyword}」...")
-        customers = api0_search_customer(headers, easm_keyword)
+        # 2. 接口1：搜索客户（直接用用户输入，无[影子]匹配）
+        easm_keyword = args.keyword
+        log(f"[2/6] 搜索客户「{easm_keyword}」...")
+        customers = search_customer_mssw(cookie_str, easm_keyword)
 
         if not customers:
             sys.exit(f"错误：未找到匹配客户，请检查关键词「{easm_keyword}」")
@@ -933,43 +929,31 @@ def main():
             else:
                 log(f"错误：找到 {len(customers)} 个匹配客户，请使用更精确的关键词：", "ERROR")
                 for c in customers:
-                    name = c.get('company_name') or c.get('pms_customer_name', '未知')
-                    print(f"  ID={c['company_id']}  名称={name}")
+                    name = c.get('company_name') or c.get('name') or c.get('pms_customer_name', '未知')
+                    cid  = c.get('company_id') or c.get('id', '未知')
+                    print(f"  ID={cid}  名称={name}")
                 sys.exit(1)
 
         customer     = customers[0]
-        company_id   = customer['company_id']
-        company_name = customer.get('company_name') or customer.get('pms_customer_name', '未知')
+        company_id   = customer.get('company_id') or customer.get('id')
+        company_name = customer.get('company_name') or customer.get('name', '未知')
         log(f"确认客户: {company_name}（ID={company_id}）")
 
-        # 3. 接口1：获取模板
-        log("[3/7] 获取报告模板...")
-        template_id, template_name = api1_get_template(headers)
+        # 3. 接口2-1：触发暴露面导出
+        log("[3/6] 触发暴露面导出...")
+        task_id = trigger_expose_export(cookie_str, company_id)
 
-        # 4. 接口2：触发报告生成
-        log("[4/7] 触发报告生成...")
-        task_id = api2_generate_report(headers, company_id, template_id, template_name)
+        # 4. 接口2-2：轮询状态
+        log("[4/6] 等待导出完成...")
+        download_path = poll_expose_status(cookie_str, task_id)
 
-        # 5. 接口3：轮询状态
-        log("[5/7] 等待报告生成...")
-        api3_poll_status(headers, task_id)
+        # 5. 接口3：下载完整 xlsx
+        log("[5/6] 下载暴露面文件...")
+        excel_path = download_expose_file(cookie_str, download_path, TEMP_DIR)
 
-        # 6. 接口4：下载压缩包
-        log("[6/7] 下载报告...")
-        zip_path = api4_download_report(headers, task_id, TEMP_DIR)
-
-    # 7. 解压 + 构建新报告
-    extract_dir = os.path.join(TEMP_DIR, 'extracted')
-    # 清理旧文件，避免 os.walk 匹配到之前残留的 xlsx
-    if os.path.exists(extract_dir):
-        import shutil
-        shutil.rmtree(extract_dir)
-    os.makedirs(extract_dir, exist_ok=True)
-    log("[7/7] 构建暴露面清单...")
-    file_b, file_c = extract_report(zip_path, extract_dir)
-    log(file_b)
-    log(file_c)
-    build_output_excel(file_b, file_c, OUTPUT_FILE, start_dt=start_dt, end_dt=end_dt,
+    # 6. 构建暴露面清单
+    log("[6/6] 构建暴露面清单...")
+    build_output_excel(excel_path, OUTPUT_FILE, start_dt=start_dt, end_dt=end_dt,
                        debug_mode=args.debug)
 
     # _timer.cancel()
