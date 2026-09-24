@@ -676,6 +676,140 @@ def _apply_time_filter(ws, start: Optional[datetime], end: Optional[datetime],
     log(f"  [filter] {ws.title!r}: rule={rule}，删除 {deleted} 行")
 
 
+# ---------- 「文档说明」统计表重算 ----------
+# MSSW 导出的第 1 个 sheet「文档说明」含一张统计表（子类型/总数/影子资产数）。
+# 平台数字按导出时全量数据算，但本脚本会对各数据 sheet 做端口连通性过滤 + 时间过滤，
+# 行数会变，故需按过滤后的实际数据重算，保证说明页与交付 sheet 处处一致。
+
+# 「子类型」→ 输出 sheet 名（注意：源「重要组件」「高危端口&服务」在输出中被 B 段改名）
+DOC_STAT_MAP = {
+    '根域名资产':     '根域名',
+    '子域名资产':     '子域名',
+    'IP资产':        'IP C段',
+    '端口资产':       '端口表',
+    'WEB资产':       'WEB资产',
+    '非WEB资产':      '非WEB资产',
+    '登录入口':       '登录入口',
+    '云类资产':       '公有云资产',
+    '网络&安全设备':  '网络&安全设备',
+    'SSL证书':       'SSL证书',
+    '高危端口&服务':  '非Web服务风险分布',
+    '重要组件':       'Web服务风险分布',
+    'APP':          'APP资产',
+}
+# 无「资产归属」列的资产类型，其「影子资产数」保持平台原值（通常为 /），不重算
+DOC_NO_SHADOW_TYPES = {'SSL证书', 'APP'}
+# 「总数」按「云类型」列去重统计的资产类型（该 sheet 云类型跨行合并，平台按其去重计数）
+DOC_DEDUP_BY_CLOUD_TYPE = {'云类资产'}
+
+
+def _count_sheet_data_rows(ws) -> int:
+    """统计 sheet 数据行数（第2行起，任一单元格非空即计一行）。"""
+    cnt = 0
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if any(v is not None and str(v).strip() != '' for v in row):
+            cnt += 1
+    return cnt
+
+
+def _count_shadow_assets(ws) -> Optional[int]:
+    """统计 sheet 中「资产归属」列 == '影子资产' 的行数；无该列返回 None。"""
+    aid = _find_col_idx(ws, '资产归属')
+    if aid is None:
+        return None
+    cnt = 0
+    for row in ws.iter_rows(min_row=2):
+        v = row[aid - 1].value
+        if v is not None and str(v).strip() == '影子资产':
+            cnt += 1
+    return cnt
+
+
+def _count_distinct_cloud_types(ws) -> int:
+    """统计「云类型」列的非空去重数量（云类资产总数，平台口径）。"""
+    tid = _find_col_idx(ws, '云类型')
+    if tid is None:
+        return _count_sheet_data_rows(ws)
+    seen = set()
+    for row in ws.iter_rows(min_row=2):
+        v = row[tid - 1].value
+        if v is not None and str(v).strip() != '':
+            seen.add(str(v).strip())
+    return len(seen)
+
+
+def _recalc_doc_sheet(wb_new) -> None:
+    """
+    重算「文档说明」统计表的「总数」「影子资产数」两列，使其与过滤后的交付 sheet 一致。
+
+    统计表通过表头文字（子类型/总数/影子资产数）定位，避免硬编码列号；
+    逐行取「子类型」经 DOC_STAT_MAP 找到输出 sheet 后重算。
+    """
+    doc = None
+    for name in wb_new.sheetnames:
+        if name.split('（')[0].split('(')[0].strip() == '文档说明':
+            doc = wb_new[name]
+            break
+    if doc is None:
+        return
+
+    # 按表头文字定位「子类型」「总数」「影子资产数」三列
+    sub_col = tot_col = shadow_col = None
+    header_row = None
+    for r in range(1, min(doc.max_row, 50) + 1):
+        for c in range(1, doc.max_column + 1):
+            v = doc.cell(row=r, column=c).value
+            if v is None:
+                continue
+            t = str(v).strip()
+            if t == '子类型':
+                sub_col, header_row = c, r
+            elif t == '总数':
+                tot_col = c
+            elif t == '影子资产数':
+                shadow_col = c
+    if sub_col is None or tot_col is None or header_row is None:
+        log("  [doc-recalc] 警告：未定位到「文档说明」统计表表头（子类型/总数），跳过重算", "WARNING")
+        return
+
+    changed = 0
+    for r in range(header_row + 1, doc.max_row + 1):
+        sub = doc.cell(row=r, column=sub_col).value
+        if sub is None or str(sub).strip() == '':
+            continue
+        sub = str(sub).strip()
+        target = DOC_STAT_MAP.get(sub)
+        if target is None:
+            continue
+
+        dst = None
+        for name in wb_new.sheetnames:
+            if name.split('（')[0].split('(')[0].strip() == target:
+                dst = wb_new[name]
+                break
+        if dst is None:
+            log(f"  [doc-recalc] 警告：输出中未找到 sheet「{target}」（子类型「{sub}」），跳过该行", "WARNING")
+            continue
+
+        old_tot = doc.cell(row=r, column=tot_col).value
+        new_tot = (_count_distinct_cloud_types(dst)
+                   if sub in DOC_DEDUP_BY_CLOUD_TYPE else _count_sheet_data_rows(dst))
+        doc.cell(row=r, column=tot_col).value = new_tot
+        changed += 1
+        log(f"  [doc-recalc] {sub}: 总数 {old_tot} → {new_tot}")
+
+        if shadow_col is None or sub in DOC_NO_SHADOW_TYPES:
+            continue
+        new_shadow = _count_shadow_assets(dst)
+        if new_shadow is None:
+            continue
+        old_shadow = doc.cell(row=r, column=shadow_col).value
+        doc.cell(row=r, column=shadow_col).value = new_shadow
+        log(f"  [doc-recalc] {sub}: 影子资产数 {old_shadow} → {new_shadow}")
+
+    log(f"[doc-recalc] 「文档说明」统计表重算完成，更新 {changed} 行")
+
+
 # ---------- 报告构建 ----------
 
 def build_output_excel(single_xlsx: str, output_path: str,
@@ -755,12 +889,21 @@ def build_output_excel(single_xlsx: str, output_path: str,
     # 单文件模式下，这两个风险 sheet 在下方 B 段单独处理（改名后输出），此处跳过避免重复
     B_SKIP_PREFIXES = {'重要组件', '高危端口&服务'}
 
+    # 「文档说明」保留（不跳过）：先单独复制到 wb_new 排最前（与平台导出顺序一致）。
+    # 它无「最近更新时间」列、首列 F 非序号列，故不参与时间过滤、不参与序号重排。
+    # 其统计数字当前仍为平台原值（过滤前的全量口径），后续可再按过滤后数据重算。
+    doc_sheet_name = _find_sheet(wb_c, '文档说明')
+    if doc_sheet_name:
+        _copy_sheet(wb_c[doc_sheet_name], wb_new, doc_sheet_name)
+        log(f"[C] {doc_sheet_name} — 已保留（置于最前）")
+    else:
+        log("  [C] 警告：源文件未找到「文档说明」sheet", "WARNING")
+
     for name in wb_c.sheetnames:
         prefix = name.split('（')[0].split('(')[0].strip()
 
         if prefix == '文档说明':
-            log(f"[C] {name} — 已跳过（文档说明）")
-            continue
+            continue  # 已在上方单独复制
         if prefix in B_SKIP_PREFIXES:
             log(f"[C] {name} — 已跳过（由 B 段处理）")
             continue
@@ -835,6 +978,9 @@ def build_output_excel(single_xlsx: str, output_path: str,
     # for ws in wb_new.worksheets:
     #     for rd in ws.row_dimensions.values():
     #         rd.height = None
+
+    # 全部 sheet 复制+过滤完成后，按过滤后的实际数据重算「文档说明」统计表
+    _recalc_doc_sheet(wb_new)
 
     wb_new.save(output_path)
 
