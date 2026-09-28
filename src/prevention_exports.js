@@ -75,10 +75,20 @@ async function resolveTablePath(tableType, explicitPath, options, outputDir, tem
     throw new Error(`${displayName(tableType)} 导出失败: 返回缺少 filePath`);
   }
 
-  return {
+  const result = {
     filePath: path.resolve(parsed.filePath),
     source: 'export'
   };
+
+  // vuln：交付两个平台原样 excel（内网 / 互联网），供归档层平铺归档
+  if (Array.isArray(parsed.deliverables) && parsed.deliverables.length > 0) {
+    result.deliverables = parsed.deliverables.map((item) => ({
+      name: item.name,
+      path: path.resolve(item.path)
+    }));
+  }
+
+  return result;
 }
 
 async function copyToOutputDir(sourcePath, outputDir) {

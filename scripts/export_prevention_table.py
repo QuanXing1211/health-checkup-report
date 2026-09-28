@@ -71,7 +71,7 @@ def configure_module(module, table_type, args):
         module.COOKIES_FILE = args.easm_cookie_path
         return
 
-    module.EASM_COOKIES_FILE = args.easm_cookie_path
+    # vuln / weakpwd：统一走 MSSW Cookie（vuln 已切到 MSSW，不再需要 EASM Cookie）
     module.MSSW_COOKIES_FILE = args.mssw_cookie_path
 
 
@@ -95,7 +95,7 @@ def main():
     if args.table_type == 'exposure':
         require_file(args.easm_cookie_path, 'EASM Cookie 文件')
     else:
-        require_file(args.easm_cookie_path, 'EASM Cookie 文件')
+        # vuln / weakpwd 均使用 MSSW Cookie
         require_file(args.mssw_cookie_path, 'MSSW Cookie 文件')
 
     module = load_module(args.table_type)
@@ -109,11 +109,22 @@ def main():
     finally:
         sys.argv = previous_argv
 
-    print(json.dumps({
+    result = {
         'ok': True,
         'filePath': os.path.abspath(args.output_file),
         'tableType': args.table_type,
-    }, ensure_ascii=False))
+    }
+
+    # vuln：除临时表外，另交付两个平台原样 excel（内网 / 互联网），回传给编排层归档
+    if args.table_type == 'vuln':
+        name_intranet = getattr(module, 'NAME_INTRANET', '漏洞清单（内网）.xlsx')
+        name_internet = getattr(module, 'NAME_INTERNET', '漏洞清单（互联网）.xlsx')
+        result['deliverables'] = [
+            {'name': name_intranet, 'path': os.path.abspath(os.path.join(args.temp_dir, name_intranet))},
+            {'name': name_internet, 'path': os.path.abspath(os.path.join(args.temp_dir, name_internet))},
+        ]
+
+    print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == '__main__':

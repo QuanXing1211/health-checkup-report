@@ -340,7 +340,14 @@ async function main() {
       ? (logger('威胁预防表格使用本地文件（mock 模式）'),
         {
           weakpwd: { filePath: path.join(__dirname, '弱口令清单.xlsx'), source: 'local' },
-          vuln:    { filePath: path.join(__dirname, '漏洞清单.xlsx'),    source: 'local' },
+          vuln:    {
+            filePath: path.join(__dirname, '漏洞清单.xlsx'),
+            source: 'local',
+            deliverables: [
+              { name: '漏洞清单（内网）.xlsx',   path: path.join(__dirname, '漏洞清单.xlsx') },
+              { name: '漏洞清单（互联网）.xlsx', path: path.join(__dirname, '漏洞清单.xlsx') }
+            ]
+          },
           exposure:{ filePath: path.join(__dirname, '暴露面清单.xlsx'), source: 'local' },
         })
       : await collectPreventionTableExports({
@@ -416,7 +423,7 @@ async function main() {
       assetPath: resolvedAssetFilePath,
       exposurePath: preventionTables.exposure.filePath,
       weakpwdPath: preventionTables.weakpwd.filePath,
-      vulnPath: preventionTables.vuln.filePath,
+      vulnDeliverables: preventionTables.vuln.deliverables,
       policyCheckPath: branch1Result.artifacts.policyExcelPath,
       logger
     }));
@@ -428,7 +435,8 @@ async function main() {
     }
     preventionTables.exposure.filePath = archivedFiles.exposurePath;
     preventionTables.weakpwd.filePath = archivedFiles.weakpwdPath;
-    preventionTables.vuln.filePath = archivedFiles.vulnPath;
+    // 漏洞：计算用的临时表路径保持不变（不进交付目录，供下游计算读取）
+    // 交付物为两个平台原样 excel，归档路径记录在 archivedFiles.vulnDeliverables
     const incidentGptStatsForTopAssets = reportData.riskOverview && reportData.riskOverview.incidentGptStats
       ? reportData.riskOverview.incidentGptStats
       : {};
@@ -932,12 +940,12 @@ async function createRunExportWorkspace(root, generatedAt, logger) {
 // - asset：删除第 1 空行，让表头上移到第 1 行
 // - 各表（exposure 除外）：把表头样式统一为暴露面清单样式（微软雅黑10加粗 + 浅蓝底 + 居中 + thin边框）
 // 处理结果写入临时文件，再 move 到归档目录；失败不阻断归档，源文件原样归档。
+// 注：漏洞清单交付物为两个平台原样 excel，不做表头统一，故不在此表内。
 const UNIFY_RISK_HEADER_TABLE_TYPES = {
   incidentPath: 'incident',
   assetPath: 'asset',
   exposurePath: 'exposure',
   weakpwdPath: 'weakpwd',
-  vulnPath: 'vuln',
   policyCheckPath: 'policy'
 };
 
@@ -950,7 +958,6 @@ async function archiveRiskListFiles(options) {
     ['assetPath', '资产清单.xlsx'],
     ['exposurePath', '暴露面清单.xlsx'],
     ['weakpwdPath', '弱口令清单.xlsx'],
-    ['vulnPath', '漏洞清单.xlsx'],
     ['policyCheckPath', '策略检查清单.xlsx']
   ];
   const archived = {};
@@ -966,6 +973,27 @@ async function archiveRiskListFiles(options) {
     const targetPath = path.join(riskListDir, filename);
     archived[key] = await moveOrReplaceFile(readyPath, targetPath);
     logWith(options.logger, `风险清单已归档: ${archived[key]}`);
+  }
+
+  // 漏洞交付物：两个平台原样 excel（内网 / 互联网），平铺归档，不做表头统一。
+  // 计算用的临时表（options.vulnPath）不归档，仅保留给下游计算读取。
+  const vulnDeliverables = Array.isArray(options.vulnDeliverables) ? options.vulnDeliverables : [];
+  if (vulnDeliverables.length === 0) {
+    throw new Error('归档风险清单失败: 缺少漏洞交付文件（vulnDeliverables）');
+  }
+  archived.vulnDeliverables = [];
+  for (const item of vulnDeliverables) {
+    const sourcePath = item && item.path;
+    const filename = (item && item.name) || path.basename(sourcePath || '');
+    if (!sourcePath || !filename) {
+      throw new Error('归档漏洞清单失败: 交付文件缺少 path 或 name');
+    }
+    const archiveCopyPath = path.join(riskListDir, `.archive-${filename}`);
+    await fs.copyFile(sourcePath, archiveCopyPath);
+    const targetPath = path.join(riskListDir, filename);
+    const archivedPath = await moveOrReplaceFile(archiveCopyPath, targetPath);
+    archived.vulnDeliverables.push({ name: filename, path: archivedPath });
+    logWith(options.logger, `风险清单已归档: ${archivedPath}`);
   }
 
   return archived;
@@ -1060,7 +1088,8 @@ async function beautifyArchivedRiskLists(reportDir, logger) {
     '资产清单.xlsx',
     '暴露面清单.xlsx',
     '弱口令清单.xlsx',
-    '漏洞清单.xlsx',
+    '漏洞清单（内网）.xlsx',
+    '漏洞清单（互联网）.xlsx',
     '策略检查清单.xlsx'
   ];
   const scriptPath = path.join(__dirname, 'excel-beautifier', 'scripts', 'cli.py');
