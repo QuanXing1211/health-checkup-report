@@ -172,7 +172,7 @@ def search_customer_mssw(cookie_str: str, keyword: str) -> list:
     url = f"{MSSW_BASE_URL}{EP_CUSTOMER_STATISTIC}"
     payload = {
         "order": "desc", "keyword": keyword, "customer_category": 1,
-        "company_id": "", "offset": 0, "limit": 20,
+        "company_id": "", "offset": 0, "limit": 100,
     }
     resp = request_with_retry("POST", url, headers=_build_headers(cookie_str),
                               json=payload, timeout=120)

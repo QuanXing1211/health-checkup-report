@@ -62,7 +62,7 @@ def configure_module(module, table_type, args):
             args.mssw_base_url = 'https://' + args.mssw_base_url
         module.MSSW_BASE_URL = args.mssw_base_url
 
-    if args.soar_base_url:
+    if args.soar_base_url and table_type == 'exposure':
         if not args.soar_base_url.startswith('http'):
             args.soar_base_url = 'https://' + args.soar_base_url
         module.SOAR_BASE_URL = args.soar_base_url
@@ -115,10 +115,11 @@ def main():
         'tableType': args.table_type,
     }
 
-    # vuln：除临时表外，另交付两个平台原样 excel（内网 / 互联网），回传给编排层归档
-    if args.table_type == 'vuln':
-        name_intranet = getattr(module, 'NAME_INTRANET', '漏洞清单（内网）.xlsx')
-        name_internet = getattr(module, 'NAME_INTERNET', '漏洞清单（互联网）.xlsx')
+    # vuln / weakpwd：除临时表外，另交付两个平台原样 excel（内网 / 互联网），回传给编排层归档
+    if args.table_type in ('vuln', 'weakpwd'):
+        default_prefix = '漏洞清单' if args.table_type == 'vuln' else '弱口令清单'
+        name_intranet = getattr(module, 'NAME_INTRANET', f'{default_prefix}（内网）.xlsx')
+        name_internet = getattr(module, 'NAME_INTERNET', f'{default_prefix}（互联网）.xlsx')
         result['deliverables'] = [
             {'name': name_intranet, 'path': os.path.abspath(os.path.join(args.temp_dir, name_intranet))},
             {'name': name_internet, 'path': os.path.abspath(os.path.join(args.temp_dir, name_internet))},

@@ -64,6 +64,20 @@ def unique_count(rows, field):
     return len(set(s(r.get(field)) for r in rows if r.get(field)))
 
 
+def unique_count_multi(rows, field):
+    """
+    统计某字段去重数量（支持一格多值：按逗号/顿号拆分后再去重）。
+    用于外网弱口令的「风险资产」——MSSW 外网可能返回多 IP 逗号拼接，
+    直接去重会把 "1.1.1.1,2.2.2.2" 当成一个资产，导致受影响资产数偏小。
+    单值时行为与 unique_count 完全一致。
+    """
+    vals = set()
+    for r in rows:
+        for v in split_biz(s(r.get(field))):
+            vals.add(v)
+    return len(vals)
+
+
 
 def split_biz(val):
     """将逗号或顿号分隔的业务系统值拆分为去空列表，支持单值、空值、None"""
@@ -281,8 +295,8 @@ def prepare_datasets(raw):
     asset_importance = {}
     asset_own_group = {}
     for r in rows_weak:
-        a = s(r.get("风险资产"))
-        if a:
+        # 风险资产可能为多 IP 逗号拼接（外网），拆开分别计数；单值时行为不变
+        for a in split_biz(s(r.get("风险资产"))):
             weak_asset_count[a] += 1
             cur_imp = s(r.get("资产重要性"))
             # 核心资产判断：同一资产多行，只要有一条是"核心资产"就算核心
@@ -355,7 +369,7 @@ def calc_summary(ds):
                 "risk_assets":     unique_count(ds["vuln_net"], "风险资产"),
             },
             "weak_pwd": {
-                "risk_assets": unique_count(ds["weak_net"], "风险资产"),
+                "risk_assets": unique_count_multi(ds["weak_net"], "风险资产"),
                 "total":       len(ds["weak_net"]),
             },
         },
@@ -390,7 +404,7 @@ def calc_key_risks(ds):
     example_asset = ("（如" + "、".join(top3_by_count) + "）") if top3_by_count else ""
 
     # priority_assets: 关联事件资产 > 核心资产 > 弱口令数量，取 top3
-    all_weak_assets = list(set(s(r.get("风险资产")) for r in ds["rows_weak"] if r.get("风险资产")))
+    all_weak_assets = list({a for r in ds["rows_weak"] for a in split_biz(s(r.get("风险资产")))})
 
     def pri_sort_key(a):
         has_event = a in ds["event_assets"]
@@ -608,13 +622,13 @@ def calc_internet_weak_pwd(ds):
     """计算 data["internet"]["weak_pwd"] 全部字段"""
     net_asset_cnt = defaultdict(int)
     for r in ds["weak_net"]:
-        a = s(r.get("风险资产"))
-        if a:
+        # 风险资产可能为多 IP 逗号拼接，拆开分别计数（单值行为不变）
+        for a in split_biz(s(r.get("风险资产"))):
             net_asset_cnt[a] += 1
     top5_net_a = sorted(net_asset_cnt.items(), key=lambda x: -x[1])[:5]
 
     return {
-        "affected_assets": unique_count(ds["weak_net"], "风险资产"),
+        "affected_assets": unique_count_multi(ds["weak_net"], "风险资产"),
         "total_count":     len(ds["weak_net"]),
         "asset_rows":      [{"asset": a, "count": c} for a, c in top5_net_a],
     }

@@ -339,7 +339,14 @@ async function main() {
     preventionTables = options.mock === true || options.mock === 'true'
       ? (logger('威胁预防表格使用本地文件（mock 模式）'),
         {
-          weakpwd: { filePath: path.join(__dirname, '弱口令清单.xlsx'), source: 'local' },
+          weakpwd: {
+            filePath: path.join(__dirname, '弱口令清单.xlsx'),
+            source: 'local',
+            deliverables: [
+              { name: '弱口令清单（内网）.xlsx',   path: path.join(__dirname, '弱口令清单.xlsx') },
+              { name: '弱口令清单（互联网）.xlsx', path: path.join(__dirname, '弱口令清单.xlsx') }
+            ]
+          },
           vuln:    {
             filePath: path.join(__dirname, '漏洞清单.xlsx'),
             source: 'local',
@@ -424,6 +431,7 @@ async function main() {
       exposurePath: preventionTables.exposure.filePath,
       weakpwdPath: preventionTables.weakpwd.filePath,
       vulnDeliverables: preventionTables.vuln.deliverables,
+      weakpwdDeliverables: preventionTables.weakpwd.deliverables,
       policyCheckPath: branch1Result.artifacts.policyExcelPath,
       logger
     }));
@@ -434,9 +442,8 @@ async function main() {
       tableExports.asset.filePath = archivedFiles.assetPath;
     }
     preventionTables.exposure.filePath = archivedFiles.exposurePath;
-    preventionTables.weakpwd.filePath = archivedFiles.weakpwdPath;
-    // 漏洞：计算用的临时表路径保持不变（不进交付目录，供下游计算读取）
-    // 交付物为两个平台原样 excel，归档路径记录在 archivedFiles.vulnDeliverables
+    // 弱口令/漏洞：计算用临时表的路径保持不变（不进交付目录，供下游计算读取）
+    // 交付物为两个平台原样 excel，归档路径记录在 archivedFiles.weakpwdDeliverables / vulnDeliverables
     const incidentGptStatsForTopAssets = reportData.riskOverview && reportData.riskOverview.incidentGptStats
       ? reportData.riskOverview.incidentGptStats
       : {};
@@ -471,8 +478,8 @@ async function main() {
     const riskAssetStats = await calculateRiskAssetCount({
       eventPath: archivedFiles.incidentPath,
       assetPath: archivedFiles.assetPath,
-      weakPasswordPath: archivedFiles.weakpwdPath,
-      vulnerabilityPath: archivedFiles.vulnPath,
+      weakPasswordPath: preventionTables.weakpwd.filePath,
+      vulnerabilityPath: preventionTables.vuln.filePath,
       exposurePath: archivedFiles.exposurePath,
       topRiskIncidentIds
     });
@@ -483,8 +490,8 @@ async function main() {
       try {
         const topRiskAssetDetails = await summarizeTopRiskAssetDetails({
           incidentExcelPath: archivedFiles.incidentPath,
-          weakPasswordExcelPath: archivedFiles.weakpwdPath,
-          vulnerabilityExcelPath: archivedFiles.vulnPath,
+          weakPasswordExcelPath: preventionTables.weakpwd.filePath,
+          vulnerabilityExcelPath: preventionTables.vuln.filePath,
           exposureExcelPath: archivedFiles.exposurePath,
           topAssets: topRiskAssets,
           c2Ids: topRiskC2Ids,
@@ -940,12 +947,11 @@ async function createRunExportWorkspace(root, generatedAt, logger) {
 // - asset：删除第 1 空行，让表头上移到第 1 行
 // - 各表（exposure 除外）：把表头样式统一为暴露面清单样式（微软雅黑10加粗 + 浅蓝底 + 居中 + thin边框）
 // 处理结果写入临时文件，再 move 到归档目录；失败不阻断归档，源文件原样归档。
-// 注：漏洞清单交付物为两个平台原样 excel，不做表头统一，故不在此表内。
+// 注：漏洞/弱口令清单交付物为两个平台原样 excel，不做表头统一，故不在此表内。
 const UNIFY_RISK_HEADER_TABLE_TYPES = {
   incidentPath: 'incident',
   assetPath: 'asset',
   exposurePath: 'exposure',
-  weakpwdPath: 'weakpwd',
   policyCheckPath: 'policy'
 };
 
@@ -957,7 +963,6 @@ async function archiveRiskListFiles(options) {
     ['incidentPath', '安全事件清单.xlsx'],
     ['assetPath', '资产清单.xlsx'],
     ['exposurePath', '暴露面清单.xlsx'],
-    ['weakpwdPath', '弱口令清单.xlsx'],
     ['policyCheckPath', '策略检查清单.xlsx']
   ];
   const archived = {};
@@ -975,28 +980,40 @@ async function archiveRiskListFiles(options) {
     logWith(options.logger, `风险清单已归档: ${archived[key]}`);
   }
 
-  // 漏洞交付物：两个平台原样 excel（内网 / 互联网），平铺归档，不做表头统一。
-  // 计算用的临时表（options.vulnPath）不归档，仅保留给下游计算读取。
-  const vulnDeliverables = Array.isArray(options.vulnDeliverables) ? options.vulnDeliverables : [];
-  if (vulnDeliverables.length === 0) {
-    throw new Error('归档风险清单失败: 缺少漏洞交付文件（vulnDeliverables）');
+  // 漏洞/弱口令交付物：两个平台原样 excel（内网 / 互联网），平铺归档，不做表头统一。
+  // 计算用的临时表（options.vulnPath / options.weakpwdPath）不归档，仅保留给下游计算读取。
+  archived.vulnDeliverables = await archiveDeliverables(
+    options.vulnDeliverables, riskListDir, '漏洞', 'vulnDeliverables', options.logger
+  );
+  archived.weakpwdDeliverables = await archiveDeliverables(
+    options.weakpwdDeliverables, riskListDir, '弱口令', 'weakpwdDeliverables', options.logger
+  );
+
+  return archived;
+}
+
+// 平铺归档一组平台原样交付文件（漏洞 / 弱口令），返回 [{name, path}]。
+// 不做表头统一：先复制到归档目录、再 move 覆盖，避免 move 删除输入文件。
+async function archiveDeliverables(deliverables, riskListDir, label, optionKey, logger) {
+  const items = Array.isArray(deliverables) ? deliverables : [];
+  if (items.length === 0) {
+    throw new Error(`归档风险清单失败: 缺少${label}交付文件（${optionKey}）`);
   }
-  archived.vulnDeliverables = [];
-  for (const item of vulnDeliverables) {
+  const archivedItems = [];
+  for (const item of items) {
     const sourcePath = item && item.path;
     const filename = (item && item.name) || path.basename(sourcePath || '');
     if (!sourcePath || !filename) {
-      throw new Error('归档漏洞清单失败: 交付文件缺少 path 或 name');
+      throw new Error(`归档${label}清单失败: 交付文件缺少 path 或 name`);
     }
     const archiveCopyPath = path.join(riskListDir, `.archive-${filename}`);
     await fs.copyFile(sourcePath, archiveCopyPath);
     const targetPath = path.join(riskListDir, filename);
     const archivedPath = await moveOrReplaceFile(archiveCopyPath, targetPath);
-    archived.vulnDeliverables.push({ name: filename, path: archivedPath });
-    logWith(options.logger, `风险清单已归档: ${archivedPath}`);
+    archivedItems.push({ name: filename, path: archivedPath });
+    logWith(logger, `风险清单已归档: ${archivedPath}`);
   }
-
-  return archived;
+  return archivedItems;
 }
 
 // 归档前对单张表执行统一后处理（删除资产表首空行 + 统一表头样式）。
@@ -1087,7 +1104,8 @@ async function beautifyArchivedRiskLists(reportDir, logger) {
     '安全事件清单.xlsx',
     '资产清单.xlsx',
     '暴露面清单.xlsx',
-    '弱口令清单.xlsx',
+    '弱口令清单（内网）.xlsx',
+    '弱口令清单（互联网）.xlsx',
     '漏洞清单（内网）.xlsx',
     '漏洞清单（互联网）.xlsx',
     '策略检查清单.xlsx'
