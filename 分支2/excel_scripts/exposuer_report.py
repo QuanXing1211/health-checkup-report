@@ -118,6 +118,10 @@ def request_with_retry(method: str, url: str, headers: Optional[Dict] = None,
         csrf_token = extract_cookie_value(cookie, "csrf_token")
         if csrf_token:
             headers["X-Csrftoken"] = csrf_token
+        # MSSW 平台的 CSRF token（cookie名和header名都是 x-csrf-token）
+        mssw_csrf = extract_cookie_value(cookie, "x-csrf-token")
+        if mssw_csrf:
+            headers["x-csrf-token"] = mssw_csrf
 
     session = requests.Session()
     adapter = requests.adapters.HTTPAdapter(
@@ -186,15 +190,10 @@ def _pick_exact_match(customers: list, keyword: str):
     """从多个模糊搜索结果中优先选精确匹配。返回匹配项或 None"""
     if len(customers) == 1:
         return customers[0]
-    for key_name, key_id in (('company_name', 'company_id'),
-                             ('name', 'id'),
-                             ('pms_customer_name', 'company_id')):
-        exact = [c for c in customers
-                 if (c.get(key_name, '') or '').strip() == keyword.strip()
-                 or str(c.get(key_id, '') or '').strip() == keyword.strip()]
-        if exact:
-            return exact[0]
-    return None
+    exact = [c for c in customers
+             if (c.get('company_name', '') or '').strip() == keyword.strip()
+             or str(c.get('company_id', '')).strip() == keyword.strip()]
+    return exact[0] if exact else None
 
 
 def trigger_expose_export(cookie_str: str, company_id: str) -> str:

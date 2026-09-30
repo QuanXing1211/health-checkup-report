@@ -255,7 +255,6 @@ def _pick_exact_match(customers: list, keyword: str):
         return customers[0]
     exact = [c for c in customers
              if (c.get('company_name', '') or '').strip() == keyword.strip()
-             or (c.get('pms_customer_name', '') or '').strip() == keyword.strip()
              or str(c.get('company_id', '')).strip() == keyword.strip()]
     return exact[0] if exact else None
 

@@ -216,7 +216,6 @@ def _pick_exact_match(customers: list, keyword: str):
         return customers[0]
     exact = [c for c in customers
              if (c.get('company_name', '') or '').strip() == keyword.strip()
-             or (c.get('pms_customer_name', '') or '').strip() == keyword.strip()
              or str(c.get('company_id', '')).strip() == keyword.strip()]
     return exact[0] if exact else None
 
@@ -228,13 +227,11 @@ def _pick_exact_match(customers: list, keyword: str):
 # ---------- 接口1：搜索客户 ----------
 
 def search_customer(cookie_str: str, keyword: str) -> list:
-    """接口1：MSSW 平台客户搜索，根据关键词（名称或ID）模糊搜索"""
-    url = f"{MSSW_BASE_URL}/gateway/customer-mgr-service/order/v1/user?_method=GET"
-    key_field = "company_id_keyword" if keyword.isdigit() else "company_name_keyword"
+    """接口1：MSSW 平台客户搜索，keyword 模糊匹配客户名称或客户ID"""
+    url = f"{MSSW_BASE_URL}/gateway/customer-mgr-service/order/v1/user/customer_statistic?_method=GET"
     payload = {
-        "my_customer": 0,
-        key_field: keyword,
-        "offset": 0, "limit": 100,
+        "order": "desc", "keyword": keyword, "customer_category": 1,
+        "company_id": "", "offset": 0, "limit": 100,
     }
     resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str, json=payload, timeout=120)
     data = _parse_json(resp, "接口1（搜索客户）")
@@ -362,34 +359,41 @@ def download_weak_pwd_intranet(cookie_str: str, company_id: str, file_name: str,
 
 # ---------- 接口4：外网弱口令导出（对应接口文档 §2.13） ----------
 
-# 外网弱口令模板 13 列的 custom_headers（文档扁平 object[] 格式，field 名取自文档 §2.16「表头 → 字段映射」）
-INTERNET_WEAK_HEADER_FIELDS: List[Dict] = [
-    {"field": "name",           "title": "弱密码名称", "required": True},
-    {"field": "fix_priority",   "title": "修复优先级", "required": True},
-    {"field": "weak_user",      "title": "账号",       "required": True},
-    {"field": "weak_password",  "title": "密码",       "required": True},
-    # 注意：「管理员账号」在文档 §2.16 映射表中无对应字段，admin_user 为占位，待联调校正
-    {"field": "admin_user",     "title": "管理员账号", "required": True},
-    {"field": "url",            "title": "url",        "required": True},
-    {"field": "port",           "title": "端口",       "required": True},
-    {"field": "last_time",      "title": "最近发现时间", "required": True},
-    {"field": "first_time",     "title": "首次发现时间", "required": True},
-    {"field": "source_device",  "title": "数据源",     "required": True},
-    {"field": "ips",            "title": "风险资产",   "required": True},
-    {"field": "fixed_status",   "title": "处置状态",   "required": True},
-    {"field": "disposal_tag",   "title": "处置标签",   "required": True},
-]
+# 外网弱口令导出列预设 ID（文档 §2.12.2 header_id 取值）
+INTERNET_WEAK_HEADER_ID = "internet_weak_pwd_1"
+
+
+def fetch_weak_pwd_custom_headers(cookie_str: str, company_id: str) -> dict:
+    """接口4前置：获取外网弱口令导出列勾选配置（MSSW internet_vul_manage，对应文档 §2.12.2）。
+
+    返回 base_info / asset_info / disposal_info 三段结构，可原样作为 §2.13 导出的
+    custom_headers 入参（文档明示「前端原样回传即可」）。
+    """
+    url = f"{MSSW_BASE_URL}/order/v1/internet_vul_manage/custom_headers"
+    payload = {"header_id": INTERNET_WEAK_HEADER_ID}
+    extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
+    resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str,
+                              json=payload, timeout=120, extra_headers=extra_hdrs)
+    data = _parse_json(resp, "接口4前置（获取导出列配置）")
+    if data.get('code') != 0:
+        raise RuntimeError(f"接口4前置失败: {data.get('message') or data.get('msg')}")
+    resp_data = data.get('data', {}) or {}
+    if not isinstance(resp_data, dict) or not resp_data:
+        raise RuntimeError("接口4前置未返回导出列配置")
+    return resp_data
 
 
 def export_weak_pwd_internet(cookie_str: str, company_id: str, latest_time_range: list) -> str:
     """接口4：外网弱口令导出（MSSW internet_vul_manage，对应文档 §2.13），返回 file_name"""
     url = f"{MSSW_BASE_URL}/order/v1/internet_vul_manage/asset_weak_export"
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
+    custom_headers = fetch_weak_pwd_custom_headers(cookie_str, company_id)
     payload = {
         "data_type": ["weak_pwd"],
         "fixed_status": MSSW_FIXED_STATUSES,
         "latest_time_range": latest_time_range,
-        "custom_headers": INTERNET_WEAK_HEADER_FIELDS,
+        "header_id": INTERNET_WEAK_HEADER_ID,
+        "custom_headers": custom_headers,
         "file_name": f"weak_pwd_export_{ts}.xlsx",
     }
     extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
