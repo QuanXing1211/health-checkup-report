@@ -179,7 +179,7 @@ def search_customer_mssw(cookie_str: str, keyword: str) -> list:
         "company_id": "", "offset": 0, "limit": 100,
     }
     resp = request_with_retry("POST", url, headers=_build_headers(cookie_str),
-                              json=payload, timeout=120)
+                              json=payload, timeout=660)
     data = _parse_json(resp, "接口1（MSSW客户搜索）")
     if data.get('code') != 0:
         raise RuntimeError(f"接口1失败: {data.get('msg')}")
@@ -209,7 +209,7 @@ def trigger_expose_export(cookie_str: str, company_id: str) -> str:
         "data_type": 50,
     }
     resp = request_with_retry("POST", url, headers=_build_headers(cookie_str),
-                              json=payload, timeout=120)
+                              json=payload, timeout=660)
     data = _parse_json(resp, "接口2-1（MSSW暴露面导出）")
     if data.get('code') != 0:
         raise RuntimeError(f"接口2-1失败: {data.get('msg')}")
@@ -227,7 +227,7 @@ def poll_expose_status(cookie_str: str, task_id: str) -> str:
     while True:
         attempt += 1
         resp = request_with_retry("POST", url, headers=_build_headers(cookie_str),
-                                  json=payload, timeout=120)
+                                  json=payload, timeout=660)
         data = _parse_json(resp, "接口2-2（MSSW轮询）")
         if data.get('code') != 0:
             raise RuntimeError(f"接口2-2失败: {data.get('msg')}")

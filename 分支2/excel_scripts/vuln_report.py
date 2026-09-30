@@ -283,7 +283,7 @@ def search_customer_mssw(cookie_str: str, keyword: str) -> list:
         "order": "desc", "keyword": keyword, "customer_category": 1,
         "company_id": "", "offset": 0, "limit": 100,
     }
-    resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str, json=payload, timeout=120)
+    resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str, json=payload, timeout=660)
     data = _parse_json(resp, "MSSW客户搜索")
     if data.get('code') != 0:
         raise RuntimeError(f"MSSW客户搜索失败: {data.get('msg')}")
@@ -310,7 +310,7 @@ def export_vuln_combined(cookie_str: str, company_id: str, time_range: list) -> 
             "list_filters": {"latest_time_range": time_range},
         },
     }
-    resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str, json=payload, timeout=120)
+    resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str, json=payload, timeout=660)
     data = _parse_json(resp, "MSSW漏洞导出")
     if data.get('code') != 0:
         raise RuntimeError(f"MSSW漏洞导出失败: {data.get('msg')}")
@@ -326,7 +326,7 @@ def poll_vuln_status(cookie_str: str, task_id: str) -> str:
     attempt = 0
     while True:
         attempt += 1
-        resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str, json=payload, timeout=120)
+        resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str, json=payload, timeout=660)
         data = _parse_json(resp, "MSSW漏洞轮询")
         if data.get('code') != 0:
             raise RuntimeError(f"MSSW漏洞轮询失败: {data.get('msg')}")

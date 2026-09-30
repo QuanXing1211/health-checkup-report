@@ -233,7 +233,7 @@ def search_customer(cookie_str: str, keyword: str) -> list:
         "order": "desc", "keyword": keyword, "customer_category": 1,
         "company_id": "", "offset": 0, "limit": 100,
     }
-    resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str, json=payload, timeout=120)
+    resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str, json=payload, timeout=660)
     data = _parse_json(resp, "接口1（搜索客户）")
     if data.get('code') != 0:
         raise RuntimeError(f"接口1（搜索客户）失败: {data.get('msg')}")
@@ -330,7 +330,7 @@ def download_weak_pwd_intranet(cookie_str: str, company_id: str, file_name: str,
     """接口3：下载内网弱口令导出文件，返回本地文件路径"""
     url = f"{MSSW_BASE_URL}/order/v1/vul_manage/download_file?file={file_name}"
     extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
-    resp = request_with_retry("GET", url, MSSW_BASE_URL, cookie_str, stream=True, timeout=120, extra_headers=extra_hdrs)
+    resp = request_with_retry("GET", url, MSSW_BASE_URL, cookie_str, stream=True, timeout=660, extra_headers=extra_hdrs)
     if resp is None:
         raise RuntimeError("内网弱口令文件下载失败")
 
@@ -373,7 +373,7 @@ def fetch_weak_pwd_custom_headers(cookie_str: str, company_id: str) -> dict:
     payload = {"header_id": INTERNET_WEAK_HEADER_ID}
     extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
     resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str,
-                              json=payload, timeout=120, extra_headers=extra_hdrs)
+                              json=payload, timeout=660, extra_headers=extra_hdrs)
     data = _parse_json(resp, "接口4前置（获取导出列配置）")
     if data.get('code') != 0:
         raise RuntimeError(f"接口4前置失败: {data.get('message') or data.get('msg')}")
@@ -419,7 +419,7 @@ def download_weak_pwd_internet(cookie_str: str, company_id: str, file_name: str,
     """接口5：下载外网弱口令导出文件（MSSW internet_vul_manage，对应文档 §2.14），返回本地文件路径"""
     url = f"{MSSW_BASE_URL}/order/v1/internet_vul_manage/download_file?file_name={file_name}"
     extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
-    resp = request_with_retry("GET", url, MSSW_BASE_URL, cookie_str, stream=True, timeout=120, extra_headers=extra_hdrs)
+    resp = request_with_retry("GET", url, MSSW_BASE_URL, cookie_str, stream=True, timeout=660, extra_headers=extra_hdrs)
     if resp is None:
         raise RuntimeError("外网弱口令文件下载失败")
 
