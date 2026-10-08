@@ -32,8 +32,9 @@ node "$HOME\.openclaw\workspace\skills\health-checkup-report\health_report.js" `
 
 未传时间时，脚本会通过 MSSW 项目列表接口自动推导，并在 30 天上限内自动截取：
 
-- 开始时间 = 所有 `service_start` 的最小值
-- 结束时间 = `min(报告生成时刻, 所有非空 expect_end_time 的最小值)`；若 `expect_end_time` 全为空，直接取报告生成时刻
+- 已终止的项目/服务不参与推导（项目 `cur_node = terminated` 或服务 `service_status = finish` 跳过）；若全部已终止，报错提示该客户无在服务中的 MSSW 项目
+- 开始时间 = 在服服务里 `service_start` 的最小值
+- 结束时间 = `min(报告生成时刻, 在服服务里非空 expect_end_time 的最大值)`；若 `expect_end_time` 全为空，直接取报告生成时刻
 - 若上述范围超过 30 天，自动把开始时间改为 `结束时间 - 29 天`
 
 ## 输出
