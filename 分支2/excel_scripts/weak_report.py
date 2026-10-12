@@ -247,6 +247,23 @@ def search_customer(cookie_str: str, keyword: str) -> list:
 INTRANET_WEAK_HEADER_ID = "week_pass_1"
 
 
+def _force_select_all(custom_headers: dict) -> dict:
+    """将 custom_headers 三段结构中的每个字段置为 selected=True（全列导出）。
+
+    结构: {base_info|asset_info|disposal_info: [{key,label,selected,disabled}, ...]}
+    仅改 selected；disabled 为前端专用字段，后端直连不改动。
+    """
+    if not isinstance(custom_headers, dict):
+        return custom_headers
+    for seg in custom_headers.values():
+        if not isinstance(seg, list):
+            continue
+        for item in seg:
+            if isinstance(item, dict):
+                item['selected'] = True
+    return custom_headers
+
+
 def fetch_weak_pwd_custom_headers_intranet(cookie_str: str, company_id: str) -> dict:
     """接口2前置：获取内网弱口令导出列勾选配置（MSSW vul_manage）。
 
@@ -265,7 +282,7 @@ def fetch_weak_pwd_custom_headers_intranet(cookie_str: str, company_id: str) -> 
     if not isinstance(resp_data, dict) or not resp_data:
         raise RuntimeError("接口2前置未返回导出列配置")
     log(f"接口2前置返回的 custom_headers: {json.dumps(resp_data, ensure_ascii=False, indent=2)}")
-    return resp_data
+    return _force_select_all(resp_data)
 
 
 def export_weak_pwd_intranet(cookie_str: str, company_id: str, latest_time_range: list) -> str:
@@ -371,7 +388,8 @@ def fetch_weak_pwd_custom_headers(cookie_str: str, company_id: str) -> dict:
     resp_data = data.get('data', {}) or {}
     if not isinstance(resp_data, dict) or not resp_data:
         raise RuntimeError("接口4前置未返回导出列配置")
-    return resp_data
+    log(f"接口4前置返回的 custom_headers: {json.dumps(resp_data, ensure_ascii=False, indent=2)}")
+    return _force_select_all(resp_data)
 
 
 def export_weak_pwd_internet(cookie_str: str, company_id: str, latest_time_range: list) -> str:
