@@ -18,6 +18,7 @@
 
 import os
 import sys
+import json
 import time
 import argparse
 import requests
@@ -42,7 +43,7 @@ NAME_INTRANET = "弱口令清单（内网）.xlsx"       # 交付用（内网，
 NAME_INTERNET = "弱口令清单（互联网）.xlsx"     # 交付用（外网，平台原样）
 
 # --- MSSW 平台（内外网均走此平台） ---
-MSSW_BASE_URL      = "https://mssw.sangfor.com.cn"
+MSSW_BASE_URL      = "https://pre.soar.sangfor.com"
 MSSW_COOKIES_FILE   = r"C:\Users\User\Downloads\mssw_cookies.txt"
 
 # 过滤处置状态：[待处置=0, 处置中=1]（内外网一致）
@@ -242,9 +243,35 @@ def search_customer(cookie_str: str, keyword: str) -> list:
 
 # ---------- 接口2：内网弱口令导出 ----------
 
+# 内网弱口令导出列预设 ID
+INTRANET_WEAK_HEADER_ID = "week_pass_1"
+
+
+def fetch_weak_pwd_custom_headers_intranet(cookie_str: str, company_id: str) -> dict:
+    """接口2前置：获取内网弱口令导出列勾选配置（MSSW vul_manage）。
+
+    返回 base_info / asset_info / disposal_info 三段结构，
+    原样作为接口2 导出接口的 custom_headers 入参。
+    """
+    url = f"{MSSW_BASE_URL}/order/v1/vul_manage/custom_headers"
+    payload = {"header_id": INTRANET_WEAK_HEADER_ID}
+    extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
+    resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str,
+                              json=payload, timeout=660, extra_headers=extra_hdrs)
+    data = _parse_json(resp, "接口2前置（获取内网导出列配置）")
+    if data.get('code') != 0:
+        raise RuntimeError(f"接口2前置失败: {data.get('message') or data.get('msg')}")
+    resp_data = data.get('data', {}) or {}
+    if not isinstance(resp_data, dict) or not resp_data:
+        raise RuntimeError("接口2前置未返回导出列配置")
+    log(f"接口2前置返回的 custom_headers: {json.dumps(resp_data, ensure_ascii=False, indent=2)}")
+    return resp_data
+
+
 def export_weak_pwd_intranet(cookie_str: str, company_id: str, latest_time_range: list) -> str:
     """接口2：内网弱口令导出（MSSW vul_manage），返回 file_name"""
     url = f"{MSSW_BASE_URL}/order/v1/vul_manage/vul_risk_export"
+    custom_headers = fetch_weak_pwd_custom_headers_intranet(cookie_str, company_id)
     payload = {
         "asset_ip": {"op": "=", "val": ""},
         "asset_manager": {"op": "=", "val": ""},
@@ -271,44 +298,8 @@ def export_weak_pwd_intranet(cookie_str: str, company_id: str, latest_time_range
         "whitelisted_status": [],
         "latest_time_range": latest_time_range,
         "is_show": 1, # 明文导出
-        "custom_headers": {
-            "asset_info": [
-                {"disabled": True,  "key": "asset",                "label": "风险资产",      "selected": True},
-                {"disabled": False, "key": "asset_type",           "label": "资产类型",      "selected": True},
-                {"disabled": False, "key": "business_name",        "label": "所属资产组",    "selected": True},
-                {"disabled": False, "key": "group_name",           "label": "所属业务",      "selected": True},
-                {"disabled": False, "key": "manager",              "label": "资产责任人",    "selected": True},
-                {"disabled": False, "key": "magnitude",            "label": "资产重要性",    "selected": True},
-                {"disabled": True,  "key": "port",                 "label": "端口",          "selected": True},
-                {"disabled": False, "key": "exposure",             "label": "互联网暴露",    "selected": True},
-                {"disabled": False, "key": "evidence_information", "label": "举证信息",      "selected": True},
-                {"disabled": False, "key": "asset_status",         "label": "资产管理状态",  "selected": True},
-                {"disabled": False, "key": "platform_name",        "label": "来源平台",      "selected": True},
-                {"disabled": False, "key": "managed_level",        "label": "托管状态",      "selected": True},
-            ],
-            "base_info": [
-                {"disabled": True,  "key": "name",              "label": "弱密码名称",    "selected": True},
-                {"disabled": True,  "key": "fix_priority_level","label": "修复优先级",    "selected": True},
-                {"disabled": True,  "key": "risk_Level",        "label": "风险等级",      "selected": True},
-                {"disabled": True,  "key": "user",              "label": "账号",          "selected": True},
-                {"disabled": True,  "key": "pwd",               "label": "密码",          "selected": True},
-                {"disabled": True,  "key": "url",               "label": "url",           "selected": True},
-                {"disabled": False, "key": "refer",             "label": "refer",         "selected": True},
-                {"disabled": False, "key": "process_path",      "label": "进程路径",      "selected": True},
-                {"disabled": False, "key": "src_type",          "label": "数据源",        "selected": True},
-                {"disabled": False, "key": "last_time",         "label": "最近发现时间",  "selected": True},
-                {"disabled": False, "key": "found_time",        "label": "首次发现时间",  "selected": True},
-                {"disabled": False, "key": "is_gpt",            "label": "GPT检测",       "selected": True},
-            ],
-            "disposal_info": [
-                {"disabled": False, "key": "whitelisted_status","label": "加白状态",      "selected": True},
-                {"disabled": False, "key": "fixed_status",      "label": "处置状态",      "selected": True},
-                {"disabled": False, "key": "fixed_tag",         "label": "处置标签",      "selected": True},
-                {"disabled": False, "key": "order_progress",    "label": "最新工单进展",  "selected": True},
-                {"disabled": False, "key": "retest_status",     "label": "验证状态",      "selected": True},
-            ],
-        },
-        "header_id": "week_pass_1",
+        "custom_headers": custom_headers,
+        "header_id": INTRANET_WEAK_HEADER_ID,
         "is_all": False,
         "multiple_choice": [],
         "exclude_multiple_choice": [],
@@ -385,7 +376,7 @@ def fetch_weak_pwd_custom_headers(cookie_str: str, company_id: str) -> dict:
 
 def export_weak_pwd_internet(cookie_str: str, company_id: str, latest_time_range: list) -> str:
     """接口4：外网弱口令导出（MSSW internet_vul_manage，对应文档 §2.13），返回 file_name"""
-    url = f"{MSSW_BASE_URL}/order/v1/internet_vul_manage/asset_weak_export"
+    url = f"{MSSW_BASE_URL}/order/v1/internet_vul_manage/vul_risk_export"
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
     custom_headers = fetch_weak_pwd_custom_headers(cookie_str, company_id)
     payload = {
@@ -394,7 +385,7 @@ def export_weak_pwd_internet(cookie_str: str, company_id: str, latest_time_range
         "latest_time_range": latest_time_range,
         "header_id": INTERNET_WEAK_HEADER_ID,
         "custom_headers": custom_headers,
-        "file_name": f"weak_pwd_export_{ts}.xlsx",
+        "is_show":1,
     }
     extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
     resp = request_with_retry("POST", url, MSSW_BASE_URL, cookie_str,
@@ -417,7 +408,7 @@ def export_weak_pwd_internet(cookie_str: str, company_id: str, latest_time_range
 
 def download_weak_pwd_internet(cookie_str: str, company_id: str, file_name: str, save_dir: str) -> str:
     """接口5：下载外网弱口令导出文件（MSSW internet_vul_manage，对应文档 §2.14），返回本地文件路径"""
-    url = f"{MSSW_BASE_URL}/order/v1/internet_vul_manage/download_file?file_name={file_name}"
+    url = f"{MSSW_BASE_URL}/order/v1/internet_vul_manage/download_file?file={file_name}"
     extra_hdrs = {"X-MSSW-Company-Id": company_id} if company_id else None
     resp = request_with_retry("GET", url, MSSW_BASE_URL, cookie_str, stream=True, timeout=660, extra_headers=extra_hdrs)
     if resp is None:

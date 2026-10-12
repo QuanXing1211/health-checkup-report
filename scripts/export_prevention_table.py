@@ -62,16 +62,7 @@ def configure_module(module, table_type, args):
             args.mssw_base_url = 'https://' + args.mssw_base_url
         module.MSSW_BASE_URL = args.mssw_base_url
 
-    if args.soar_base_url and table_type == 'exposure':
-        if not args.soar_base_url.startswith('http'):
-            args.soar_base_url = 'https://' + args.soar_base_url
-        module.SOAR_BASE_URL = args.soar_base_url
-
-    if table_type == 'exposure':
-        module.COOKIES_FILE = args.easm_cookie_path
-        return
-
-    # vuln / weakpwd：统一走 MSSW Cookie（vuln 已切到 MSSW，不再需要 EASM Cookie）
+    # weakpwd / vuln / exposure 三表均已切换到 MSSW，统一走 MSSW Cookie
     module.MSSW_COOKIES_FILE = args.mssw_cookie_path
 
 
@@ -92,11 +83,8 @@ def main():
     os.makedirs(args.temp_dir, exist_ok=True)
     os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
 
-    if args.table_type == 'exposure':
-        require_file(args.easm_cookie_path, 'EASM Cookie 文件')
-    else:
-        # vuln / weakpwd 均使用 MSSW Cookie
-        require_file(args.mssw_cookie_path, 'MSSW Cookie 文件')
+    # weakpwd / vuln / exposure 三表均使用 MSSW Cookie
+    require_file(args.mssw_cookie_path, 'MSSW Cookie 文件')
 
     module = load_module(args.table_type)
     configure_module(module, args.table_type, args)

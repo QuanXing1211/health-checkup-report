@@ -34,11 +34,8 @@ async function resolveTablePath(tableType, explicitPath, options, outputDir, tem
     };
   }
 
-  const soarCookiePath = options.soarCookiePath || '';
-  if (!soarCookiePath) {
-    throw new Error(`${displayName(tableType)} 导出失败: 缺少 SOAR Cookie，请传 --cookie-path`);
-  }
-  if (tableType !== 'exposure' && !options.msswCookiePath) {
+  // 三张表已全部切换到 MSSW 平台，统一使用 MSSW Cookie，不再依赖 SOAR/EASM Cookie
+  if (!options.msswCookiePath) {
     throw new Error(`${displayName(tableType)} 导出失败: 缺少 MSSW Cookie，请传 --mssw-cookie-path`);
   }
 
@@ -52,19 +49,11 @@ async function resolveTablePath(tableType, explicitPath, options, outputDir, tem
     '--end', options.end || '',
     '--output-file', outputFile,
     '--temp-dir', tempDir,
-    '--easm-cookie-path', soarCookiePath
+    '--mssw-cookie-path', options.msswCookiePath
   ];
-
-  if (tableType !== 'exposure') {
-    args.push('--mssw-cookie-path', options.msswCookiePath);
-  }
 
   if (options.msswBaseUrl) {
     args.push('--mssw-base-url', options.msswBaseUrl);
-  }
-
-  if (options.soarBaseUrl) {
-    args.push('--soar-base-url', options.soarBaseUrl);
   }
 
   const stdout = await execPython(args, `${displayName(tableType)} 导出失败`, options.logger);
