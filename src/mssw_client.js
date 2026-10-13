@@ -2696,33 +2696,73 @@ function formatDateFromTimestampMs(timestampMs) {
   return `${year}-${month}-${day}`;
 }
 
-function resolveDefaultProjectTimeRangeFromResponse(response, reportGeneratedAt) {
+// 已终止的项目/服务不参与默认时间范围推导：一个几年前就已终止的项目
+// 会把 start / end 一起拖回它当年的窗口，把报告期压成空区间。
+// 这里用黑名单而不是「只留 running」的白名单，避免接口新增在服状态时报告直接生成失败；
+// 实际观测到的值会打进日志，便于后续扩充这张表。
+const TERMINAL_PROJECT_NODES = ['terminated'];
+const TERMINAL_SERVICE_STATUSES = ['finish'];
+
+function normalizeStatusKey(value) {
+  return String(value === undefined || value === null ? '' : value).trim().toLowerCase();
+}
+
+function isServiceEntryActive(project, service) {
+  if (TERMINAL_PROJECT_NODES.includes(normalizeStatusKey(project && project.cur_node))) {
+    return false;
+  }
+  if (TERMINAL_SERVICE_STATUSES.includes(normalizeStatusKey(service && service.service_status))) {
+    return false;
+  }
+  return true;
+}
+
+function resolveDefaultProjectTimeRangeFromResponse(response, reportGeneratedAt, logger) {
+  const log = typeof logger === 'function' ? logger : () => {};
   const generatedAt = reportGeneratedAt instanceof Date ? reportGeneratedAt : new Date(reportGeneratedAt || Date.now());
   if (Number.isNaN(generatedAt.getTime())) {
     throw new Error('报告生成时间无效');
   }
 
   const projects = Array.isArray(response && response.data) ? response.data : [];
-  const services = projects.flatMap((project) => Array.isArray(project && project.service_info) ? project.service_info : []);
-  if (!services.length) {
+  const allEntries = projects.flatMap((project) => {
+    const serviceInfos = Array.isArray(project && project.service_info) ? project.service_info : [];
+    return serviceInfos.map((service) => ({ project, service }));
+  });
+  if (!allEntries.length) {
     throw new Error('MSSW 项目列表中没有 service_info，无法推导默认时间范围');
   }
 
-  const serviceStartList = services
-    .map((service) => Number(service && service.billing_start_time))
-    .filter((value) => Number.isFinite(value) && value > 0);
-  if (!serviceStartList.length) {
-    throw new Error('MSSW 项目列表缺少有效的 billing_start_time，无法推导默认开始时间');
+  const observedCurNodes = [...new Set(allEntries.map(({ project }) => normalizeStatusKey(project && project.cur_node)))].sort();
+  const observedServiceStatuses = [...new Set(allEntries.map(({ service }) => normalizeStatusKey(service && service.service_status)))].sort();
+  log(`[默认时间范围] 观测到的 cur_node=[${observedCurNodes.join(', ')}], service_status=[${observedServiceStatuses.join(', ')}]`);
+
+  const activeEntries = allEntries.filter(({ project, service }) => isServiceEntryActive(project, service));
+  if (!activeEntries.length) {
+    throw new Error('该客户名下无在服务中的 MSSW 项目（所有项目均已终止），无法推导默认时间范围');
+  }
+  if (activeEntries.length < allEntries.length) {
+    log(`[默认时间范围] 已跳过 ${allEntries.length - activeEntries.length} 个已终止服务，参与推导 ${activeEntries.length} 个在服服务`);
   }
 
-  const nonNullServiceEnds = services
-    .map((service) => Number(service && service.billing_end_time))
+  const serviceStartList = activeEntries
+    .map(({ service }) => Number(service && service.service_start))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (!serviceStartList.length) {
+    throw new Error('MSSW 项目列表缺少有效的 service_start，无法推导默认开始时间');
+  }
+
+  const nonNullServiceEnds = activeEntries
+    .map(({ service }) => Number(service && service.expect_end_time))
     .filter((value) => Number.isFinite(value) && value > 0);
 
+  // 并集口径：start 取最早上线时间，end 取最晚服务到期时间，再由「报告生成时刻」封顶。
+  // end 不能取 min —— 只要有一个服务已到期（哪怕客户名下还有别的在服服务），
+  // 窗口就会被拽回过去；相反取 max 时，脏数据（过大的到期时间）会被「今天」削掉。
   const minServiceStart = Math.min(...serviceStartList);
-  const minServiceEnd = nonNullServiceEnds.length ? Math.min(...nonNullServiceEnds) : null;
+  const maxServiceEnd = nonNullServiceEnds.length ? Math.max(...nonNullServiceEnds) : null;
   const endOfTodayMs = generatedAt.getTime();
-  const effectiveEndMs = minServiceEnd === null ? endOfTodayMs : Math.min(endOfTodayMs, minServiceEnd);
+  const effectiveEndMs = maxServiceEnd === null ? endOfTodayMs : Math.min(endOfTodayMs, maxServiceEnd);
 
   if (minServiceStart > effectiveEndMs) {
     throw new Error('MSSW 服务时间异常: 推导出的开始时间晚于结束时间');
@@ -2733,16 +2773,20 @@ function resolveDefaultProjectTimeRangeFromResponse(response, reportGeneratedAt)
     end: formatDateFromTimestampMs(effectiveEndMs),
     meta: {
       serviceStartMs: minServiceStart,
-      serviceEndMs: minServiceEnd,
+      serviceEndMaxMs: maxServiceEnd,
       reportGeneratedAtMs: generatedAt.getTime(),
-      effectiveEndMs
+      effectiveEndMs,
+      activeServiceCount: activeEntries.length,
+      skippedServiceCount: allEntries.length - activeEntries.length,
+      observedCurNodes,
+      observedServiceStatuses
     }
   };
 }
 
-async function fetchDefaultProjectTimeRange(cookieInfo, msswBaseUrl, companyId, reportGeneratedAt) {
+async function fetchDefaultProjectTimeRange(cookieInfo, msswBaseUrl, companyId, reportGeneratedAt, logger) {
   const response = await fetchMsswProjectListByCompanyId(cookieInfo, msswBaseUrl, companyId);
-  return resolveDefaultProjectTimeRangeFromResponse(response, reportGeneratedAt);
+  return resolveDefaultProjectTimeRangeFromResponse(response, reportGeneratedAt, logger);
 }
 
 async function findMsswCustomerIdByName(cookieInfo, msswBaseUrl, customerName) {

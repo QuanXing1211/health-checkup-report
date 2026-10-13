@@ -1259,9 +1259,10 @@ async function resolveEffectiveTimeRange({ options, customerId, msswCookie, repo
         resolvedCookie,
         options['mssw-base-url'],
         customerId,
-        reportGeneratedAt
+        reportGeneratedAt,
+        logger
       );
-      logger(`服务时间范围: ${serviceTimeRange.start} ~ ${serviceTimeRange.end}`);
+      logger(`服务时间范围: ${serviceTimeRange.start} ~ ${serviceTimeRange.end}（在服服务 ${serviceTimeRange.meta.activeServiceCount} 个，已跳过 ${serviceTimeRange.meta.skippedServiceCount} 个已终止服务）`);
     } catch (error) {
       throw new Error(`该客户无有效 MSSW 服务授权，无法生成报告（${error.message}）`);
     }

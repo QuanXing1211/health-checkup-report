@@ -93,6 +93,57 @@
     { root: '#slot-intranet-weak', charts: ['intranetWeakCards', 'intranetWeakBusiness', 'intranetWeakAsset'] },
     { root: '#slot-component-check-rings', charts: ['policyCheckCards'] }
   ];
+  // 运营总览看板（mdr-ops-v2）的设备格子。生成时值为 0 的格子会被 src/template_renderer.js 的
+  // patchOps3DeviceCells 直接从 HTML 里删掉（不是 display:none），所以这一行剩几个格子、谁是第几格
+  // 全随数据变。原先按 :nth-child(1..5) 定位，中间少一个人后面就整体串位——表现是"改 AF 有用、
+  // 改 STA 没反应、预览里 STA 恒为 0"，只能认生成器写在格子上的 data-hide-ops3（值就是数据路径）。
+  // 顺序照模板 security-report-preview.html 的 ops3-device-row，补格子时按它排。
+  const OPS3_DEVICE_CELLS = [
+    { path: 'riskDetails.af', label: 'AF' },
+    { path: 'riskDetails.aes', label: 'EDR' },
+    { path: 'riskDetails.sip', label: 'SIP' },
+    { path: 'riskDetails.sta', label: 'STA' },
+    { path: 'riskDetails.other_sf', label: '其它' }
+  ];
+  const OPS3_THIRD_CELL = { path: 'riskDetails.third', label: '合计' };
+  function ops3CellSelector(path) { return `.ops3-device-cell[data-hide-ops3="${path}"] .nv`; }
+  // 「源数据就是 0」的设备在 HTML 里整格都不存在，于是从 0 改成非 0 原本是静默失效的。这里照模板的
+  // 写法把格子补回来：第三方那个连同它那行"第三方设备"标签一起补，位置与生成器一致（标签在设备行
+  // 之前、格子在设备行之后）。补出来的元素都带 data-sr-added 标记，每次应用编辑前先清掉，
+  // 这样改回 0 之后不会留下一格凭空多出来的"0"，预览与原始截图仍逐像素一致。
+  function applyOps3ExtraCells(doc, rows) {
+    doc.querySelectorAll('[data-sr-added]').forEach((el) => el.remove());
+    const layers = doc.querySelector('.ops3-layers');
+    if (!layers) return;
+    const deviceRow = layers.querySelector('.ops3-device-row');
+    // 只有"这一版该有、HTML 里却没有"的格子才补，值是 0 的不补（生成器也不会带它）
+    const wanted = (path) => rows.some((row) => row.path === path && Number(row.value) > 0);
+    if (deviceRow) OPS3_DEVICE_CELLS.forEach((cell, index) => {
+      if (!wanted(cell.path) || deviceRow.querySelector(`[data-hide-ops3="${cell.path}"]`)) return;
+      const node = doc.createElement('div');
+      node.className = 'ops3-device-cell';
+      node.setAttribute('data-hide-ops3', cell.path);
+      node.setAttribute('data-sr-added', '1');
+      node.innerHTML = `<span class="nm">${cell.label}</span><span class="nv">0</span>`;
+      // 插到第一个"本该排在我后面"的格子前；后面几个都不在就落在行尾
+      const follower = OPS3_DEVICE_CELLS.slice(index + 1)
+        .map((later) => deviceRow.querySelector(`[data-hide-ops3="${later.path}"]`))
+        .find(Boolean);
+      deviceRow.insertBefore(node, follower || null);
+    });
+    if (!deviceRow || !wanted(OPS3_THIRD_CELL.path) || layers.querySelector('.ops3-device-third')) return;
+    const label = doc.createElement('p');
+    label.className = 'ops3-layer ops3-ingest-label ops3-ingest-label--3rd';
+    label.setAttribute('data-sr-added', '1');
+    label.textContent = '第三方设备';
+    deviceRow.before(label);
+    const node = doc.createElement('div');
+    node.className = 'ops3-layer ops3-device-third';
+    node.setAttribute('data-hide-ops3', OPS3_THIRD_CELL.path);
+    node.setAttribute('data-sr-added', '1');
+    node.innerHTML = `<span class="nm">${OPS3_THIRD_CELL.label}</span><span class="nv">0</span>`;
+    deviceRow.after(node);
+  }
   // 报告 HTML 里的攻击链是服务端生成时烘焙好的静态标记（没有 data-field，也没有浏览器端渲染器），
   // 所以这里把 src/template_renderer.js 的 renderCaseStudySection 移植成浏览器版：
   // 编辑后的数据在 iframe 内重建 DOM，再整块截图盖到 Word 原图上。
@@ -356,11 +407,11 @@
         ['事件闭环率', 'riskOverview.closeRate', '.ro5-expert-grid > .ro5-closure:nth-of-type(3) .val']
       ].map(([name, path, selector]) => ({ name, value: Number(pathValue(data, path)) || 0, path, selector })) },
       { id: 'operationsFrame', title: '运营总览（嵌入式看板）', kind: 'iframe', rows: [
-        ['AF 设备数', 'riskDetails.af', '.ops3-device-cell:nth-child(1) .nv'],
-        ['EDR 设备数', 'riskDetails.aes', '.ops3-device-cell:nth-child(2) .nv'],
-        ['SIP 设备数', 'riskDetails.sip', '.ops3-device-cell:nth-child(3) .nv'],
-        ['STA 设备数', 'riskDetails.sta', '.ops3-device-cell:nth-child(4) .nv'],
-        ['其他设备数', 'riskDetails.other_sf', '.ops3-device-cell:nth-child(5) .nv'],
+        ['AF 设备数', 'riskDetails.af', ops3CellSelector('riskDetails.af')],
+        ['EDR 设备数', 'riskDetails.aes', ops3CellSelector('riskDetails.aes')],
+        ['SIP 设备数', 'riskDetails.sip', ops3CellSelector('riskDetails.sip')],
+        ['STA 设备数', 'riskDetails.sta', ops3CellSelector('riskDetails.sta')],
+        ['其他设备数', 'riskDetails.other_sf', ops3CellSelector('riskDetails.other_sf')],
         ['第三方设备数', 'riskDetails.third', '.ops3-device-third .nv'],
         ['安全日志数', 'riskDetails.securityLogTotal', '[data-log-count]'],
         ['有效告警数', 'riskDetails.alertTotal', '.ops3-ai .ops3-stat-row .val'],
@@ -883,12 +934,17 @@
   async function applyIframeEdits(doc, component) {
     // 一个组件可能同时挂着数字看板和评级两张"图"，所以按 kind 取，不能按位置取。
     const chart = state.charts.find((item) => item.kind === 'iframe' && component.charts.includes(item.id));
-    if (chart) iframeRows(chart).forEach((row) => {
-      const node = doc.querySelector(row.selector);
-      if (!node) return;
-      setIframeValue(node, row);
-      if (node.hasAttribute('data-log-count')) node.setAttribute('data-log-count', String(row.value));
-    });
+    if (chart) {
+      const rows = iframeRows(chart);
+      // 补格子必须在按选择器取节点之前：这一版才出现的设备，格子得先存在才写得进去。
+      if (component.iframe === 'mdr-ops-v2-iframe') applyOps3ExtraCells(doc, rows);
+      rows.forEach((row) => {
+        const node = doc.querySelector(row.selector);
+        if (!node) return;
+        setIframeValue(node, row);
+        if (node.hasAttribute('data-log-count')) node.setAttribute('data-log-count', String(row.value));
+      });
+    }
     const gradeChart = state.charts.find((item) => item.kind === 'grade' && component.charts.includes(item.id));
     if (gradeChart) await applyGradeEdit(doc, gradeChart);
   }
