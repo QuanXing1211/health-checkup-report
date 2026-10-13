@@ -309,7 +309,7 @@ def build_detail_lines(asset, incident_counts, vuln_counts, weakpwd_counts, expo
         vuln_tail = f"（其中{high_vulns}个高危及以上）" if high_vulns > 0 else ""
         lines.append(f"该资产共发现<strong>{total_vulns}</strong>个漏洞{vuln_tail}")
     if weak_passwords > 0:
-        lines.append(f"该资产共发现<strong>{weak_passwords}</strong>个弱口令")
+        lines.append(f"该资产共发现<strong>{weak_passwords}</strong>个弱密码")
     if total_exposures > 0 and (non_web_exposures > 0 or web_exposures > 0):
         non_web_text = f"<strong>{non_web_exposures}</strong>个非Web服务"
         if non_web_exposures > 0 and non_web_example_text:

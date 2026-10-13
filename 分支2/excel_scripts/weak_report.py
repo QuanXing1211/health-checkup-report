@@ -1,15 +1,15 @@
 ﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-弱口令清单生成工具
-内外网弱口令数据均从 MSSW 平台获取：
+弱密码清单生成工具
+内外网弱密码数据均从 MSSW 平台获取：
   - 内网：vul_manage 导出接口（接口2/3）
   - 外网：internet_vul_manage 导出接口（接口4/5，对应接口文档 §2.13/§2.14）
 
 产出（3 条）：
   1) 临时表 OUTPUT_FILE（内网+外网合并，含「数据来源」列）—— 仅供报告计算，不进交付
-  2) 交付 TEMP_DIR/弱口令清单（内网）.xlsx     —— 内网平台原样
-  3) 交付 TEMP_DIR/弱口令清单（互联网）.xlsx   —— 外网平台原样
+  2) 交付 TEMP_DIR/弱密码清单（内网）.xlsx     —— 内网平台原样
+  3) 交付 TEMP_DIR/弱密码清单（互联网）.xlsx   —— 外网平台原样
 
 用法: python weak_report.py <客户ID或客户名称关键词>
 示例: python weak_report.py 深圳市口袋网络
@@ -39,8 +39,8 @@ MAX_RETRIES     = 3     # 最大重试次数
 RETRY_DELAY     = 3     # 重试等待时间（秒）
 
 # --- 交付文件名（平铺在 TEMP_DIR） ---
-NAME_INTRANET = "弱口令清单（内网）.xlsx"       # 交付用（内网，平台原样）
-NAME_INTERNET = "弱口令清单（互联网）.xlsx"     # 交付用（外网，平台原样）
+NAME_INTRANET = "弱密码清单（内网）.xlsx"       # 交付用（内网，平台原样）
+NAME_INTERNET = "弱密码清单（互联网）.xlsx"     # 交付用（外网，平台原样）
 
 # --- MSSW 平台（内外网均走此平台） ---
 MSSW_BASE_URL      = "https://pre.soar.sangfor.com"
@@ -762,7 +762,7 @@ if __name__ == '__main__':
 #
 #  输出:
 #     临时表（仅计算）: 弱口令清单.xlsx，sheet名"弱口令"（含「数据来源」列）
-#     交付物（平铺）:   弱口令清单（内网）.xlsx / 弱口令清单（互联网）.xlsx
+#     交付物（平铺）:   弱密码清单（内网）.xlsx / 弱密码清单（互联网）.xlsx
 #
 #  接口:
 #     接口1 search_customer            搜索客户（MSSW）

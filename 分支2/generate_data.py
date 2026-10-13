@@ -413,7 +413,7 @@ def calc_key_risks(ds):
         return (group, -ds["weak_asset_count"].get(a, 0))
 
     top3_pri = sorted(all_weak_assets, key=pri_sort_key)[:3]
-    priority_assets = ("建议优先修改资产：" + "、".join(top3_pri) + "的弱口令，并添加多因素认证。") if top3_pri else ""
+    priority_assets = ("建议优先修改资产：" + "、".join(top3_pri) + "的弱密码，并添加多因素认证。") if top3_pri else ""
 
     # priority_assets_reason: 说明优先原因
     top3_types = set()
@@ -584,7 +584,7 @@ def calc_internet_exposure(ds):
     stack_rows = sorted(
         [{"host": h, "web": h_web_cnt[h], "nonWeb": h_nonweb_cnt[h],
           "riskTotal": h_web_cnt[h] + h_nonweb_cnt[h]} for h in all_h],
-        key=lambda x: -x["riskTotal"]
+        key=lambda x: (-x["riskTotal"], -x["web"], -x["nonWeb"], x["host"])
     )[:5]
 
     return {

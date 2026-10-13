@@ -261,7 +261,7 @@
     { key: 'exploit', detailKey: 'vulnExploitEvents', label: '漏洞利用', full: '漏洞利用' },
     { key: 'exposure', detailKey: 'totalExposures', label: '暴露面', full: '暴露面' },
     { key: 'vuln', detailKey: 'totalVulnerabilities', label: '漏洞', full: '漏洞' },
-    { key: 'weakPwd', detailKey: 'weakPasswords', label: '弱口令', full: '弱口令' }
+    { key: 'weakPwd', detailKey: 'weakPasswords', label: '弱密码', full: '弱密码' }
   ];
   function top5RiskRowTotal(row) {
     return TOP5_RISK_SEGMENTS.reduce((sum, segment) => sum + Math.max(0, Math.round(Number(row[segment.key]) || 0)), 0);
@@ -303,9 +303,9 @@
       ['nonwebTop5', '非Web服务风险分布 top5', 'internet.exposure.nonweb_top5', 'm3-nonweb-top5-bar'],
       ['exposureAssets', '风险暴露 Top5 资产', 'internet.exposure.stack_rows', 'm3-bar'],
       ['top5Risk', 'Top5资产的风险类型', 'riskOverview.topRiskAssets', 'top5-risk-bar'],
-      ['internetWeakAsset', '弱口令风险 - 资产分布', 'internet.weak_pwd.asset_rows', 'm5-bar-internet-asset'],
-      ['intranetWeakBusiness', '弱口令风险 - 业务系统分布', 'intranet.weak_pwd.biz_rows', 'm5-bar-intra'],
-      ['intranetWeakAsset', '弱口令风险 - 资产分布（内网）', 'intranet.weak_pwd.asset_rows', 'm5-bar-intra-asset']
+      ['internetWeakAsset', '弱密码风险 - 资产分布', 'internet.weak_pwd.asset_rows', 'm5-bar-internet-asset'],
+      ['intranetWeakBusiness', '弱密码风险 - 业务系统分布', 'intranet.weak_pwd.biz_rows', 'm5-bar-intra'],
+      ['intranetWeakAsset', '弱密码风险 - 资产分布（内网）', 'intranet.weak_pwd.asset_rows', 'm5-bar-intra-asset']
     ];
     const charts = defs.map(([id, title, path, elementId]) => {
       const values = pathValue(data, path);
@@ -319,7 +319,7 @@
         : id === 'top5Risk'
           ? values.map((x) => {
             // 柱子高度是五段之和，不是 riskCount：两者数据源不同（riskCount 来自风险清单计数，
-            // 分段来自事件/漏洞/弱口令/暴露面四张表），显示分段之和才能和预览里的柱子对上。
+            // 分段来自事件/漏洞/弱密码/暴露面四张表），显示分段之和才能和预览里的柱子对上。
             const detail = (x && x.riskDetails) || {};
             const row = { name: x.name || x.asset || x.host || x.ip || '未命名' };
             TOP5_RISK_SEGMENTS.forEach((segment) => {
@@ -370,12 +370,12 @@
         { name: '待审核资产', value: Number(pathValue(data, 'assetLedger.waitApproveAssetCount')) || 0, selector: '[data-field="assets.waitApprove"]' },
         { name: '安全组件接入', value: Number(pathValue(data, 'assetLedger.totalComponentCount')) || 0, selector: '[data-field="assets.component"]' }
       ] },
-      { id: 'internetWeakCards', title: '弱口令发现与业务影响', kind: 'domText', rows: [
-        { name: '弱口令数', value: Number(pathValue(data, 'internet.weak_pwd.total_count')) || 0, selector: '.sr-kpi-card:nth-child(1) .sr-kpi-val' },
+      { id: 'internetWeakCards', title: '弱密码发现与业务影响', kind: 'domText', rows: [
+        { name: '弱密码数', value: Number(pathValue(data, 'internet.weak_pwd.total_count')) || 0, selector: '.sr-kpi-card:nth-child(1) .sr-kpi-val' },
         { name: '风险资产', value: Number(pathValue(data, 'internet.weak_pwd.affected_assets')) || 0, selector: '.sr-kpi-card:nth-child(2) .sr-kpi-item:last-child .sr-kpi-val' }
       ] },
-      { id: 'intranetWeakCards', title: '内网弱口令发现与业务影响', kind: 'domText', rows: [
-        { name: '弱口令数', value: Number(pathValue(data, 'intranet.weak_pwd.total_count')) || 0, selector: '.sr-kpi-card:nth-child(1) .sr-kpi-val' },
+      { id: 'intranetWeakCards', title: '内网弱密码发现与业务影响', kind: 'domText', rows: [
+        { name: '弱密码数', value: Number(pathValue(data, 'intranet.weak_pwd.total_count')) || 0, selector: '.sr-kpi-card:nth-child(1) .sr-kpi-val' },
         { name: '风险业务', value: Number(pathValue(data, 'intranet.weak_pwd.risk_count')) || 0, selector: '.sr-kpi-card:nth-child(2) .sr-kpi-item:first-child .sr-kpi-val' },
         { name: '风险资产', value: Number(pathValue(data, 'intranet.weak_pwd.affected_assets')) || 0, selector: '.sr-kpi-card:nth-child(2) .sr-kpi-item:last-child .sr-kpi-val' }
       ] },
@@ -387,12 +387,12 @@
         ['互联网风险资产', 'summary.internet.exposure.risk_assets', '.ro5-biz:first-child .ro5-metric:nth-of-type(2) .num--risk'],
         ['互联网漏洞总数', 'summary.internet.vuln.total', '.ro5-biz:first-child .ro5-metric:nth-of-type(3) .num'],
         ['互联网漏洞风险资产', 'summary.internet.vuln.risk_assets', '.ro5-biz:first-child .ro5-metric:nth-of-type(3) .num--risk'],
-        ['互联网弱口令数', 'summary.internet.weak_pwd.total', '.ro5-biz:first-child .ro5-metric:nth-of-type(4) .num'],
-        ['互联网弱口令风险资产', 'summary.internet.weak_pwd.risk_assets', '.ro5-biz:first-child .ro5-metric:nth-of-type(4) .num--risk'],
+        ['互联网弱密码数', 'summary.internet.weak_pwd.total', '.ro5-biz:first-child .ro5-metric:nth-of-type(4) .num'],
+        ['互联网弱密码风险资产', 'summary.internet.weak_pwd.risk_assets', '.ro5-biz:first-child .ro5-metric:nth-of-type(4) .num--risk'],
         ['内网漏洞总数', 'summary.intranet.vuln.total', '.ro5-biz:nth-child(2) .ro5-metric:nth-of-type(2) .num'],
         ['内网漏洞风险资产', 'summary.intranet.vuln.risk_assets', '.ro5-biz:nth-child(2) .ro5-metric:nth-of-type(2) .num--risk'],
-        ['内网弱口令数', 'summary.intranet.weak_pwd.total', '.ro5-biz:nth-child(2) .ro5-metric:nth-of-type(3) .num'],
-        ['内网弱口令风险资产', 'summary.intranet.weak_pwd.risk_assets', '.ro5-biz:nth-child(2) .ro5-metric:nth-of-type(3) .num--risk'],
+        ['内网弱密码数', 'summary.intranet.weak_pwd.total', '.ro5-biz:nth-child(2) .ro5-metric:nth-of-type(3) .num'],
+        ['内网弱密码风险资产', 'summary.intranet.weak_pwd.risk_assets', '.ro5-biz:nth-child(2) .ro5-metric:nth-of-type(3) .num--risk'],
         ['组件策略风险项', 'protection_effectiveness.policy_stats.risk_cnt', '.ro5-policy .num'],
         ['组件策略风险组件', 'protection_effectiveness.policy_stats.abnormal_component_count', '.ro5-policy .num--risk'],
         ['遭受攻击次数', 'attackOverview.total_attack_count', '.ro5-attack-desc .val:nth-of-type(1)'],

@@ -4845,7 +4845,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     return (width || 610) < BAR_RANK_COMPACT_BREAK;
   }
 
-  /** 排名条形图 grid（无图例 · 与弱口令 asset 分布一致） */
+  /** 排名条形图 grid（无图例 · 与弱密码 asset 分布一致） */
   function gridRankBar(extra) {
     extra = extra || {};
     syncFromCss();
@@ -6457,12 +6457,12 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   // 这两点在增量重绘下会被放大：
   //   1. 不幂等 —— 重复进入空态会往同一张卡里叠加多个空态 div；
   //   2. 不可逆 —— 恢复时把 display 强置成 ''，会把本来就该隐藏的卡片弄出来
-  //      （弱口令那两张卡是按 weak_pwd.total_count 设成 display:none 的）。
+  //      （弱密码那两张卡是按 weak_pwd.total_count 设成 display:none 的）。
   // 所以这里用 el.__srEmpty 记住"进入空态前"的 style 快照和插入的节点，恢复时原样还原。
   // data-sr-empty-for 只是给排查用的标记。
   var SR_EMPTY_SVG_SRC = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSJub25lIiB2ZXJzaW9uPSIxLjEiIHdpZHRoPSI4MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDgwIDYwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgeDE9Ii0wLjM4NjQxNTgwOTM5MjkyOTEiIHkxPSIwLjQ0MzIwNzg4OTc5NTMwMzM0IiB4Mj0iMC43MjMxMjExNzI4OTE3OTgiIHkyPSIwLjg5MzgyNDA4MDIwNTMzOTIiIGlkPSJtYXN0ZXJfc3ZnMF9fMjIyIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjRTdFQkYyIiBzdG9wLW9wYWNpdHk9IjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNFMUU1RUIiIHN0b3Atb3BhY2l0eT0iMSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxlbGxpcHNlIGN4PSI0MCIgY3k9IjUyLjkyMDg0OTA4NDg1NDEyNiIgcng9IjI1IiByeT0iMy4yODk5ODk3MDk4NTQxMjYiIGZpbGw9IiNGN0Y5RkMiIGZpbGwtb3BhY2l0eT0iMSIvPjxwYXRoIGQ9Ik02MCwyOUM2MCwyOSw1My44MzM2NzIsMjAuNDA4ODQ0OSw1Mi40MDAwMDIsMTguNDExNDAxNjlDNTIuMjEyMTU4LDE4LjE0OTY5MzY3LDUxLjkxNzYzOSwxOC4wMDAwMDAwMDAwMDAxODUsNTEuNTk1NDk3LDE4LjAwMDAwMDAwMDAwMDE4NUM0OC40Mzc4MDksMTguMDAwMDAwMDAwMDAwMTg1LDMxLjU2MjE5LDE4LjAwMDAwMDAwMDAwMDE4NSwyOC40MDQ1MDI5LDE4LjAwMDAwMDAwMDAwMDE4NUMyOC4wODIzNjAyOTk5OTk5OTgsMTguMDAwMDAwMDAwMDAwMTg1LDI3Ljc4NzgzOTksMTguMTQ5NjkzNjcsMjcuNTk5OTk4LDE4LjQxMTQwMTg0QzI2LjE2NjMyNywyMC40MDg4NDU0LDE5Ljk5OTk5OTk5OTk5OTcxNiwyOSwxOS45OTk5OTk5OTk5OTk3MTYsMjlDMTkuOTk5OTk5OTk5OTk5NzE2LDI5LDYwLDI5LDYwLDI5WiIgZmlsbC1ydWxlPSJldmVub2RkIiBmaWxsPSIjRURGMUY3IiBmaWxsLW9wYWNpdHk9IjEiLz48Zz48cGF0aCBkPSJNMzkuNTMxMjUsMTEuNTk5OTk5OUwzOS41MzEyNSw0LjQwMDAwMDAxUTM5LjUzMTI0OSw0LjM2MDYwMzQyLDM5LjUzODkzNSw0LjMyMTk2Mzg1UTM5LjU0NjYxOSw0LjI4MzMyNDI3LDM5LjU2MTY5Niw0LjI0NjkyNjYxUTM5LjU3Njc3Myw0LjIxMDUyODk0LDM5LjU5ODY2LDQuMTc3NzcxOVEzOS42MjA1NDgsNC4xNDUwMTQ4NSwzOS42NDg0MDcsNC4xMTcxNTcyOFEzOS42NzYyNjQsNC4wODkyOTk3MDksMzkuNzA5MDIyLDQuMDY3NDEyMTQ1UTM5Ljc0MTc3Nyw0LjA0NTUyNDU5MywzOS43NzgxNzUsNC4wMzA0NDgxODNRMzkuODE0NTcyOTk5OTk5OTk2LDQuMDE1MzcxNzczLDM5Ljg1MzIxMyw0LjAwNzY4NTg4NjdRMzkuODkxODUzLDQsMzkuOTMxMjUsNEw0MS4xMzEyNSw0UTQxLjE3MDY0Niw0LDQxLjIwOTI4Niw0LjAwNzY4NTg4NjdRNDEuMjQ3OTI1LDQuMDE1MzcxNzczLDQxLjI4NDMyMyw0LjAzMDQ0ODE4M1E0MS4zMjA3MjEsNC4wNDU1MjQ1OTMsNDEuMzUzNDc3LDQuMDY3NDEyMTQ1UTQxLjM4NjIzNCw0LjA4OTI5OTcwOSw0MS40MTQwOTMsNC4xMTcxNTcyOFE0MS40NDE5NSw0LjE0NTAxNDg1LDQxLjQ2MzgzNyw0LjE3Nzc3MTlRNDEuNDg1NzIzLDQuMjEwNTI4OTQsNDEuNTAwODAwOTk5OTk5OTk2LDQuMjQ2OTI2NjFRNDEuNTE1ODc3LDQuMjgzMzI0MjcsNDEuNTIzNTYyLDQuMzIxOTYzODVRNDEuNTMxMjQ5LDQuMzYwNjAzNDIsNDEuNTMxMjUsNC40MDAwMDAwMUw0MS41MzEyNSwxMS41OTk5OTk5UTQxLjUzMTI0OSwxMS42MzkzOTY2OTk5OTk5OTksNDEuNTIzNTYyLDExLjY3ODAzNTY5OTk5OTk5OVE0MS41MTU4NzcsMTEuNzE2Njc1Myw0MS41MDA4LDExLjc1MzA3MjdRNDEuNDg1NzIzLDExLjc4OTQ3MDY5OTk5OTk5OSw0MS40NjM4MzcsMTEuODIyMjI3NVE0MS40NDE5NSwxMS44NTQ5ODQzLDQxLjQxNDA5MywxMS44ODI4NDIxMDAwMDAwMDFRNDEuMzg2MjM0LDExLjkxMDY5OTQsNDEuMzUzNDc3LDExLjkzMjU4NjdRNDEuMzIwNzIxLDExLjk1NDQ3NDM5OTk5OTk5OSw0MS4yODQzMjMsMTEuOTY5NTUxMVE0MS4yNDc5MjUsMTEuOTg0NjI3Miw0MS4yMDkyODUsMTEuOTkyMzEzNFE0MS4xNzA2NDYsMTEuOTk5OTk5NTAwMDAwMDAxLDQxLjEzMTI1LDEyTDM5LjkzMTI1LDEyUTM5Ljg5MTg1MywxMS45OTk5OTk1MDAwMDAwMDEsMzkuODUzMjEzLDExLjk5MjMxMzRRMzkuODE0NTcyOTk5OTk5OTk2LDExLjk4NDYyNzIsMzkuNzc4MTc1LDExLjk2OTU1MDZRMzkuNzQxNzc3LDExLjk1NDQ3NDM5OTk5OTk5OSwzOS43MDkwMjIsMTEuOTMyNTg3MVEzOS42NzYyNjQsMTEuOTEwNjk5NCwzOS42NDg0MDcsMTEuODgyODQyMTAwMDAwMDAxUTM5LjYyMDU0OCwxMS44NTQ5ODQzLDM5LjU5ODY2MSwxMS44MjIyMjc1UTM5LjU3Njc3MywxMS43ODk0NzAyLDM5LjU2MTY5NywxMS43NTMwNzIzUTM5LjU0NjYyMDAwMDAwMDAwNCwxMS43MTY2NzQ4LDM5LjUzODkzNSwxMS42NzgwMzU2OTk5OTk5OTlRMzkuNTMxMjQ5LDExLjYzOTM5NjY5OTk5OTk5OSwzOS41MzEyNSwxMS41OTk5OTk5Wk01MC4wOTM3NSwxMi4zNDg0NDIxTDUzLjQzNjI0NSw4LjM2NTAxMTdRNTMuNDYxNTY3LDguMzM0ODMyMjAwMDAwMDAxLDUzLjQ5MjI5LDguMzEwMTcyMDk5OTk5OTk5UTUzLjUyMzAxNCw4LjI4NTUxMjksNTMuNTU3OTYxLDguMjY3MzIxNTk5OTk5OTk5UTUzLjU5MjkwNyw4LjI0OTEzMDIsNTMuNjMwNzMsOC4yMzgxMDU4UTUzLjY2ODU1Miw4LjIyNzA4MTMsNTMuNzA3Nzk4LDguMjIzNjQ4MVE1My43NDcwNDQsOC4yMjAyMTM5MDAwMDAwMDEsNTMuNzg2MjA0OTk5OTk5OTk1LDguMjI0NTAzUTUzLjgyNTM2Nyw4LjIyODc5MTcsNTMuODYyOTQyMDAwMDAwMDA0LDguMjQwNjM4N1E1My45MDA1MTUsOC4yNTI0ODUzLDUzLjkzNTA1NSw4LjI3MTQzNDhRNTMuOTY5NTk3LDguMjkwMzg0OCw1My45OTk3NzcsOC4zMTU3MDg2TDU0LjkxOTAzMTAwMDAwMDAwNCw5LjA4NzA1MzhRNTQuOTQ5MjA4OTk5OTk5OTk2LDkuMTEyMzc3MjAwMDAwMDAxLDU0Ljk3Mzg2Nyw5LjE0MzEwMTY5OTk5OTk5OVE1NC45OTg1MjYsOS4xNzM4MjYyLDU1LjAxNjcxOCw5LjIwODc3MTIwMDAwMDAwMVE1NS4wMzQ5MDgsOS4yNDM3MTY3LDU1LjA0NTkzMzAwMDAwMDAwNSw5LjI4MTUzOTRRNTUuMDU2OTU3LDkuMzE5MzYyMiw1NS4wNjAzOSw5LjM1ODYwODdRNTUuMDYzODI0LDkuMzk3ODU1OCw1NS4wNTk1MzYsOS40MzcwMTc5UTU1LjA1NTI0Niw5LjQ3NjE4MDEsNTUuMDQzNCw5LjUxMzc1MjlRNTUuMDMxNTUzLDkuNTUxMzI2Myw1NS4wMTI2MDYwMDAwMDAwMDUsOS41ODU4NjY1UTU0Ljk5MzY1Niw5LjYyMDQwNzEwMDAwMDAwMSw1NC45NjgzMzQsOS42NTA1ODY2TDUxLjYyNTgzNzAwMDAwMDAwNCwxMy42MzQwMTc5UTUxLjYwMDUxMywxMy42NjQxOTcsNTEuNTY5Nzg2LDEzLjY4ODg1NjFRNTEuNTM5MDYyLDEzLjcxMzUxNDMsNTEuNTA0MTE1OTk5OTk5OTk2LDEzLjczMTcwNjZRNTEuNDY5MTcsMTMuNzQ5ODk3LDUxLjQzMTM0OSwxMy43NjA5MjE1UTUxLjM5MzUyOCwxMy43NzE5NDYsNTEuMzU0MjgyLDEzLjc3NTM4MDFRNTEuMzE1MDMzLDEzLjc3ODgxNDMsNTEuMjc1ODcwOTk5OTk5OTk1LDEzLjc3NDUyNDdRNTEuMjM2NzA4LDEzLjc3MDIzNTEsNTEuMTk5MTM1LDEzLjc1ODM4ODVRNTEuMTYxNTYyLDEzLjc0NjU0Miw1MS4xMjcwMjIsMTMuNzI3NTkyNVE1MS4wOTI0ODQsMTMuNzA4NjQzOSw1MS4wNjIzMDQ5OTk5OTk5OTUsMTMuNjgzMzIxTDUwLjE0MzA1MSwxMi45MTE5NzU5UTUwLjExMjg2OSwxMi44ODY2NTIsNTAuMDg4MjA5LDEyLjg1NTkyNjVRNTAuMDYzNTQ4OTk5OTk5OTk1LDEyLjgyNTIwMiw1MC4wNDUzNTkwMDAwMDAwMDUsMTIuNzkwMjU2NVE1MC4wMjcxNjgsMTIuNzU1MzExLDUwLjAxNjE0NiwxMi43MTc0ODgzUTUwLjAwNTEyMSwxMi42Nzk2NjU2LDUwLjAwMTY4OCwxMi42NDA0MTlRNDkuOTk4MjUzLDEyLjYwMTE3MjQsNTAuMDAyNTQyLDEyLjU2MjAwOThRNTAuMDA2ODMsMTIuNTIyODQ4MSw1MC4wMTg2NzcsMTIuNDg1Mjc0M1E1MC4wMzA1MjUsMTIuNDQ3NzAwNSw1MC4wNDk0NzMsMTIuNDEzMTYwM1E1MC4wNjg0MjQsMTIuMzc4NjIxMSw1MC4wOTM3NSwxMi4zNDg0NDIxWk0zMC45Njg3NTEsMTIuMzQ4NDQyMUwyNy42MjYyNTU2LDguMzY1MDExN1EyNy42MDA5MzE5LDguMzM0ODMyMjAwMDAwMDAxLDI3LjU3MDIwNzEsOC4zMTAxNzIwOTk5OTk5OTlRMjcuNTM5NDgyNCw4LjI4NTUxMjksMjcuNTA0NTM3MSw4LjI2NzMyMTU5OTk5OTk5OVEyNy40Njk1OTE5LDguMjQ5MTMwMiwyNy40MzE3NjkzLDguMjM4MTA1OFEyNy4zOTM5NDY2LDguMjI3MDgxMywyNy4zNTQ3MDAxLDguMjIzNjQ4MVEyNy4zMTU0NTM0LDguMjIwMjEzOTAwMDAwMDAxLDI3LjI3NjI5MSw4LjIyNDUwM1EyNy4yMzcxMjg2LDguMjI4NzkxNywyNy4xOTk1NTU0LDguMjQwNjM4N1EyNy4xNjE5ODIzLDguMjUyNDg1MywyNy4xMjc0NDIyLDguMjcxNDM0OFEyNy4wOTI5MDIyLDguMjkwMzg0OCwyNy4wNjI3MjI4LDguMzE1NzA4NkwyNi4xNDM0Njk0NSw5LjA4NzA1NDNRMjYuMTEzMjg5OTQsOS4xMTIzNzcyMDAwMDAwMDEsMjYuMDg4NjMwNzA2LDkuMTQzMTAyMjAwMDAwMDAxUTI2LjA2Mzk3MTQ4Miw5LjE3MzgyNjcsMjYuMDQ1NzgwMTg2MDAwMDAyLDkuMjA4NzcxN1EyNi4wMjc1ODg4ODUsOS4yNDM3MTcxOTk5OTk5OTksMjYuMDE2NTY0NTg5LDkuMjgxNTM5OVEyNi4wMDU1NDAyOTQxLDkuMzE5MzYyNiwyNi4wMDIxMDY2NjEsOS4zNTg2MDkyUTI1Ljk5ODY3MzAyNzcsOS4zOTc4NTU4LDI2LjAwMjk2MjAwODgsOS40MzcwMTc5UTI2LjAwNzI1MDk4OTgsOS40NzYxODA2LDI2LjAxOTA5Nzc2Miw5LjUxMzc1MzkwMDAwMDAwMVEyNi4wMzA5NDQ1MzQsOS41NTEzMjY4LDI2LjA0OTg5MzgzNCw5LjU4NTg2NjlRMjYuMDY4ODQzMTQxLDkuNjIwNDA3MTAwMDAwMDAxLDI2LjA5NDE2Njc1Niw5LjY1MDU4NzFMMjkuNDM2NjYyMiwxMy42MzQwMTc5UTI5LjQ2MTk4NTYsMTMuNjY0MTk3LDI5LjQ5MjcxMDQsMTMuNjg4ODU2MVEyOS41MjM0MzQ4OTk5OTk5OTgsMTMuNzEzNTE0MywyOS41NTgzNzk5LDEzLjczMTcwNjZRMjkuNTkzMzI1MSwxMy43NDk4OTcsMjkuNjMxMTQ3OTAwMDAwMDAyLDEzLjc2MDkyMTVRMjkuNjY4OTcwNiwxMy43NzE5NDYsMjkuNzA4MjE3NCwxMy43NzUzODAxUTI5Ljc0NzQ2MzksMTMuNzc4ODE0MywyOS43ODY2MjYzMDAwMDAwMDIsMTMuNzc0NTI0N1EyOS44MjU3ODg3LDEzLjc3MDIzNTEsMjkuODYzMzYxOCwxMy43NTgzODg1UTI5LjkwMDkzNTIsMTMuNzQ2NTQyLDI5LjkzNTQ3NTMsMTMuNzI3NTkyNVEyOS45NzAwMTUzLDEzLjcwODY0MzksMzAuMDAwMTk0OTk5OTk5OTk4LDEzLjY4MzMyMUwzMC45MTk0NDg0LDEyLjkxMTk3NTlRMzAuOTQ5NjI3OSwxMi44ODY2NTIsMzAuOTc0Mjg2NiwxMi44NTU5MjY1UTMwLjk5ODk0NTcsMTIuODI1MjAyLDMxLjAxNzEzNzEsMTIuNzkwMjU2NVEzMS4wMzUzMjc5LDEyLjc1NTMxMSwzMS4wNDYzNTI0LDEyLjcxNzQ4ODNRMzEuMDU3Mzc2OSwxMi42Nzk2NjU2LDMxLjA2MDgxMSwxMi42NDA0MTlRMzEuMDY0MjQ0MywxMi42MDExNzI0LDMxLjA1OTk1NTYwMDAwMDAwMiwxMi41NjIwMDk4UTMxLjA1NTY2NjQsMTIuNTIyODQ4MSwzMS4wNDM4MTk5LDEyLjQ4NTI3NDNRMzEuMDMxOTcyOSwxMi40NDc3MDA1LDMxLjAxMzAyMzksMTIuNDEzMTYwM1EzMC45OTQwNzQ4LDEyLjM3ODYyMTEsMzAuOTY4NzUxLDEyLjM0ODQ0MjFaIiBmaWxsPSIjRTFFNUVCIiBmaWxsLW9wYWNpdHk9IjEiLz48L2c+PHBhdGggZD0iTTU1LDI3QzU1LDI3LDUxLjQ2MzE1OCwyMS45NDI0OTk4LDUwLjQwMjEwNSwyMC40MjUyNDk4N0M1MC4yMTUwMDYsMjAuMTU3NzA3Niw0OS45MTIxNCwxOS45OTk5OTk5OTk5OTk3NzMsNDkuNTg1NjY3LDE5Ljk5OTk5OTk5OTk5OTc3M0M0Ni43NTg3MTQ5OTk5OTk5OTUsMTkuOTk5OTk5OTk5OTk5NzczLDMzLjI0MTI4NTMsMTkuOTk5OTk5OTk5OTk5NzczLDMwLjQxNDMzMzgsMTkuOTk5OTk5OTk5OTk5NzczQzMwLjA4Nzg2MDEsMTkuOTk5OTk5OTk5OTk5NzczLDI5Ljc4NDk5MzYsMjAuMTU3NzA3NiwyOS41OTc4OTQyLDIwLjQyNTI0OTkzQzI4LjUzNjg0MTYsMjEuOTQyNTAwMSwyNC45OTk5OTk5OTk5OTk4NiwyNywyNC45OTk5OTk5OTk5OTk4NiwyN0MyNC45OTk5OTk5OTk5OTk4NiwyNyw1NSwyNyw1NSwyN1oiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iI0Y3RjlGQyIgZmlsbC1vcGFjaXR5PSIxIi8+PHBhdGggZD0iTTYwLDUxLjk4ODM1NEM2MCw0Ny40Mjc1MzgsNjAsMjkuMDAwMDAwMDAwMDAwMTU2LDYwLDI5LjAwMDAwMDAwMDAwMDE1NkM2MCwyOS4wMDAwMDAwMDAwMDAxNTYsMjAsMjkuMDAwMDAwMDAwMDAwMTU2LDIwLDI5LjAwMDAwMDAwMDAwMDE1NkMyMCwyOS4wMDAwMDAwMDAwMDAxNTYsMjAsNDcuNDI3NTM4LDIwLDUxLjk4ODM1NEMyMCw1Mi41NDA2MzgsMjAuNDM2NDg0NjksNTMsMjAuOTg4NzY5NTMsNTNDMjYuNTExMjMwNSw1Myw1My40ODg3Nyw1Myw1OS4wMTEyMyw1M0M1OS41NjM1MTUsNTMsNjAuMDAwMDA4LDUyLjU0MDYzOCw2MC4wMDAwMDgsNTEuOTg4MzU0IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGZpbGw9InVybCgjbWFzdGVyX3N2ZzBfXzIyMikiIGZpbGwtb3BhY2l0eT0iMSIvPjxyZWN0IHg9IjMzIiB5PSI0MyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjMiIHJ4PSIwLjQwMDAwMDAwNTk2MDQ2NDUiIGZpbGw9IiNGRkZGRkYiIGZpbGwtb3BhY2l0eT0iMSIvPjwvc3ZnPg==';
   // 各图原本的空态 div 样式并不一致：多数是 height:100%（父级已经给了高度），
-  // 而 Top5 / 弱口令那几张是 flex:1（靠把卡片改成 flex column 撑开）。两套都留着，别合并。
+  // 而 Top5 / 弱密码那几张是 flex:1（靠把卡片改成 flex column 撑开）。两套都留着，别合并。
   var SR_EMPTY_HOLDER_STYLE = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:120px;color:#BEC3CC;font-size:13px;gap:8px;';
   var SR_EMPTY_HOLDER_STYLE_FLEX = 'display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:120px;color:#BEC3CC;font-size:13px;gap:8px;';
   function srShowEmpty(elId, opts) {
@@ -6649,7 +6649,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   global.srClearEmpty = srClearEmpty;
   global.SR_EMPTY_SVG_SRC = SR_EMPTY_SVG_SRC;
   // 两个 holder 样式常量同理：srShowEmpty 内部用的是默认那个，所以只从外面调的图
-  // 没事；显式传 holderStyle: SR_EMPTY_HOLDER_STYLE_FLEX 的那几张（top5 / 弱口令）
+  // 没事；显式传 holderStyle: SR_EMPTY_HOLDER_STYLE_FLEX 的那几张（top5 / 弱密码）
   // 在空数据时会直接 ReferenceError——空数据报告上这几张图整个渲染不出来。
   global.SR_EMPTY_HOLDER_STYLE = SR_EMPTY_HOLDER_STYLE;
   global.SR_EMPTY_HOLDER_STYLE_FLEX = SR_EMPTY_HOLDER_STYLE_FLEX;
@@ -6727,7 +6727,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
       unit: '件'
     },
 
-    /** 单列/自适应 · 中心汇总（弱口令、托管资产等） */
+    /** 单列/自适应 · 中心汇总（弱密码、托管资产等） */
     centerAuto: {
       profile: 'auto',
       mode: 'center',
@@ -7447,14 +7447,14 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
               <ul>
                 <li class="sr-nav-l4"><a href="#sec-internet-exposure" data-nav="sec-internet-exposure">风险暴露面</a></li>
                 <li class="sr-nav-l4"><a href="#sec-internet-vuln" data-nav="sec-internet-vuln">漏洞</a></li>
-                <li class="sr-nav-l4"><a href="#sec-internet-weak" data-nav="sec-internet-weak">弱口令</a></li>
+                <li class="sr-nav-l4"><a href="#sec-internet-weak" data-nav="sec-internet-weak">弱密码</a></li>
               </ul>
             </li>
             <li class="sr-nav-l3">
               <a href="#sec-intranet" data-nav="sec-intranet">3.3.2 内网业务</a>
               <ul>
                 <li class="sr-nav-l4"><a href="#sec-intranet-vuln" data-nav="sec-intranet-vuln">漏洞</a></li>
-                <li class="sr-nav-l4"><a href="#sec-intranet-weak" data-nav="sec-intranet-weak">弱口令</a></li>
+                <li class="sr-nav-l4"><a href="#sec-intranet-weak" data-nav="sec-intranet-weak">弱密码</a></li>
               </ul>
             </li>
             <li class="sr-nav-l3">
@@ -7753,7 +7753,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
 <section class="sr-section" id="sec-background">
   <h2 class="report-page-title sr-h2">1. 项目背景</h2>
   <p class="report-body sr-p" data-field-html="sections.background.p1" style="text-indent:2em">随着信息化与 AI 技术普及，企业业务系统复杂度不断提升，各类隐藏的安全漏洞、配置隐患难以靠日常运维及时发现，极易造成业务中断、数据泄露和经济损失。深信服与{{ projectBackground.customerName }}协同构建 AI 深度赋能、运营服务辅助、SaaS 敏捷交付、低成本有实效的安全运营体系，为{{ projectBackground.customerName }}的数智化转型保驾护航。安全体检服务深信服是针对贵公司业务系统的安全状况进行深度安全运营与风险评估，精准定位安全隐患与防护薄弱点，并配套对应的整改方案与落地指导。帮助企业快速完成系统加固，切实提升整体安全防护能力，保障企业核心业务稳定运行。</p>
-  <p class="report-body sr-p" data-field-html="sections.background.p2" style="text-indent:2em">本次体检共含两项：<strong>威胁运营</strong>与<strong>威胁预防</strong>。威胁运营为深信服通过 XDR 平台、AI 智能数据解析、告警分析研判结合 7*24H 专家快速响应遏制，保障核心资产安全事件的快速闭环；威胁预防为深信服通过内外部安全组件协同，在事前帮助客户发现互联网业务与内网资产的风险。本次体检优先关注脆弱性风险，含暴露面（高危开放端口、敏感信息）、软件漏洞、弱口令等。</p>
+  <p class="report-body sr-p" data-field-html="sections.background.p2" style="text-indent:2em">本次体检共含两项：<strong>威胁运营</strong>与<strong>威胁预防</strong>。威胁运营为深信服通过 XDR 平台、AI 智能数据解析、告警分析研判结合 7*24H 专家快速响应遏制，保障核心资产安全事件的快速闭环；威胁预防为深信服通过内外部安全组件协同，在事前帮助客户发现互联网业务与内网资产的风险。本次体检优先关注脆弱性风险，含暴露面（高危开放端口、敏感信息）、软件漏洞、弱密码等。</p>
   <p class="report-chart-note sr-p muted" data-field-html="sections.background.periodNote">以下是在 {{ projectBackground.startDate }} ~ {{ projectBackground.endDate }} 期间的安全体检报告。</p>
 </section>
 
@@ -7859,7 +7859,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
               <div class="sr-risk-step__content">
                 <p class="sr-risk-step__title">漏洞修复</p>
                 <ul class="sr-risk-step__list">
-                  <li>漏洞清单与修复方案确定修复优先级，详情参考《漏洞清单.xlsx》。</li>
+                  <li>漏洞清单与修复方案确定修复优先级，详情参考《漏洞清单（内网）.xlsx》和《漏洞清单（互联网）.xlsx》。</li>
                   <li>根据修复落地漏洞清单，对齐修复方案和落地计划</li>
                   <li>按照方案落地修复，反馈给MSS团队进行漏洞复测闭环</li>
                   <li>深信服会定期进行漏洞扫描，保障持续发现最新漏洞风险</li>
@@ -7922,7 +7922,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
               <div class="sr-risk-step__content">
                 <p class="sr-risk-step__title">漏洞修复</p>
                 <ul class="sr-risk-step__list">
-                  <li>漏洞清单与修复方案确定修复优先级，详情参考《漏洞清单.xlsx》。</li>
+                  <li>漏洞清单与修复方案确定修复优先级，详情参考《漏洞清单（内网）.xlsx》和《漏洞清单（互联网）.xlsx》。</li>
                   <li>根据修复落地漏洞清单，对齐修复方案和落地计划</li>
                   <li>按照方案落地修复，反馈给MSS团队进行漏洞复测闭环</li>
                   <li>深信服会定期进行漏洞扫描，保障持续发现最新漏洞风险</li>
@@ -7965,17 +7965,17 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   <article class="sr-risk-card sr-risk-card--prev" id="key-risk-04" data-hide="{{riskOverview.keyRisk04Hide}}">
     <header class="sr-risk-card__head">
       <span class="sr-tag sr-tag--light sr-tag--blue">威胁预防</span>
-      <h4 class="sr-risk-card__title">内外部业务存在大量弱口令</h4>
+      <h4 class="sr-risk-card__title">内外部业务存在大量弱密码</h4>
     </header>
     <div class="sr-risk-card__body">
       <div class="sr-risk-card__main">
         <section class="sr-risk-field sr-risk-field--desc">
           <h6 class="sr-h6">问题描述</h6>
-          <p class="report-body sr-p">当前贵公司内外部业务<strong>{{key_risks.weak_pwd.biz_example}}</strong>共发现<strong>{{key_risks.weak_pwd.total}}</strong>个弱口令</p>
+          <p class="report-body sr-p">当前贵公司内外部业务<strong>{{key_risks.weak_pwd.biz_example}}</strong>共发现<strong>{{key_risks.weak_pwd.total}}</strong>个弱密码</p>
         </section>
         <section class="sr-risk-field sr-risk-field--impact">
           <h6 class="sr-h6">风险影响</h6>
-          <p class="report-body sr-p">资产{{key_risks.weak_pwd.example_asset}}存在弱口令，黑客可利用暴力破解等手段轻易获取主机权限，引发一系列严重安全事故</p>
+          <p class="report-body sr-p">资产{{key_risks.weak_pwd.example_asset}}存在弱密码，黑客可利用暴力破解等手段轻易获取主机权限，引发一系列严重安全事故</p>
         </section>
         <section class="sr-risk-field sr-risk-field--strategy">
           <h6 class="sr-h6">安全加固建议</h6>
@@ -7983,9 +7983,9 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
             <li class="sr-risk-step">
               <span class="sr-risk-step__num">1</span>
               <div class="sr-risk-step__content">
-                <p class="sr-risk-step__title">修改弱口令</p>
+                <p class="sr-risk-step__title">修改弱密码</p>
                 <ul class="sr-risk-step__list">
-                  <li>基于业务核心程度、是否对外、影响程度等因素评估，修改为合规强口令（大小写字母、数字与符号组合，长度不小于<strong>16</strong>位）。完整弱口令明细参考《弱口令清单.xlsx》</li>
+                  <li>基于业务核心程度、是否对外、影响程度等因素评估，修改为合规强口令（大小写字母、数字与符号组合，长度不小于<strong>16</strong>位）。完整弱密码明细参考《弱密码清单（内网）.xlsx》和《弱密码清单（互联网）.xlsx》</li>
                   <li>重要业务可进行多因素认证，如短信、TOTP令牌等</li>
                 </ul>
               </div>
@@ -8212,7 +8212,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   </div>
 
   <h3 class="sr-h3" id="sec-threat-prevention"><span class="sr-h3__row"><span class="sr-h3__num">3.3</span><span class="sr-h3__title">威胁预防</span></span></h3>
-  <p class="report-body sr-p" style="text-indent:2em">威胁预防是深信服通过内外部安全组件在事前帮助客户发现互联网业务与内网资产的风险。本次体检优先关注脆弱性问题，常见的脆弱性问题有风险暴露面、软件漏洞、弱口令等。</p>
+  <p class="report-body sr-p" style="text-indent:2em">威胁预防是深信服通过内外部安全组件在事前帮助客户发现互联网业务与内网资产的风险。本次体检优先关注脆弱性问题，常见的脆弱性问题有风险暴露面、软件漏洞、弱密码等。</p>
 
   <h4 class="sr-h4" id="sec-internet">3.3.1 互联网业务</h4>
   <p class="report-body sr-p" data-section="internet.exposure.description" style="text-indent:2em"></p>
@@ -8245,18 +8245,18 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   <p class="report-body sr-p">本次体检共发现互联网漏洞 <strong>{{internet.vuln.total}}</strong> 个<span data-section="internet.vuln.levelDetail"></span>，关联资产 <strong>{{internet.vuln.related_assets}}</strong> 个。</p>
   <p class="report-body sr-p" data-section="internet.vuln.prioritySummary"></p>
   <div data-section="internet.vuln.topAssetsBlock"></div>
-  <p class="report-chart-note sr-p muted">互联网漏洞详情见《漏洞清单.xlsx》</p>
+  <p class="report-chart-note sr-p muted">互联网漏洞详情见《漏洞清单（互联网）.xlsx》</p>
 
-  <h5 class="sr-h5" id="sec-internet-weak">弱口令</h5>
-  <p class="report-body sr-p">本次体检共发现 <strong>{{internet.weak_pwd.affected_assets}}</strong> 个资产存在弱口令 <strong>{{internet.weak_pwd.total_count}}</strong> 个，分布如下：</p>
+  <h5 class="sr-h5" id="sec-internet-weak">弱密码</h5>
+  <p class="report-body sr-p">本次体检共发现 <strong>{{internet.weak_pwd.affected_assets}}</strong> 个资产存在弱密码 <strong>{{internet.weak_pwd.total_count}}</strong> 个，分布如下：</p>
   <div class="sr-chart-slot chart-box sr-chart--no-hint" id="slot-internet-weak" data-chart="slot-internet-weak">
 <div class="sr-kpi-row-2">
   <div class="sr-kpi-card">
-    <div class="sr-kpi-card-hd"><svg style="width:1em;height:1em;vertical-align:-0.15em;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" version="1.1" width="40" height="40" viewBox="0 0 40 40"><defs><clipPath id="master_svg0_267_8841"><rect x="0" y="0" width="40" height="40" rx="0"/></clipPath><linearGradient x1="1" y1="1" x2="0.1328855145229437" y2="0.007779753208817838" id="master_svg1_155_00562"><stop offset="0%" stop-color="#5291FF" stop-opacity="1"/><stop offset="100%" stop-color="#1167FF" stop-opacity="1"/></linearGradient><linearGradient x1="0.11582031100988388" y1="0" x2="0.1218006087707013" y2="1.000147594487777" id="master_svg2_267_8677"><stop offset="0%" stop-color="#58D0FF" stop-opacity="0.15000000596046448"/><stop offset="99.99998807907104%" stop-color="#96DAFF" stop-opacity="1"/></linearGradient><linearGradient x1="1" y1="0.7906379699707031" x2="0.056671142578125" y2="0.7906379699707031" id="master_svg3_155_00567"><stop offset="0%" stop-color="#B0CDFF" stop-opacity="0.30000001192092896"/><stop offset="99.99991059303284%" stop-color="#B0CDFF" stop-opacity="1"/></linearGradient></defs><g clip-path="url(#master_svg0_267_8841)"><path d="M5.999996185302734,20.57142561581421Q5.999970038744735,13.142854215814209,5.999996185302734,9.052629015814208L19.999989185302734,3.999997615814209L33.999979185302735,9.052629015814208Q34.00004218530273,13.142854215814209,33.99998318530274,20.57142561581421Q33.999925185302736,27.99999561581421,19.999989185302734,35.99999761581421Q6.000022331860734,27.99999561581421,5.999996185302734,20.57142561581421ZM15.452668185302734,21.36983061581421C15.327375385302734,21.36983061581421,15.242097885302734,21.24667661581421,15.282463085302734,21.12806261581421L17.980530185302733,13.19994301581421L22.793796185302735,13.19994301581421C22.923050185302735,13.19994301581421,23.011505185302735,13.330391415814209,22.963672185302734,13.45046951581421L21.244718185302734,17.765735615814208C21.196887185302735,17.885813615814207,21.285340185302736,18.01626261581421,21.414594185302732,18.01626261581421L25.613689185302736,18.01626261581421C25.764580185302734,18.01626261581421,25.850536185302733,18.18870361581421,25.759704185302734,18.30919361581421L18.504619185302737,27.933293615814208C18.385477185302733,28.09133661581421,18.135150185302734,27.97381561581421,18.180642185302734,27.78119261581421L19.641703185302735,21.59471861581421C19.668820185302735,21.479899615814208,19.579154185302734,21.36983061581421,19.461176185302733,21.36983061581421L15.452668185302734,21.36983061581421Z" fill-rule="evenodd" fill="url(#master_svg1_155_00562)" fill-opacity="1"/><path d="M33.9999835559082,20.57093761581421Q33.9999275559082,27.89678561581421,20.384497315908202,35.778367615814204C20.212215255908202,35.87809861581421,19.999988555908203,35.751822615814206,19.999988555908203,35.55275861581421L19.999988555908203,25.94963961581421L25.759706055908204,18.30919361581421C25.850535855908202,18.18870361581421,25.764579255908203,18.01626261581421,25.613689855908202,18.01626261581421L21.414594755908205,18.01626261581421C21.285341455908203,18.01626261581421,21.1968872559082,17.885813615814207,21.244719255908205,17.765735615814208L22.963672855908204,13.45046951581421C23.011504655908205,13.330391415814209,22.923050655908202,13.19994301581421,22.793797255908203,13.19994301581421L19.999988555908203,13.19994301581421L19.999988555908203,4.368703725814209C19.999988555908203,4.189052283814209,20.178275715908203,4.063853677814209,20.347258475908202,4.124839964814209L33.828734555908206,8.99033781581421C33.9314955559082,9.027424315814208,33.999979555908205,9.12083481581421,33.999982555908204,9.230083915814209Q34.000041555908204,13.302545115814208,33.9999835559082,20.57093761581421Z" fill-rule="evenodd" fill="url(#master_svg2_267_8677)" fill-opacity="1" style="opacity:0.4000000059604645;"/><path d="M17.706891185302734,13.777579815814208L5.999996185302734,9.068416115814209L19.999987185302736,3.999997615814209L33.999979185302735,9.068416115814209L22.840751185302736,13.557278115814208L22.906055185302733,13.393340615814209C22.953888185302734,13.273262515814208,22.865433185302734,13.14281411581421,22.736179185302735,13.14281411581421L17.922912185302735,13.14281411581421L17.706891185302734,13.777579815814208Z" fill-rule="evenodd" fill="url(#master_svg3_155_00567)" fill-opacity="1" style="opacity:0.4000000059604645;"/></g></svg> 弱口令发现</div>
+    <div class="sr-kpi-card-hd"><svg style="width:1em;height:1em;vertical-align:-0.15em;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" version="1.1" width="40" height="40" viewBox="0 0 40 40"><defs><clipPath id="master_svg0_267_8841"><rect x="0" y="0" width="40" height="40" rx="0"/></clipPath><linearGradient x1="1" y1="1" x2="0.1328855145229437" y2="0.007779753208817838" id="master_svg1_155_00562"><stop offset="0%" stop-color="#5291FF" stop-opacity="1"/><stop offset="100%" stop-color="#1167FF" stop-opacity="1"/></linearGradient><linearGradient x1="0.11582031100988388" y1="0" x2="0.1218006087707013" y2="1.000147594487777" id="master_svg2_267_8677"><stop offset="0%" stop-color="#58D0FF" stop-opacity="0.15000000596046448"/><stop offset="99.99998807907104%" stop-color="#96DAFF" stop-opacity="1"/></linearGradient><linearGradient x1="1" y1="0.7906379699707031" x2="0.056671142578125" y2="0.7906379699707031" id="master_svg3_155_00567"><stop offset="0%" stop-color="#B0CDFF" stop-opacity="0.30000001192092896"/><stop offset="99.99991059303284%" stop-color="#B0CDFF" stop-opacity="1"/></linearGradient></defs><g clip-path="url(#master_svg0_267_8841)"><path d="M5.999996185302734,20.57142561581421Q5.999970038744735,13.142854215814209,5.999996185302734,9.052629015814208L19.999989185302734,3.999997615814209L33.999979185302735,9.052629015814208Q34.00004218530273,13.142854215814209,33.99998318530274,20.57142561581421Q33.999925185302736,27.99999561581421,19.999989185302734,35.99999761581421Q6.000022331860734,27.99999561581421,5.999996185302734,20.57142561581421ZM15.452668185302734,21.36983061581421C15.327375385302734,21.36983061581421,15.242097885302734,21.24667661581421,15.282463085302734,21.12806261581421L17.980530185302733,13.19994301581421L22.793796185302735,13.19994301581421C22.923050185302735,13.19994301581421,23.011505185302735,13.330391415814209,22.963672185302734,13.45046951581421L21.244718185302734,17.765735615814208C21.196887185302735,17.885813615814207,21.285340185302736,18.01626261581421,21.414594185302732,18.01626261581421L25.613689185302736,18.01626261581421C25.764580185302734,18.01626261581421,25.850536185302733,18.18870361581421,25.759704185302734,18.30919361581421L18.504619185302737,27.933293615814208C18.385477185302733,28.09133661581421,18.135150185302734,27.97381561581421,18.180642185302734,27.78119261581421L19.641703185302735,21.59471861581421C19.668820185302735,21.479899615814208,19.579154185302734,21.36983061581421,19.461176185302733,21.36983061581421L15.452668185302734,21.36983061581421Z" fill-rule="evenodd" fill="url(#master_svg1_155_00562)" fill-opacity="1"/><path d="M33.9999835559082,20.57093761581421Q33.9999275559082,27.89678561581421,20.384497315908202,35.778367615814204C20.212215255908202,35.87809861581421,19.999988555908203,35.751822615814206,19.999988555908203,35.55275861581421L19.999988555908203,25.94963961581421L25.759706055908204,18.30919361581421C25.850535855908202,18.18870361581421,25.764579255908203,18.01626261581421,25.613689855908202,18.01626261581421L21.414594755908205,18.01626261581421C21.285341455908203,18.01626261581421,21.1968872559082,17.885813615814207,21.244719255908205,17.765735615814208L22.963672855908204,13.45046951581421C23.011504655908205,13.330391415814209,22.923050655908202,13.19994301581421,22.793797255908203,13.19994301581421L19.999988555908203,13.19994301581421L19.999988555908203,4.368703725814209C19.999988555908203,4.189052283814209,20.178275715908203,4.063853677814209,20.347258475908202,4.124839964814209L33.828734555908206,8.99033781581421C33.9314955559082,9.027424315814208,33.999979555908205,9.12083481581421,33.999982555908204,9.230083915814209Q34.000041555908204,13.302545115814208,33.9999835559082,20.57093761581421Z" fill-rule="evenodd" fill="url(#master_svg2_267_8677)" fill-opacity="1" style="opacity:0.4000000059604645;"/><path d="M17.706891185302734,13.777579815814208L5.999996185302734,9.068416115814209L19.999987185302736,3.999997615814209L33.999979185302735,9.068416115814209L22.840751185302736,13.557278115814208L22.906055185302733,13.393340615814209C22.953888185302734,13.273262515814208,22.865433185302734,13.14281411581421,22.736179185302735,13.14281411581421L17.922912185302735,13.14281411581421L17.706891185302734,13.777579815814208Z" fill-rule="evenodd" fill="url(#master_svg3_155_00567)" fill-opacity="1" style="opacity:0.4000000059604645;"/></g></svg> 弱密码发现</div>
     <div class="sr-kpi-card-row">
       <div class="sr-kpi-item">
         <div class="sr-kpi-val sr-text-danger">{{internet.weak_pwd.total_count}}</div>
-        <div class="sr-kpi-lbl">弱口令数</div>
+        <div class="sr-kpi-lbl">弱密码数</div>
       </div>
     </div>
   </div>
@@ -8271,11 +8271,11 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   </div>
 </div>
 <div class="sr-chart-card chart-box sr-chart-card--full">
-  <h5 class="chart-title sr-chart-title">弱口令风险 — 资产分布</h5>
+  <h5 class="chart-title sr-chart-title">弱密码风险 — 资产分布</h5>
   <div class="chw ch340" id="m5-bar-internet-asset"></div>
 </div>
 </div>
-  <p class="report-chart-note sr-p muted">弱口令详情见《弱口令清单.xlsx》</p>
+  <p class="report-chart-note sr-p muted">弱密码详情见《弱密码清单（互联网）.xlsx》</p>
 
   <h4 class="sr-h4" id="sec-intranet">3.3.2 内网业务</h4>
   <p class="report-body sr-p" data-section="intranet.vuln.description" style="text-indent:2em"></p>
@@ -8284,18 +8284,18 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   <p class="report-body sr-p" data-section="intranet.vuln.prioritySummary"></p>
   <div data-section="intranet.vuln.bizTopBlock"></div>
 	  <div data-section="intranet.vuln.assetTopBlock"></div>
-  <p class="report-chart-note sr-p muted">内网漏洞详情见《漏洞清单.xlsx》，也可访问 XDR 平台-->脆弱性-->风险视角-->漏洞</p>
+  <p class="report-chart-note sr-p muted">内网漏洞详情见《漏洞清单（内网）.xlsx》，也可访问 XDR 平台-->脆弱性-->风险视角-->漏洞</p>
 
-  <h5 class="sr-h5" id="sec-intranet-weak">弱口令</h5>
-  <p class="report-body sr-p">本次体检共发现 <strong>{{intranet.weak_pwd.affected_assets}}</strong> 个资产存在弱口令 <strong>{{intranet.weak_pwd.total_count}}</strong> 个，分布如下：</p>
+  <h5 class="sr-h5" id="sec-intranet-weak">弱密码</h5>
+  <p class="report-body sr-p">本次体检共发现 <strong>{{intranet.weak_pwd.affected_assets}}</strong> 个资产存在弱密码 <strong>{{intranet.weak_pwd.total_count}}</strong> 个，分布如下：</p>
   <div class="sr-chart-slot chart-box sr-chart--no-hint" id="slot-intranet-weak" data-chart="slot-intranet-weak">
 <div class="sr-kpi-row-2">
   <div class="sr-kpi-card">
-    <div class="sr-kpi-card-hd"><svg style="width:1em;height:1em;vertical-align:-0.15em;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" version="1.1" width="40" height="40" viewBox="0 0 40 40"><defs><clipPath id="master_svg0_267_8841"><rect x="0" y="0" width="40" height="40" rx="0"/></clipPath><linearGradient x1="1" y1="1" x2="0.1328855145229437" y2="0.007779753208817838" id="master_svg1_155_00562"><stop offset="0%" stop-color="#5291FF" stop-opacity="1"/><stop offset="100%" stop-color="#1167FF" stop-opacity="1"/></linearGradient><linearGradient x1="0.11582031100988388" y1="0" x2="0.1218006087707013" y2="1.000147594487777" id="master_svg2_267_8677"><stop offset="0%" stop-color="#58D0FF" stop-opacity="0.15000000596046448"/><stop offset="99.99998807907104%" stop-color="#96DAFF" stop-opacity="1"/></linearGradient><linearGradient x1="1" y1="0.7906379699707031" x2="0.056671142578125" y2="0.7906379699707031" id="master_svg3_155_00567"><stop offset="0%" stop-color="#B0CDFF" stop-opacity="0.30000001192092896"/><stop offset="99.99991059303284%" stop-color="#B0CDFF" stop-opacity="1"/></linearGradient></defs><g clip-path="url(#master_svg0_267_8841)"><path d="M5.999996185302734,20.57142561581421Q5.999970038744735,13.142854215814209,5.999996185302734,9.052629015814208L19.999989185302734,3.999997615814209L33.999979185302735,9.052629015814208Q34.00004218530273,13.142854215814209,33.99998318530274,20.57142561581421Q33.999925185302736,27.99999561581421,19.999989185302734,35.99999761581421Q6.000022331860734,27.99999561581421,5.999996185302734,20.57142561581421ZM15.452668185302734,21.36983061581421C15.327375385302734,21.36983061581421,15.242097885302734,21.24667661581421,15.282463085302734,21.12806261581421L17.980530185302733,13.19994301581421L22.793796185302735,13.19994301581421C22.923050185302735,13.19994301581421,23.011505185302735,13.330391415814209,22.963672185302734,13.45046951581421L21.244718185302734,17.765735615814208C21.196887185302735,17.885813615814207,21.285340185302736,18.01626261581421,21.414594185302732,18.01626261581421L25.613689185302736,18.01626261581421C25.764580185302734,18.01626261581421,25.850536185302733,18.18870361581421,25.759704185302734,18.30919361581421L18.504619185302737,27.933293615814208C18.385477185302733,28.09133661581421,18.135150185302734,27.97381561581421,18.180642185302734,27.78119261581421L19.641703185302735,21.59471861581421C19.668820185302735,21.479899615814208,19.579154185302734,21.36983061581421,19.461176185302733,21.36983061581421L15.452668185302734,21.36983061581421Z" fill-rule="evenodd" fill="url(#master_svg1_155_00562)" fill-opacity="1"/><path d="M33.9999835559082,20.57093761581421Q33.9999275559082,27.89678561581421,20.384497315908202,35.778367615814204C20.212215255908202,35.87809861581421,19.999988555908203,35.751822615814206,19.999988555908203,35.55275861581421L19.999988555908203,25.94963961581421L25.759706055908204,18.30919361581421C25.850535855908202,18.18870361581421,25.764579255908203,18.01626261581421,25.613689855908202,18.01626261581421L21.414594755908205,18.01626261581421C21.285341455908203,18.01626261581421,21.1968872559082,17.885813615814207,21.244719255908205,17.765735615814208L22.963672855908204,13.45046951581421C23.011504655908205,13.330391415814209,22.923050655908202,13.19994301581421,22.793797255908203,13.19994301581421L19.999988555908203,13.19994301581421L19.999988555908203,4.368703725814209C19.999988555908203,4.189052283814209,20.178275715908203,4.063853677814209,20.347258475908202,4.124839964814209L33.828734555908206,8.99033781581421C33.9314955559082,9.027424315814208,33.999979555908205,9.12083481581421,33.999982555908204,9.230083915814209Q34.000041555908204,13.302545115814208,33.9999835559082,20.57093761581421Z" fill-rule="evenodd" fill="url(#master_svg2_267_8677)" fill-opacity="1" style="opacity:0.4000000059604645;"/><path d="M17.706891185302734,13.777579815814208L5.999996185302734,9.068416115814209L19.999987185302736,3.999997615814209L33.999979185302735,9.068416115814209L22.840751185302736,13.557278115814208L22.906055185302733,13.393340615814209C22.953888185302734,13.273262515814208,22.865433185302734,13.14281411581421,22.736179185302735,13.14281411581421L17.922912185302735,13.14281411581421L17.706891185302734,13.777579815814208Z" fill-rule="evenodd" fill="url(#master_svg3_155_00567)" fill-opacity="1" style="opacity:0.4000000059604645;"/></g></svg> 弱口令发现</div>
+    <div class="sr-kpi-card-hd"><svg style="width:1em;height:1em;vertical-align:-0.15em;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" version="1.1" width="40" height="40" viewBox="0 0 40 40"><defs><clipPath id="master_svg0_267_8841"><rect x="0" y="0" width="40" height="40" rx="0"/></clipPath><linearGradient x1="1" y1="1" x2="0.1328855145229437" y2="0.007779753208817838" id="master_svg1_155_00562"><stop offset="0%" stop-color="#5291FF" stop-opacity="1"/><stop offset="100%" stop-color="#1167FF" stop-opacity="1"/></linearGradient><linearGradient x1="0.11582031100988388" y1="0" x2="0.1218006087707013" y2="1.000147594487777" id="master_svg2_267_8677"><stop offset="0%" stop-color="#58D0FF" stop-opacity="0.15000000596046448"/><stop offset="99.99998807907104%" stop-color="#96DAFF" stop-opacity="1"/></linearGradient><linearGradient x1="1" y1="0.7906379699707031" x2="0.056671142578125" y2="0.7906379699707031" id="master_svg3_155_00567"><stop offset="0%" stop-color="#B0CDFF" stop-opacity="0.30000001192092896"/><stop offset="99.99991059303284%" stop-color="#B0CDFF" stop-opacity="1"/></linearGradient></defs><g clip-path="url(#master_svg0_267_8841)"><path d="M5.999996185302734,20.57142561581421Q5.999970038744735,13.142854215814209,5.999996185302734,9.052629015814208L19.999989185302734,3.999997615814209L33.999979185302735,9.052629015814208Q34.00004218530273,13.142854215814209,33.99998318530274,20.57142561581421Q33.999925185302736,27.99999561581421,19.999989185302734,35.99999761581421Q6.000022331860734,27.99999561581421,5.999996185302734,20.57142561581421ZM15.452668185302734,21.36983061581421C15.327375385302734,21.36983061581421,15.242097885302734,21.24667661581421,15.282463085302734,21.12806261581421L17.980530185302733,13.19994301581421L22.793796185302735,13.19994301581421C22.923050185302735,13.19994301581421,23.011505185302735,13.330391415814209,22.963672185302734,13.45046951581421L21.244718185302734,17.765735615814208C21.196887185302735,17.885813615814207,21.285340185302736,18.01626261581421,21.414594185302732,18.01626261581421L25.613689185302736,18.01626261581421C25.764580185302734,18.01626261581421,25.850536185302733,18.18870361581421,25.759704185302734,18.30919361581421L18.504619185302737,27.933293615814208C18.385477185302733,28.09133661581421,18.135150185302734,27.97381561581421,18.180642185302734,27.78119261581421L19.641703185302735,21.59471861581421C19.668820185302735,21.479899615814208,19.579154185302734,21.36983061581421,19.461176185302733,21.36983061581421L15.452668185302734,21.36983061581421Z" fill-rule="evenodd" fill="url(#master_svg1_155_00562)" fill-opacity="1"/><path d="M33.9999835559082,20.57093761581421Q33.9999275559082,27.89678561581421,20.384497315908202,35.778367615814204C20.212215255908202,35.87809861581421,19.999988555908203,35.751822615814206,19.999988555908203,35.55275861581421L19.999988555908203,25.94963961581421L25.759706055908204,18.30919361581421C25.850535855908202,18.18870361581421,25.764579255908203,18.01626261581421,25.613689855908202,18.01626261581421L21.414594755908205,18.01626261581421C21.285341455908203,18.01626261581421,21.1968872559082,17.885813615814207,21.244719255908205,17.765735615814208L22.963672855908204,13.45046951581421C23.011504655908205,13.330391415814209,22.923050655908202,13.19994301581421,22.793797255908203,13.19994301581421L19.999988555908203,13.19994301581421L19.999988555908203,4.368703725814209C19.999988555908203,4.189052283814209,20.178275715908203,4.063853677814209,20.347258475908202,4.124839964814209L33.828734555908206,8.99033781581421C33.9314955559082,9.027424315814208,33.999979555908205,9.12083481581421,33.999982555908204,9.230083915814209Q34.000041555908204,13.302545115814208,33.9999835559082,20.57093761581421Z" fill-rule="evenodd" fill="url(#master_svg2_267_8677)" fill-opacity="1" style="opacity:0.4000000059604645;"/><path d="M17.706891185302734,13.777579815814208L5.999996185302734,9.068416115814209L19.999987185302736,3.999997615814209L33.999979185302735,9.068416115814209L22.840751185302736,13.557278115814208L22.906055185302733,13.393340615814209C22.953888185302734,13.273262515814208,22.865433185302734,13.14281411581421,22.736179185302735,13.14281411581421L17.922912185302735,13.14281411581421L17.706891185302734,13.777579815814208Z" fill-rule="evenodd" fill="url(#master_svg3_155_00567)" fill-opacity="1" style="opacity:0.4000000059604645;"/></g></svg> 弱密码发现</div>
     <div class="sr-kpi-card-row">
       <div class="sr-kpi-item">
         <div class="sr-kpi-val sr-text-danger">{{intranet.weak_pwd.total_count}}</div>
-        <div class="sr-kpi-lbl">弱口令数</div>
+        <div class="sr-kpi-lbl">弱密码数</div>
       </div>
     </div>
   </div>
@@ -8315,16 +8315,16 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
 </div>
 <div class="sr-chart-grid-2">
   <div class="sr-chart-card chart-box">
-    <h5 class="chart-title sr-chart-title">弱口令风险 — 业务系统分布</h5>
+    <h5 class="chart-title sr-chart-title">弱密码风险 — 业务系统分布</h5>
     <div class="chw ch340" id="m5-bar-intra"></div>
   </div>
   <div class="sr-chart-card chart-box">
-    <h5 class="chart-title sr-chart-title">弱口令风险 — 资产分布</h5>
+    <h5 class="chart-title sr-chart-title">弱密码风险 — 资产分布</h5>
     <div class="chw ch340" id="m5-bar-intra-asset"></div>
   </div>
 </div>
 </div>
-  <p class="report-chart-note sr-p muted">弱口令详情见《弱口令清单.xlsx》，也可访问 XDR 平台-->脆弱性-->风险视角-->弱密码</p>
+  <p class="report-chart-note sr-p muted">弱密码详情见《弱密码清单（内网）.xlsx》，也可访问 XDR 平台-->脆弱性-->风险视角-->弱密码</p>
 
   <h4 class="sr-h4" id="sec-protection-effectiveness">3.3.3 防护有效性</h4>
   <h5 class="sr-h5">安全组件策略检查</h5>
@@ -9176,7 +9176,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     if (window.SRChartRerender) window.SRChartRerender.register('m2-ring2', renderM2Ring2);
   })();
 
-  // 条形图1：业务系统安全事件排名（grid 与弱口令 asset 分布一致）
+  // 条形图1：业务系统安全事件排名（grid 与弱密码 asset 分布一致）
   var priorityColor = T.priority;
   var businessSystemBarColors = ['#1677FF', '#36CFC9', '#73D13D', '#F6BD16', '#FF9C6E', '#9254DE'];
   var sysDetails = [
@@ -9516,7 +9516,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     { name: '漏洞利用', key: 'exploit', color: '#FF6B1A' },
     { name: '暴露面', key: 'exposure', color: '#2878FF' },
     { name: '漏洞', key: 'vuln', color: '#F5B817' },
-    { name: '弱口令', key: 'weakPwd', color: '#16A7B5' }
+    { name: '弱密码', key: 'weakPwd', color: '#16A7B5' }
   ];
 
   function readTop5Assets() {
@@ -9837,15 +9837,15 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     if (window.SRChartRerender) window.SRChartRerender.register('m3-exposure-overview-bar', renderExposureOverviewBar);
   })();
 
-  // ===== M5: 弱口令类型分布（preset: centerAuto） =====
+  // ===== M5: 弱密码类型分布（preset: centerAuto） =====
   (function(){
     var P = window.SRDonutPresets;
     if (!P) return;
     P.render('m5-type', 'centerAuto', {
       unit: '项',
-      center: { total: 192, label: '弱口令总数', valueColor: C.semantic.critical },
+      center: { total: 192, label: '弱密码总数', valueColor: C.semantic.critical },
       data: [
-        { name: '弱口令', value: 85 },
+        { name: '弱密码', value: 85 },
         { name: '默认密码', value: 45 },
         { name: '重复密码', value: 32 },
         { name: '空密码', value: 18 },
@@ -9878,9 +9878,9 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
   });
   window.addEventListener('resize',function(){c9.resize()});
 
-  // ===== M5-内网: 业务系统 / 资产分布 条形（3.3.2 内网弱口令风险）=====
+  // ===== M5-内网: 业务系统 / 资产分布 条形（3.3.2 内网弱密码风险）=====
   (function() {
-    // 弱口令两个口径（类型分布 biz_rows / 资产分布 asset_rows）共用的读取器。
+    // 弱密码两个口径（类型分布 biz_rows / 资产分布 asset_rows）共用的读取器。
     // 只有整份数据都没注入时才退回生成期字面量（模板单独预览的场景）；
     // 注入了数据但列表为空 = 真的没数据，要交给空态分支。
     function readWeakRows(scope, key, fallback) {
@@ -9940,7 +9940,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     var WEAK_PWD_INTRA = {{intranet.weak_pwd.biz_rows}};
     buildWeakPwdBar('m5-bar-intra',
       function () { return readWeakRows('intranet', 'biz_rows', WEAK_PWD_INTRA); });
-    /* 资产分布：m3-bar 双行 IP+域名标签，单条统计弱口令总数 */
+    /* 资产分布：m3-bar 双行 IP+域名标签，单条统计弱密码总数 */
     function buildWpAssetBar(elId, readRows) {
       var el = document.getElementById(elId);
       if (!el) return;
@@ -9982,7 +9982,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
               var assetName = (raw.match(/\{name\|([^}]+)\}/) || [])[1] || '';
               return '<div style="font-weight:600;font-size:13px;margin-bottom:4px">' + ip +
                 (assetName ? '<br/><span style="color:#6F7785;font-size:11px">资产名称: ' + assetName + '</span>' : '') +
-                '</div><div style="font-weight:600;color:#2F3540">弱口令总数: ' + wpTotals[idx] + '</div>';
+                '</div><div style="font-weight:600;color:#2F3540">弱密码总数: ' + wpTotals[idx] + '</div>';
             }
           },
           grid: {
@@ -9995,7 +9995,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
             type: 'value',
             min: 0,
             minInterval: 1,
-            name: compact ? '' : '弱口令数量',
+            name: compact ? '' : '弱密码数量',
             nameLocation: 'center',
             nameGap: 28,
             nameTextStyle: { color: '#9CA3AF', fontSize: T.fontSize.legendSm },
@@ -10056,7 +10056,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
       function () { return readWeakRows('internet', 'asset_rows', WP_INTERNET); });
   })();
 
-  // ===== 弱口令图表隐藏逻辑：total_count=0 时整块隐藏 =====
+  // ===== 弱密码图表隐藏逻辑：total_count=0 时整块隐藏 =====
   (function(){
     var t = Number({{internet.weak_pwd.total_count}} || 0);
     if (!t) {
@@ -11063,11 +11063,11 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
                 </div>
               </div>
               <div class="ro5-metric">
-                <div class="ro5-metric-hd">弱口令</div>
+                <div class="ro5-metric-hd">弱密码</div>
                 <div class="ro5-metric-body">
                   <div class="ro5-metric-col">
                     <div class="num">{{summary.internet.weak_pwd.total}}</div>
-                    <div class="lbl">弱口令数</div>
+                    <div class="lbl">弱密码数</div>
                   </div>
                   <div class="ro5-metric-col">
                     <div class="num num--risk">{{summary.internet.weak_pwd.risk_assets}}</div>
@@ -11096,11 +11096,11 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
                 </div>
               </div>
               <div class="ro5-metric">
-                <div class="ro5-metric-hd">弱口令</div>
+                <div class="ro5-metric-hd">弱密码</div>
                 <div class="ro5-metric-body">
                   <div class="ro5-metric-col">
                     <div class="num">{{summary.intranet.weak_pwd.total}}</div>
-                    <div class="lbl">弱口令数</div>
+                    <div class="lbl">弱密码数</div>
                   </div>
                   <div class="ro5-metric-col">
                     <div class="num num--risk">{{summary.intranet.weak_pwd.risk_assets}}</div>

@@ -77,7 +77,7 @@ node health_report.js `
 | `riskOverview.containedAlerts` | 已遏制告警数 | MSSW 告警统计接口 | 查询处置动作为 `已遏制(组件同步)` 或 `已遏制(已封禁地址)` 的告警总数 |
 | `riskOverview.alertReductionRate` | 告警消减率 | MSSW 告警统计接口 + 导出的事件表 Excel | 直接复用 `riskDetails.alertReductionRate`；若未显式提供，则按 `(alertTotal - totalEvents) / alertTotal` 计算，结果保留两位小数 |
 | `riskOverview.closeRate` | 事件闭环率 | 导出的事件表 Excel | 直接复用 `riskDetails.closeRate`，保证与风险详情完全一致 |
-| `riskOverview.riskAssetCount` | 风险资产数 | 风险清单目录中的事件表 Excel + 弱口令表 Excel + 漏洞表 Excel + 暴露面表 Excel + 资产表 Excel | 在五张风险清单归档完成后综合统计：事件表取 `影响资产` 且排除 `处置状态 = 处置完成`；弱口令表取 `风险资产` 且若存在 `处置状态` 列则排除 `处置完成`；漏洞表取 `风险资产`；暴露面表中 `Web服务风险分布` 通过 `访问路径 -> 端口表.Host` 映射资产，`非Web服务风险分布` 直接取 `IP地址/子域名`；最后按资产键去重计数 |
+| `riskOverview.riskAssetCount` | 风险资产数 | 风险清单目录中的事件表 Excel + 弱密码表 Excel + 漏洞表 Excel + 暴露面表 Excel + 资产表 Excel | 在五张风险清单归档完成后综合统计：事件表取 `影响资产` 且排除 `处置状态 = 处置完成`；弱密码表取 `风险资产` 且若存在 `处置状态` 列则排除 `处置完成`；漏洞表取 `风险资产`；暴露面表中 `Web服务风险分布` 通过 `访问路径 -> 端口表.Host` 映射资产，`非Web服务风险分布` 直接取 `IP地址/子域名`；最后按资产键去重计数 |
 | `riskOverview.affectedAssetCount` | 影响资产数 | 导出的事件表 Excel | 直接复用 `riskDetails.uniqueAssetCount`；遍历事件表所有事件，提取“影响资产”列中的 IPv4 地址后去重计数 |
 | `riskOverview.incidentGptStats.total` | 已确认的威胁运营事件总数 | MSSW 事件表 Excel | `incidentGptStats.hostCompromise.total + incidentGptStats.virusTrojan.total` |
 | `riskOverview.incidentGptStats.hostCompromise.total` | 已确认 C2 外联事件数 | MSSW 事件表 Excel | 先筛 `GPT研判结论` 属于 `主机失陷活动 / 病毒木马活动` 的候选事件；再按 `外网IP地址`、`域名`、`文件` 顺序检查带 `（黑）` 的实体，网络字段任一命中即归类 C2 外联，计数 |

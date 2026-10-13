@@ -343,8 +343,8 @@ async function main() {
             filePath: path.join(__dirname, '弱口令清单.xlsx'),
             source: 'local',
             deliverables: [
-              { name: '弱口令清单（内网）.xlsx',   path: path.join(__dirname, '弱口令清单.xlsx') },
-              { name: '弱口令清单（互联网）.xlsx', path: path.join(__dirname, '弱口令清单.xlsx') }
+              { name: '弱密码清单（内网）.xlsx',   path: path.join(__dirname, '弱口令清单.xlsx') },
+              { name: '弱密码清单（互联网）.xlsx', path: path.join(__dirname, '弱口令清单.xlsx') }
             ]
           },
           vuln:    {
@@ -442,7 +442,7 @@ async function main() {
       tableExports.asset.filePath = archivedFiles.assetPath;
     }
     preventionTables.exposure.filePath = archivedFiles.exposurePath;
-    // 弱口令/漏洞：计算用临时表的路径保持不变（不进交付目录，供下游计算读取）
+    // 弱密码/漏洞：计算用临时表的路径保持不变（不进交付目录，供下游计算读取）
     // 交付物为两个平台原样 excel，归档路径记录在 archivedFiles.weakpwdDeliverables / vulnDeliverables
     const incidentGptStatsForTopAssets = reportData.riskOverview && reportData.riskOverview.incidentGptStats
       ? reportData.riskOverview.incidentGptStats
@@ -947,7 +947,7 @@ async function createRunExportWorkspace(root, generatedAt, logger) {
 // - asset：删除第 1 空行，让表头上移到第 1 行
 // - 各表（exposure 除外）：把表头样式统一为暴露面清单样式（微软雅黑10加粗 + 浅蓝底 + 居中 + thin边框）
 // 处理结果写入临时文件，再 move 到归档目录；失败不阻断归档，源文件原样归档。
-// 注：漏洞/弱口令清单交付物为两个平台原样 excel，不做表头统一，故不在此表内。
+// 注：漏洞/弱密码清单交付物为两个平台原样 excel，不做表头统一，故不在此表内。
 const UNIFY_RISK_HEADER_TABLE_TYPES = {
   incidentPath: 'incident',
   assetPath: 'asset',
@@ -980,19 +980,19 @@ async function archiveRiskListFiles(options) {
     logWith(options.logger, `风险清单已归档: ${archived[key]}`);
   }
 
-  // 漏洞/弱口令交付物：两个平台原样 excel（内网 / 互联网），平铺归档，不做表头统一。
+  // 漏洞/弱密码交付物：两个平台原样 excel（内网 / 互联网），平铺归档，不做表头统一。
   // 计算用的临时表（options.vulnPath / options.weakpwdPath）不归档，仅保留给下游计算读取。
   archived.vulnDeliverables = await archiveDeliverables(
     options.vulnDeliverables, riskListDir, '漏洞', 'vulnDeliverables', options.logger
   );
   archived.weakpwdDeliverables = await archiveDeliverables(
-    options.weakpwdDeliverables, riskListDir, '弱口令', 'weakpwdDeliverables', options.logger
+    options.weakpwdDeliverables, riskListDir, '弱密码', 'weakpwdDeliverables', options.logger
   );
 
   return archived;
 }
 
-// 平铺归档一组平台原样交付文件（漏洞 / 弱口令），返回 [{name, path}]。
+// 平铺归档一组平台原样交付文件（漏洞 / 弱密码），返回 [{name, path}]。
 // 不做表头统一：先复制到归档目录、再 move 覆盖，避免 move 删除输入文件。
 async function archiveDeliverables(deliverables, riskListDir, label, optionKey, logger) {
   const items = Array.isArray(deliverables) ? deliverables : [];
@@ -1104,8 +1104,8 @@ async function beautifyArchivedRiskLists(reportDir, logger) {
     '安全事件清单.xlsx',
     '资产清单.xlsx',
     '暴露面清单.xlsx',
-    '弱口令清单（内网）.xlsx',
-    '弱口令清单（互联网）.xlsx',
+    '弱密码清单（内网）.xlsx',
+    '弱密码清单（互联网）.xlsx',
     '漏洞清单（内网）.xlsx',
     '漏洞清单（互联网）.xlsx',
     '策略检查清单.xlsx'

@@ -95,7 +95,7 @@ function buildOutputFilename(tableType, customer, start, end) {
 }
 
 function displayName(tableType) {
-  if (tableType === 'weakpwd') return '弱口令表';
+  if (tableType === 'weakpwd') return '弱密码表';
   if (tableType === 'vuln') return '漏洞表';
   return '暴露面表';
 }

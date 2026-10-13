@@ -280,10 +280,10 @@ function hidePolicyKpiCard(html, dataField, shouldHide) {
   return html.slice(0, cardStart) + html.slice(end);
 }
 
-// 弱口令章节：当某范围弱口令总数 total_count 为 0 时，
+// 弱密码章节：当某范围弱密码总数 total_count 为 0 时，
 // 1) 引言句去掉「分布如下：」；
-// 2) 整块移除下方图表插槽（含「弱口令发现 / 业务影响」KPI 卡及分布图）；
-// 3) 详情注释去掉「见《弱口令清单.xlsx》，也」，仅保留访问入口。
+// 2) 整块移除下方图表插槽（含「弱密码发现 / 业务影响」KPI 卡及分布图）；
+// 3) 详情注释去掉「见《弱密码清单（内网）.xlsx》，也」，仅保留访问入口。
 function patchWeakPwdSections(html, data) {
   html = patchWeakPwdScope(html, data, 'internet');
   html = patchWeakPwdScope(html, data, 'intranet');
@@ -300,11 +300,11 @@ function patchWeakPwdScope(html, data, scope) {
     html = removeSlotById(html, slotId);
   }
 
-  // 仅在当前范围的弱口令小节内去掉「分布如下：」
-  // （互联网 / 内网弱口令引言结构相同，须按小节边界圈定，避免误伤另一范围）
+  // 仅在当前范围的弱密码小节内去掉「分布如下：」
+  // （互联网 / 内网弱密码引言结构相同，须按小节边界圈定，避免误伤另一范围）
   const startAnchor = scope === 'internet'
-    ? '<h5 class="sr-h5" id="sec-internet-weak">弱口令</h5>'
-    : '<h5 class="sr-h5" id="sec-intranet-weak">弱口令</h5>';
+    ? '<h5 class="sr-h5" id="sec-internet-weak">弱密码</h5>'
+    : '<h5 class="sr-h5" id="sec-intranet-weak">弱密码</h5>';
   const endAnchor = scope === 'internet'
     ? '<h4 class="sr-h4" id="sec-intranet">'
     : '<h4 class="sr-h4" id="sec-protection-effectiveness">';
@@ -316,11 +316,11 @@ function patchWeakPwdScope(html, data, scope) {
   const patchedSection = section
     // 引言句去掉「分布如下：」
     .replace(
-      /(本次体检共发现 <strong>[^<]*<\/strong> 个资产存在弱口令 <strong>[^<]*<\/strong> 个，)分布如下：/g,
+      /(本次体检共发现 <strong>[^<]*<\/strong> 个资产存在弱密码 <strong>[^<]*<\/strong> 个，)分布如下：/g,
       '$1'
     )
-    // 弱口令数为 0 时详情注释不再指向清单：去掉「见《弱口令清单.xlsx》，也」
-    .replace(/见《弱口令清单\.xlsx》，也/g, '');
+    // 弱密码数为 0 时详情注释不再指向清单：去掉「见《弱密码清单（内网）.xlsx》，也」
+    .replace(/见《弱密码清单（内网）\.xlsx》，也/g, '');
   return html.slice(0, start) + patchedSection + html.slice(end);
 }
 
@@ -1027,7 +1027,7 @@ function renderInternetExposureDescription(data) {
   return (
     `互联网业务风险${level}，存在一些对外暴露的端口与服务。` +
     `其中有<strong>${assetCount}</strong>个资产暴露了<strong>${portCount}</strong>个端口` +
-    `（风险端口<strong>${riskPorts}</strong>个），存在<strong>${vulnCount}</strong>个互联网漏洞，存在<strong>${weakPwdCount}</strong>个弱口令。`
+    `（风险端口<strong>${riskPorts}</strong>个），存在<strong>${vulnCount}</strong>个互联网漏洞，存在<strong>${weakPwdCount}</strong>个弱密码。`
   );
 }
 
@@ -1037,7 +1037,7 @@ function renderInternetRiskSummary(data) {
     `互联网业务总计发现风险 <strong>${num(rd.total)}</strong> 个` +
     `（风险暴露面 <strong>${num(rd.exposure)}</strong> 个、` +
     `漏洞 <strong>${num(rd.vuln)}</strong> 个、` +
-    `弱口令 <strong>${num(rd.weak_pwd)}</strong> 个）`
+    `弱密码 <strong>${num(rd.weak_pwd)}</strong> 个）`
   );
   const tail = rd.high_above
     ? `，其中高危及以上风险 <strong>${num(rd.high_above)}</strong> 个。`
@@ -1050,7 +1050,7 @@ function renderIntranetRiskSummary(data) {
   const main = (
     `内网核心业务总计发现风险 <strong>${num(rd.total)}</strong> 个` +
     `（漏洞 <strong>${num(rd.vuln)}</strong> 个、` +
-    `弱口令 <strong>${num(rd.weak_pwd)}</strong> 个）`
+    `弱密码 <strong>${num(rd.weak_pwd)}</strong> 个）`
   );
   const tail = rd.high
     ? `，其中高危及以上风险 <strong>${num(rd.high)}</strong> 个。`
@@ -1204,15 +1204,15 @@ function renderIntranetVulnAssetTopBlock(data) {
   );
 }
 
-// 内网漏洞详情引导语：当内网漏洞数量为 0 时，《漏洞清单.xlsx》无实际数据，
-// 省略“详情见《漏洞清单.xlsx》”的说法，仅保留 XDR 平台查询入口
+// 内网漏洞详情引导语：当内网漏洞数量为 0 时，《漏洞清单（内网）.xlsx》无实际数据，
+// 省略“详情见《漏洞清单（内网）.xlsx》”的说法，仅保留 XDR 平台查询入口
 function patchIntranetVulnChallengeNote(html, data) {
   const v = (data.intranet && data.intranet.vuln) || {};
   const total = Number(v.total || 0);
   if (total !== 0) {
     return html;
   }
-  const original = '内网漏洞详情见《漏洞清单.xlsx》，也可访问 XDR 平台-->脆弱性-->风险视角-->漏洞';
+  const original = '内网漏洞详情见《漏洞清单（内网）.xlsx》，也可访问 XDR 平台-->脆弱性-->风险视角-->漏洞';
   const zeroText = '内网漏洞详情可访问 XDR 平台-->脆弱性-->风险视角-->漏洞';
   return html.replace(original, zeroText);
 }

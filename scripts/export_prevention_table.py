@@ -105,7 +105,7 @@ def main():
 
     # vuln / weakpwd：除临时表外，另交付两个平台原样 excel（内网 / 互联网），回传给编排层归档
     if args.table_type in ('vuln', 'weakpwd'):
-        default_prefix = '漏洞清单' if args.table_type == 'vuln' else '弱口令清单'
+        default_prefix = '漏洞清单' if args.table_type == 'vuln' else '弱密码清单'
         name_intranet = getattr(module, 'NAME_INTRANET', f'{default_prefix}（内网）.xlsx')
         name_internet = getattr(module, 'NAME_INTERNET', f'{default_prefix}（互联网）.xlsx')
         result['deliverables'] = [
