@@ -53,6 +53,7 @@ VULN_FIXED_STATUSES = [0, 1]         # 处置状态过滤
 # 交付命名常量（后期改一行即可）
 NAME_INTRANET = "漏洞清单（内网）.xlsx"              # 交付用（内网，平台原样30列）
 NAME_INTERNET = "漏洞清单（互联网）.xlsx"            # 交付用（外网，平台原样21列）
+SHEET_VULN_DATA = "4-漏洞清单+跟踪记录"              # 漏洞数据 sheet 名
 # =====================================================================
 
 
@@ -456,13 +457,15 @@ def process_mssw_file(file_b_path: str, source: str = "内网") -> List[dict]:
     返回 list[dict]
     """
     wb = load_workbook(file_b_path, data_only=True)
-    ws = wb.active
-    # 数据在「4-全部漏洞清单」sheet（sheet1/2/3 为总览/闭环指引/急需修复）
-    if "4-全部漏洞清单" in wb.sheetnames:
-        ws = wb["4-全部漏洞清单"]
-        log(f"  取数据 sheet: 「4-全部漏洞清单」")
-    else:
-        log(f"  未找到「4-全部漏洞清单」，回退用活动 sheet「{ws.title}」", "WARNING")
+    # 数据在漏洞清单 sheet（sheet1/2/3 为总览/闭环指引/急需修复）
+    # 找不到该 sheet 时按空数据处理，不中断整个流程
+    if SHEET_VULN_DATA not in wb.sheetnames:
+        log(f"  未找到「{SHEET_VULN_DATA}」sheet，按空数据处理（实际 sheets: {wb.sheetnames}）", "WARNING")
+        wb.close()
+        return []
+
+    ws = wb[SHEET_VULN_DATA]
+    log(f"  取数据 sheet: 「{SHEET_VULN_DATA}」")
 
     col_map: Dict[str, int] = {}
     for col_idx, cell in enumerate(ws[1], start=1):
@@ -470,13 +473,6 @@ def process_mssw_file(file_b_path: str, source: str = "内网") -> List[dict]:
             col_map[str(cell.value).strip()] = col_idx
 
     log(f"MSSW 文件B 列数: {len(col_map)}, 数据行数: {ws.max_row - 1}")
-
-    # 确认必要列存在
-    needed = ["漏洞名称", "风险等级", "威胁标签"]
-    for key in needed:
-        if key not in col_map:
-            log(f"  MSSW 文件缺少必要列: {key}，实际列: {list(col_map.keys())}", "WARNING")
-            raise RuntimeError(f"MSSW 文件B 缺少必要列「{key}」")
 
     rows_out: List[dict] = []
 
@@ -502,7 +498,10 @@ def process_mssw_file(file_b_path: str, source: str = "内网") -> List[dict]:
                     row_data[c_col] = val
                 else:
                     # 列不存在（如外网缺 资产类型/资产重要性 等 6 列）→ 填空
-                    log(f"  第{row_idx}行: 列「{source_col}」不存在，赋空值", "WARNING")
+                    # 每列只提示一次，避免逐行刷屏
+                    if source_col not in _missing_col_reported:
+                        _missing_col_reported.add(source_col)
+                        log(f"  列「{source_col}」不存在，赋空值（后续行不再重复提示）", "WARNING")
                     row_data[c_col] = ""
 
         rows_out.append(row_data)
@@ -826,6 +825,6 @@ if __name__ == '__main__':
 #     3) 交付「漏洞清单（互联网）.xlsx」  → 平台原样 21 列（放 temp-dir，供 JS 归档）
 #
 #  过滤逻辑:
-#     MSSW 接口3: fixed_status=[0,1,2,3,4,5,6]，scan_type=[1,2]
+#     MSSW 接口3: fixed_status=[0,1,2,3,4,5,6]，scan_type=[1]
 #                 list_filters.latest_time_range 可选时间过滤
 # ============================================================

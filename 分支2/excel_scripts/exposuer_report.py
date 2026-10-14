@@ -698,8 +698,10 @@ DOC_STAT_MAP = {
 }
 # 无「资产归属」列的资产类型，其「影子资产数」保持平台原值（通常为 /），不重算
 DOC_NO_SHADOW_TYPES = {'SSL证书', 'APP'}
-# 「总数」按「云类型」列去重统计的资产类型（该 sheet 云类型跨行合并，平台按其去重计数）
+# 「总数」按去重统计的资产类型（云类资产按「IP地址/子域名」去重计数）
 DOC_DEDUP_BY_CLOUD_TYPE = {'云类资产'}
+# 云类资产去重统计所用的列
+DOC_CLOUD_DEDUP_COL = 'IP地址/子域名'
 
 
 def _count_sheet_data_rows(ws) -> int:
@@ -725,8 +727,8 @@ def _count_shadow_assets(ws) -> Optional[int]:
 
 
 def _count_distinct_cloud_types(ws) -> int:
-    """统计「云类型」列的非空去重数量（云类资产总数，平台口径）。"""
-    tid = _find_col_idx(ws, '云类型')
+    """统计「IP地址/子域名」列的非空去重数量（云类资产总数）。"""
+    tid = _find_col_idx(ws, DOC_CLOUD_DEDUP_COL)
     if tid is None:
         return _count_sheet_data_rows(ws)
     seen = set()

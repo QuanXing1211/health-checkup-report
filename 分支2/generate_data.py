@@ -507,7 +507,10 @@ def calc_internet_exposure(ds):
     web_count    = len(ds["rows_web_risk"])
     nonweb_count = len(ds["rows_nonweb_risk"])
 
-    # ── dist：暴露面清单中除指定 sheet 外每个 sheet 的映射名称及数据行数 ──
+    # ── dist：暴露面清单中除指定 sheet 外每个 sheet 的映射名称及数量 ──
+    # 云类资产按「IP地址/子域名」去重计数（与文档说明 sheet 口径一致）
+    DEDUP_BY_IP_SHEET = "公有云资产"
+    DEDUP_BY_IP_FIELD = "IP地址/子域名"
     EXCLUDED_SHEETS = {"文档说明", "Web服务风险分布", "非Web服务风险分布", "资产总表"}
     SHEET_NAME_MAP = {
         "端口表":            "端口资产",
@@ -543,6 +546,10 @@ def calc_internet_exposure(ds):
             rows = get_rows(ds["wb_exp"][sn])
             dist_list.append({"name": "公众号", "value": filter_count(rows, "类型", "公众号")})
             dist_list.append({"name": "小程序", "value": filter_count(rows, "类型", "小程序")})
+        elif base == DEDUP_BY_IP_SHEET:
+            # 云类资产按「IP地址/子域名」去重（与文档说明 sheet 口径一致）
+            cnt = unique_count(get_rows(ds["wb_exp"][sn]), DEDUP_BY_IP_FIELD)
+            dist_list.append({"name": display_name, "value": cnt})
         else:
             cnt = count_data_rows(ds["wb_exp"][sn])
             dist_list.append({"name": display_name, "value": cnt})

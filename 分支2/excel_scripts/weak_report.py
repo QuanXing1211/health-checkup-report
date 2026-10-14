@@ -469,6 +469,26 @@ def _copy_file(src: str, dst: str) -> None:
     shutil.copy2(src, dst)
 
 
+def _drop_column_in_place(path: str, col_name: str) -> None:
+    """交付物后处理：删除指定列（不存在则打日志跳过，不中断）。"""
+    wb = load_workbook(path)
+    try:
+        ws = wb.active
+        idx = None
+        for ci, cell in enumerate(ws[1], start=1):
+            if cell.value is not None and str(cell.value).strip() == col_name:
+                idx = ci
+                break
+        if idx is None:
+            log(f"  交付物未找到列「{col_name}」，跳过删除")
+            return
+        ws.delete_cols(idx, 1)
+        wb.save(path)
+        log(f"  交付物已删除列「{col_name}」")
+    finally:
+        wb.close()
+
+
 # 临时表固定列头（从左到右）；写完后删「托管状态」
 C_HEADERS = [
     "弱密码名称", "账号", "密码", "url",
@@ -671,6 +691,7 @@ def main():
     log("步骤5：生成交付物（两个平台原样 excel，平铺在 temp-dir）")
     dst_intranet = os.path.join(TEMP_DIR, NAME_INTRANET)
     _copy_file(file_intranet, dst_intranet)
+    _drop_column_in_place(dst_intranet, "风险等级")
     log(f"  交付(内网): {NAME_INTRANET}")
 
     dst_internet = os.path.join(TEMP_DIR, NAME_INTERNET)
