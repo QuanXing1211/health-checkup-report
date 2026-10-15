@@ -475,6 +475,7 @@ def process_mssw_file(file_b_path: str, source: str = "内网") -> List[dict]:
     log(f"MSSW 文件B 列数: {len(col_map)}, 数据行数: {ws.max_row - 1}")
 
     rows_out: List[dict] = []
+    _missing_col_reported: set = set()
 
     for row_idx in range(2, ws.max_row + 1):
         row_data = {}
